@@ -1,0 +1,68 @@
+{
+	"name": "svg-roadmap",
+	"version": "0.1.0",
+	"description": "Dependency-light Markdown to SVG roadmap generator",
+	"keywords": [
+		"markdown",
+		"roadmap",
+		"svg",
+		"typescript",
+		"visualization"
+	],
+	"homepage": "https://github.com/jveres/roadmap-next#readme",
+	"bugs": {
+		"url": "https://github.com/jveres/roadmap-next/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jveres/roadmap-next.git"
+	},
+	"type": "module",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"browser": "./dist/index.js",
+			"node": "./dist/node.js",
+			"import": "./dist/index.js"
+		},
+		"./node": {
+			"types": "./dist/node.d.ts",
+			"import": "./dist/node.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"packageManager": "pnpm@11.9.0",
+	"scripts": {
+		"build": "vite build && tsc -p tsconfig.build.json",
+		"build:demo": "vite build --config vite.demo.config.ts",
+		"check": "biome check .",
+		"check:fix": "biome check --write .",
+		"dev": "vite --config vite.demo.config.ts",
+		"format": "biome format --write .",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"typecheck": "tsc --noEmit",
+		"verify": "pnpm run check && pnpm run typecheck && pnpm test && pnpm run build && pnpm run build:demo"
+	},
+	"dependencies": {
+		"comrak-wasm": "file:../comrak-wasm"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.4",
+		"@types/node": "^26.1.1",
+		"@vitest/coverage-v8": "^4.1.10",
+		"typescript": "^7.0.2",
+		"vite": "^8.1.5",
+		"vitest": "^4.1.10"
+	}
+}

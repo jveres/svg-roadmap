@@ -1,0 +1,547 @@
+import type { ComrakOptions, InitInput } from "comrak-wasm";
+
+export interface SourcePoint {
+	readonly line: number;
+	readonly column: number;
+}
+
+export interface SourceRange {
+	readonly start: SourcePoint;
+	readonly end: SourcePoint;
+}
+
+export interface TextInline {
+	readonly type: "text";
+	readonly value: string;
+}
+
+export interface CodeInline {
+	readonly type: "code";
+	readonly value: string;
+}
+
+export interface ContainerInline {
+	readonly type:
+		| "strong"
+		| "emphasis"
+		| "emoji"
+		| "strikethrough"
+		| "insert"
+		| "highlight"
+		| "superscript"
+		| "subscript";
+	readonly children: readonly InlineNode[];
+	readonly shortcode?: string;
+}
+
+export interface LinkInline {
+	readonly type: "link";
+	readonly destination: string;
+	readonly title?: string;
+	readonly children: readonly InlineNode[];
+}
+
+export interface AbbreviationInline {
+	readonly type: "abbreviation";
+	readonly title: string;
+	readonly children: readonly InlineNode[];
+}
+
+export interface BreakInline {
+	readonly type: "softBreak" | "lineBreak";
+}
+
+export interface FootnoteReferenceInline {
+	readonly type: "footnoteReference";
+	readonly label: string;
+}
+
+export type InlineNode =
+	| TextInline
+	| CodeInline
+	| ContainerInline
+	| LinkInline
+	| AbbreviationInline
+	| BreakInline
+	| FootnoteReferenceInline;
+
+export interface RoadmapHeading {
+	readonly type: "heading";
+	readonly id: string;
+	readonly level: number;
+	readonly content: readonly InlineNode[];
+	readonly sourceRange?: SourceRange;
+}
+
+export interface RoadmapNote {
+	readonly type: "note";
+	readonly id: string;
+	readonly content: readonly InlineNode[];
+	readonly sourceRange?: SourceRange;
+}
+
+export interface RoadmapTopic {
+	readonly type: "topic";
+	readonly id: string;
+	readonly depth: number;
+	readonly marker: "*" | "+" | "-" | "ordered";
+	readonly content: readonly InlineNode[];
+	readonly description: readonly InlineNode[];
+	readonly tags: readonly string[];
+	readonly children: readonly RoadmapTopic[];
+	readonly sourceRange?: SourceRange;
+}
+
+export interface RoadmapTopicGroup {
+	readonly id: string;
+	readonly layout: "grid" | "tree";
+	readonly topics: readonly RoadmapTopic[];
+}
+
+export interface RoadmapChapter {
+	readonly type: "chapter";
+	readonly id: string;
+	readonly content: readonly InlineNode[];
+	readonly description: readonly InlineNode[];
+	readonly tags: readonly string[];
+	readonly groups: readonly RoadmapTopicGroup[];
+	readonly sourceRange?: SourceRange;
+}
+
+export type RoadmapStep = RoadmapHeading | RoadmapNote | RoadmapChapter;
+
+export interface FootnoteDefinition {
+	readonly label: string;
+	readonly content: readonly InlineNode[];
+}
+
+export type RoadmapColorMode = "light" | "dark";
+
+export interface RoadmapThemeSettings {
+	readonly preset: string;
+	readonly mode?: RoadmapColorMode;
+}
+
+export interface RoadmapBackgroundSettings {
+	readonly enabled: boolean;
+	readonly seed: string;
+	readonly density: number;
+	readonly size: number;
+}
+
+export interface RoadmapSettings {
+	readonly theme: RoadmapThemeSettings;
+	readonly background: RoadmapBackgroundSettings;
+}
+
+export interface RoadmapDocument {
+	readonly type: "roadmap";
+	readonly source: string;
+	readonly settings: RoadmapSettings;
+	readonly steps: readonly RoadmapStep[];
+	readonly abbreviations: Readonly<Record<string, string>>;
+	readonly footnotes: readonly FootnoteDefinition[];
+	readonly stats: {
+		readonly chapters: number;
+		readonly topics: number;
+		readonly maxDepth: number;
+	};
+}
+
+export interface Point {
+	readonly x: number;
+	readonly y: number;
+}
+
+export interface Rect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+export type LayoutElementKind = "heading" | "note" | "chapter" | "topic" | "group" | "legend";
+
+export interface TextLineSegment {
+	readonly text: string;
+	readonly width: number;
+	readonly marks: readonly InlineMark[];
+	readonly destination?: string;
+	readonly linkTitle?: string;
+	readonly abbreviation?: string;
+	readonly abbreviationIndicator?: boolean;
+	readonly shortcode?: string;
+}
+
+export interface TextLine {
+	readonly width: number;
+	readonly segments: readonly TextLineSegment[];
+}
+
+export type InlineMark =
+	| "strong"
+	| "emphasis"
+	| "emoji"
+	| "strikethrough"
+	| "insert"
+	| "highlight"
+	| "code"
+	| "superscript"
+	| "subscript";
+
+export interface LayoutText {
+	readonly lines: readonly TextLine[];
+	readonly fontSize: number;
+	readonly lineHeight: number;
+	readonly fontFamily: string;
+	readonly fontWeight: number;
+	readonly fontStyle: "normal" | "italic";
+	readonly color: string;
+	readonly renderScale: number;
+	readonly renderScaleX?: number;
+	readonly renderScaleY?: number;
+	readonly baselineRatio: number;
+	readonly abbreviationIndicatorSize: number;
+}
+
+export type LayoutNodeRole =
+	| "heading"
+	| "floating-note"
+	| "chapter"
+	| "chapter-description"
+	| "topic-header"
+	| "topic"
+	| "nested-topic";
+
+export interface LayoutNode extends Rect {
+	readonly kind: "heading" | "note" | "chapter" | "topic";
+	readonly role: LayoutNodeRole;
+	readonly placement:
+		| "standalone"
+		| "floating-note"
+		| "chapter"
+		| "grid-description"
+		| "tree-description"
+		| "grid-topic"
+		| "tree-topic"
+		| "nested-topic";
+	readonly id: string;
+	readonly depth: number;
+	readonly text: LayoutText;
+	readonly tags: readonly string[];
+	readonly sourceRange?: SourceRange;
+}
+
+export interface LayoutGroup extends Rect {
+	readonly kind: "group";
+	readonly id: string;
+	readonly depth: number;
+	readonly layout: "grid" | "tree" | "nested";
+	readonly memberIds: readonly string[];
+}
+
+export interface LayoutLegendItem {
+	readonly tag: string;
+	readonly label: string;
+	readonly icons: readonly BadgeIcon[];
+}
+
+export interface LayoutLegendMetrics {
+	readonly rowHeight: number;
+	readonly rowGap: number;
+	readonly badgeSize: number;
+	readonly badgeCellSize: number;
+	readonly badgeAdvance: number;
+	readonly iconColumnWidth: number;
+	readonly color: string;
+	readonly fontFamily: string;
+	readonly fontSize: number;
+	readonly fontWeight: number;
+	readonly fontStyle: "normal" | "italic";
+	readonly renderScale: number;
+	readonly renderScaleX: number;
+	readonly renderScaleY: number;
+}
+
+export interface LayoutLegend extends Rect {
+	readonly kind: "legend";
+	readonly id: string;
+	readonly items: readonly LayoutLegendItem[];
+	readonly metrics: LayoutLegendMetrics;
+}
+
+export type LayoutElement = LayoutNode | LayoutGroup | LayoutLegend;
+
+export interface LayoutConnector {
+	readonly id: string;
+	readonly kind: "spine" | "chapterToTopics" | "topicToChildren";
+	readonly from: Point;
+	readonly to: Point;
+	readonly depth: number;
+}
+
+export interface LayoutBackgroundArtifact {
+	readonly id: string;
+	readonly bounds: Rect;
+	readonly transform?: string;
+	readonly shapes: readonly LayoutBackgroundArtifactShape[];
+}
+
+export type LayoutBackgroundArtifactShape =
+	| {
+			readonly kind: "circle";
+			readonly cx: number;
+			readonly cy: number;
+			readonly radius: number;
+			readonly fill?: string;
+			readonly stroke?: string;
+			readonly strokeWidth?: string | number;
+	  }
+	| {
+			readonly kind: "path";
+			readonly d: string;
+			readonly fill?: string;
+			readonly stroke?: string;
+			readonly strokeWidth?: string | number;
+	  };
+
+export interface RoadmapLayout {
+	readonly width: number;
+	readonly height: number;
+	readonly elements: readonly LayoutElement[];
+	readonly connectors: readonly LayoutConnector[];
+	readonly backgroundArtifacts: readonly LayoutBackgroundArtifact[];
+	readonly title: string;
+	readonly maxDepth: number;
+}
+
+export type BadgeIcon = "check" | "heart" | "star" | "x" | "question" | "cloud" | "warning";
+
+export interface BadgeStyle {
+	readonly icon: BadgeIcon;
+	readonly background: string;
+	readonly foreground: string;
+}
+
+export interface TagStyle {
+	readonly label: string;
+	readonly badges: readonly BadgeStyle[];
+}
+
+export interface TypographyTheme {
+	readonly color: string;
+	readonly fontFamily: string;
+	readonly fontSize: number;
+	readonly fontWeight: number;
+	readonly fontStyle: "normal" | "italic";
+	readonly lineHeight: number;
+	readonly renderScale?: number;
+	readonly renderScaleX?: number;
+	readonly renderScaleY?: number;
+	readonly baselineRatio?: number;
+}
+
+export interface LegendTheme extends TypographyTheme {
+	readonly rowGap: number;
+}
+
+export interface CardTheme {
+	readonly shape: "rounded" | "chamfered" | "capsule" | "organic";
+	readonly fill: string;
+	readonly stroke: string;
+	readonly strokeWidth: number;
+	readonly radius: number;
+	readonly shadow: boolean;
+	readonly paddingX: number;
+	readonly paddingY: number;
+	readonly minWidth: number;
+	readonly maxWidth: number;
+	readonly typography: TypographyTheme;
+}
+
+export interface BoardTheme {
+	readonly shape: "organic" | "chamfered";
+	readonly pattern: "crosshatch" | "grid" | "dots" | "none";
+	readonly background: string;
+	readonly hatch: string;
+	readonly hatchOpacity: number;
+	readonly padding: number;
+}
+
+export interface ConnectorTheme {
+	readonly routing: "curved" | "orthogonal" | "straight";
+	readonly laneSpacing: number;
+	readonly color: string;
+	readonly width: number;
+	readonly dash: string;
+	readonly opacity: number;
+}
+
+export interface BackgroundArtifactContext {
+	readonly width: number;
+	readonly height: number;
+	readonly settings: RoadmapBackgroundSettings;
+	readonly avoid: readonly Rect[];
+}
+
+export interface BackgroundArtifactTheme {
+	readonly cssVariables: Readonly<Record<string, string | number>>;
+	readonly generate: (context: BackgroundArtifactContext) => readonly LayoutBackgroundArtifact[];
+}
+
+export interface RoadmapTheme {
+	readonly name: string;
+	readonly mode: RoadmapColorMode;
+	readonly cssVariables: Readonly<Record<string, string | number>>;
+	readonly canvas: {
+		readonly background: string;
+	};
+	readonly heading: {
+		readonly title: TypographyTheme;
+		readonly section: TypographyTheme;
+		readonly minor: TypographyTheme;
+	};
+	readonly legend: LegendTheme;
+	readonly chapter: CardTheme;
+	readonly note: CardTheme;
+	readonly floatingNote: CardTheme;
+	readonly topic: CardTheme;
+	readonly nestedTopic: CardTheme;
+	readonly topicHeader: CardTheme;
+	readonly boards: {
+		readonly topic: BoardTheme;
+		readonly nested: BoardTheme;
+		readonly legend: BoardTheme;
+	};
+	readonly connectors: {
+		readonly spine: ConnectorTheme;
+		readonly chapterToTopics: ConnectorTheme;
+		readonly topicToChildren: ConnectorTheme;
+	};
+	readonly inline: {
+		readonly link: string;
+		readonly highlight: string;
+		readonly insertUnderline: string;
+		readonly codeBackground: string;
+		readonly abbreviation: string;
+		readonly abbreviationIndicatorSize: number;
+	};
+	readonly shadow: {
+		readonly color: string;
+		readonly opacity: number;
+		readonly offsetX: number;
+		readonly offsetY: number;
+		readonly softBlur: number;
+		readonly softOffsetX: number;
+		readonly softOffsetY: number;
+		readonly softSaturation: number;
+	};
+	readonly backgroundArtifacts?: BackgroundArtifactTheme;
+	readonly badges: {
+		readonly size: number;
+		readonly gap: number;
+		readonly sizes: {
+			readonly chapter: number;
+			readonly gridHeader: number;
+			readonly gridItem: number;
+			readonly treeTopic: number;
+			readonly nestedTopic: number;
+			readonly legend: number;
+		};
+		readonly unknown: TagStyle;
+		readonly tags: Readonly<Record<string, TagStyle>>;
+	};
+}
+
+export type DeepPartial<T> = T extends (...arguments_: never[]) => unknown
+	? T
+	: T extends readonly (infer Item)[]
+		? readonly DeepPartial<Item>[]
+		: T extends object
+			? { readonly [Key in keyof T]?: DeepPartial<T[Key]> }
+			: T;
+
+export interface RoadmapLayoutOptions {
+	readonly width?: number;
+	readonly minHeight?: number;
+	readonly padding?: number;
+	readonly endPaddingX?: number;
+	readonly endPaddingY?: number;
+	readonly stepGap?: number;
+	readonly noteStepGap?: number;
+	readonly gridStepGap?: number;
+	readonly treeStepGap?: number;
+	readonly chapterContentGap?: number;
+	readonly chapterDescriptionGap?: number;
+	readonly treeDescriptionGap?: number;
+	readonly commentGap?: number;
+	readonly groupGap?: number;
+	readonly groupOutsetLeft?: number;
+	readonly groupOutsetRight?: number;
+	readonly itemGap?: number;
+	readonly gridItemGap?: number;
+	readonly branchGap?: number;
+	readonly branchGapLeftOuter?: number;
+	readonly branchGapLeftInner?: number;
+	readonly branchGapRightOuter?: number;
+	readonly branchGapRightInner?: number;
+	readonly overlapPadding?: number;
+	readonly spineClearance?: number;
+	readonly maxGridColumns?: number;
+	readonly showLegend?: boolean;
+}
+
+export interface RoadmapRenderOptions {
+	readonly idPrefix?: string;
+	readonly className?: string;
+	readonly css?: string;
+	readonly responsive?: boolean;
+	readonly title?: string;
+	readonly description?: string;
+}
+
+export interface RoadmapThemeSelection {
+	readonly preset: string;
+	readonly mode?: RoadmapColorMode;
+}
+
+export interface RoadmapThemePreset {
+	readonly name: string;
+	readonly modes: Readonly<Record<RoadmapColorMode, RoadmapTheme>>;
+}
+
+export type RoadmapThemeCatalog = Readonly<Record<string, RoadmapThemePreset>>;
+
+export type ThemeInput = RoadmapColorMode | RoadmapThemeSelection | DeepPartial<RoadmapTheme>;
+
+export interface GenerateRoadmapOptions {
+	readonly theme?: ThemeInput;
+	readonly themes?: RoadmapThemeCatalog;
+	readonly layout?: RoadmapLayoutOptions;
+	readonly render?: RoadmapRenderOptions;
+	readonly markdown?: ComrakOptions;
+	readonly wasm?: InitInput | Promise<InitInput>;
+}
+
+export interface SynchronousGenerateRoadmapOptions {
+	readonly theme?: ThemeInput;
+	readonly themes?: RoadmapThemeCatalog;
+	readonly layout?: RoadmapLayoutOptions;
+	readonly render?: RoadmapRenderOptions;
+}
+
+export interface CreateRoadmapGeneratorOptions {
+	readonly markdown?: ComrakOptions;
+	readonly wasm?: InitInput | Promise<InitInput>;
+}
+
+export interface GeneratedRoadmap {
+	readonly document: RoadmapDocument;
+	readonly layout: RoadmapLayout;
+	readonly svg: string;
+	readonly theme: RoadmapTheme;
+}
+
+export interface ParseRoadmapOptions {
+	readonly markdown?: ComrakOptions;
+}

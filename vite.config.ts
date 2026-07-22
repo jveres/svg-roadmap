@@ -1,0 +1,18 @@
+import { defineConfig } from "vite";
+
+export default defineConfig({
+	build: {
+		lib: {
+			entry: {
+				index: "src/index.ts",
+				node: "src/node.ts",
+			},
+			formats: ["es"],
+		},
+		rollupOptions: {
+			external: ["comrak-wasm", "node:fs/promises", "node:module"],
+		},
+		target: "es2024",
+		sourcemap: true,
+	},
+});
