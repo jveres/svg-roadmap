@@ -909,6 +909,21 @@ function layoutTreeGroups(
 		translatePlacedCompound(compound, dx, 0, context);
 	}
 
+	// Children may use the spine corridor, but never cover the spine itself:
+	// when one would, the whole branch moves away from the spine instead.
+	const spineClearance = context.options.overlapPadding;
+	for (const compound of placedCompounds) {
+		let dx = 0;
+		for (const element of compound.elements) {
+			if (!rectanglesOverlap(element, context.spineObstacle)) continue;
+			dx =
+				compound.side < 0
+					? Math.min(dx, context.spineObstacle.x - spineClearance - rectRight(element))
+					: Math.max(dx, rectRight(context.spineObstacle) + spineClearance - element.x);
+		}
+		if (dx !== 0) translatePlacedCompound(compound, dx, 0, context);
+	}
+
 	if (descriptionObstacle) {
 		const carriedShift = new Map<-1 | 1, number>([
 			[-1, 0],
