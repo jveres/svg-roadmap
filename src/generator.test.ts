@@ -359,26 +359,26 @@ An intentionally restrained introduction.
 	});
 
 	test("lets an isolated theme omit background artifacts", () => {
-		const { backgroundArtifacts: _lightArtifacts, ...plainLight } = lightTheme;
-		const { backgroundArtifacts: _darkArtifacts, ...plainDark } = darkTheme;
-		const light: RoadmapTheme = { ...plainLight, name: "plain" };
-		const dark: RoadmapTheme = { ...plainDark, name: "plain" };
-		const plain: RoadmapThemePreset = {
-			name: "plain",
+		const { backgroundArtifacts: _lightArtifacts, ...customLight } = lightTheme;
+		const { backgroundArtifacts: _darkArtifacts, ...customDark } = darkTheme;
+		const light: RoadmapTheme = { ...customLight, name: "custom" };
+		const dark: RoadmapTheme = { ...customDark, name: "custom" };
+		const custom: RoadmapThemePreset = {
+			name: "custom",
 			modes: { light, dark },
 		};
 		const generated = generateRoadmap(
 			`---
 roadmap:
-  theme: plain
+  theme: custom
   background: true
 ---
 
 # No decorations`,
-			{ themes: { plain } },
+			{ themes: { custom } },
 		);
 
-		expect(generated.theme.name).toBe("plain");
+		expect(generated.theme.name).toBe("custom");
 		expect(generated.layout.backgroundArtifacts).toEqual([]);
 		expect(generated.svg).not.toContain("--roadmap-background-artifact-primary:");
 	});

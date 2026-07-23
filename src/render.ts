@@ -644,6 +644,10 @@ function chamferedRectanglePath(rectangle: Rect, requestedCut: number): string {
 	return `M ${x + cut} ${y} H ${right - cut} L ${right} ${y + cut} V ${bottom - cut} L ${right - cut} ${bottom} H ${x + cut} L ${x} ${bottom - cut} V ${y + cut} Z`;
 }
 
+function roundedBoardRadius(board: BoardTheme): number {
+	return Math.min(4, board.padding / 3);
+}
+
 function roundedRectanglePath(rectangle: Rect, requestedRadius: number): string {
 	const radius = Math.max(0, Math.min(requestedRadius, rectangle.width / 2, rectangle.height / 2));
 	const right = rectRight(rectangle);
@@ -730,7 +734,7 @@ function renderGroup(
 		board.shape === "chamfered"
 			? chamferedRectanglePath(enclosure, Math.max(8, board.padding))
 			: board.shape === "rounded"
-				? roundedRectanglePath(enclosure, Math.min(4, board.padding / 3))
+				? roundedRectanglePath(enclosure, roundedBoardRadius(board))
 				: board.shape === "scalloped"
 					? scallopedRectanglePath(enclosure, board.padding)
 					: members.length > 0
@@ -887,7 +891,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 			: board.shape === "rounded"
 				? roundedRectanglePath(
 						enclosingRectangle(rowRectangles, board.padding),
-						Math.min(4, board.padding / 3),
+						roundedBoardRadius(board),
 					)
 				: board.shape === "scalloped"
 					? scallopedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)

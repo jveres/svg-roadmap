@@ -1,5 +1,5 @@
-import { createTheme, lightTheme } from "../../theme.ts";
-import type { RoadmapTheme, RoadmapThemePreset } from "../../types.ts";
+import { artifactFreeLightTheme, createTheme } from "../../theme.ts";
+import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 
 const bodyFontFamily =
 	'"Avenir Next", Avenir, Seravek, "Gill Sans", "Segoe UI", "Helvetica Neue", sans-serif';
@@ -11,8 +11,6 @@ const ink = "#1b1a17";
 const inkMuted = "#57534b";
 const hairline = "#d8d4ca";
 const crimson = "#9c392c";
-
-const { backgroundArtifacts: _funBackgroundArtifacts, ...artifactFreeBaseTheme } = lightTheme;
 
 export const printLightTheme: RoadmapTheme = createTheme(
 	{
@@ -207,7 +205,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			},
 		},
 	},
-	artifactFreeBaseTheme,
+	artifactFreeLightTheme,
 );
 
 const paperDark = "#171613";
@@ -293,7 +291,4 @@ export const printTheme = {
 	modes: { light: printLightTheme, dark: printDarkTheme },
 	light: printLightTheme,
 	dark: printDarkTheme,
-} as const satisfies RoadmapThemePreset & {
-	readonly light: RoadmapTheme;
-	readonly dark: RoadmapTheme;
-};
+} as const satisfies RoadmapThemePresetWithModes;

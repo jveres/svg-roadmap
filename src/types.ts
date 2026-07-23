@@ -518,6 +518,11 @@ export interface RoadmapThemePreset {
 	readonly modes: Readonly<Record<RoadmapColorMode, RoadmapTheme>>;
 }
 
+export interface RoadmapThemePresetWithModes extends RoadmapThemePreset {
+	readonly light: RoadmapTheme;
+	readonly dark: RoadmapTheme;
+}
+
 export type RoadmapThemeCatalog = Readonly<Record<string, RoadmapThemePreset>>;
 
 export type ThemeInput = RoadmapColorMode | RoadmapThemeSelection | DeepPartial<RoadmapTheme>;

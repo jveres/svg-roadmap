@@ -1,5 +1,5 @@
-import { createTheme, lightTheme } from "../../theme.ts";
-import type { RoadmapTheme, RoadmapThemePreset } from "../../types.ts";
+import { artifactFreeLightTheme, createTheme } from "../../theme.ts";
+import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 
 const bodyFontFamily =
 	'"SF Pro Text", "Segoe UI", system-ui, "Helvetica Neue", "Liberation Sans", sans-serif';
@@ -9,8 +9,6 @@ const monoFontFamily =
 const slate = "#1f242b";
 const slateMuted = "#5a6472";
 const steel = "#2e628f";
-
-const { backgroundArtifacts: _funBackgroundArtifacts, ...artifactFreeBaseTheme } = lightTheme;
 
 export const proLightTheme: RoadmapTheme = createTheme(
 	{
@@ -197,7 +195,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 			},
 		},
 	},
-	artifactFreeBaseTheme,
+	artifactFreeLightTheme,
 );
 
 export const proDarkTheme: RoadmapTheme = createTheme(
@@ -283,7 +281,4 @@ export const proTheme = {
 	modes: { light: proLightTheme, dark: proDarkTheme },
 	light: proLightTheme,
 	dark: proDarkTheme,
-} as const satisfies RoadmapThemePreset & {
-	readonly light: RoadmapTheme;
-	readonly dark: RoadmapTheme;
-};
+} as const satisfies RoadmapThemePresetWithModes;

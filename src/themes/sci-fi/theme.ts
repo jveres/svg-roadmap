@@ -1,5 +1,5 @@
 import { createTheme, lightTheme } from "../../theme.ts";
-import type { RoadmapTheme, RoadmapThemePreset } from "../../types.ts";
+import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 import { generateSciFiBackgroundArtifacts } from "./background-artifacts.ts";
 
 const fontFamily = "Inter, ui-sans-serif, system-ui, sans-serif";
@@ -208,7 +208,4 @@ export const sciFiTheme = {
 	modes: { light: sciFiLightTheme, dark: sciFiDarkTheme },
 	light: sciFiLightTheme,
 	dark: sciFiDarkTheme,
-} as const satisfies RoadmapThemePreset & {
-	readonly light: RoadmapTheme;
-	readonly dark: RoadmapTheme;
-};
+} as const satisfies RoadmapThemePresetWithModes;

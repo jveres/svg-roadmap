@@ -1,5 +1,5 @@
 import { createTheme, lightTheme } from "../../theme.ts";
-import type { RoadmapTheme, RoadmapThemePreset } from "../../types.ts";
+import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 import { generateRoseBackgroundArtifacts } from "./background-artifacts.ts";
 
 const fontFamily = 'ui-rounded, "Avenir Next", "Nunito", system-ui, sans-serif';
@@ -256,7 +256,4 @@ export const roseTheme = {
 	modes: { light: roseLightTheme, dark: roseDarkTheme },
 	light: roseLightTheme,
 	dark: roseDarkTheme,
-} as const satisfies RoadmapThemePreset & {
-	readonly light: RoadmapTheme;
-	readonly dark: RoadmapTheme;
-};
+} as const satisfies RoadmapThemePresetWithModes;

@@ -7,7 +7,7 @@ import type {
 	DeepPartial,
 	LegendTheme,
 	RoadmapTheme,
-	RoadmapThemePreset,
+	RoadmapThemePresetWithModes,
 	TagStyle,
 	TypographyTheme,
 } from "./types.ts";
@@ -438,10 +438,15 @@ export const funTheme = {
 	modes: { light: lightTheme, dark: darkTheme },
 	light: lightTheme,
 	dark: darkTheme,
-} as const satisfies RoadmapThemePreset & {
-	readonly light: RoadmapTheme;
-	readonly dark: RoadmapTheme;
-};
+} as const satisfies RoadmapThemePresetWithModes;
+
+const { backgroundArtifacts: _lightThemeArtifacts, ...artifactFreeLightThemeData } = lightTheme;
+
+/**
+ * The Fun light theme without its background-artifact capability. Use as the
+ * `createTheme` base for presets that must not inherit background artifacts.
+ */
+export const artifactFreeLightTheme: RoadmapTheme = artifactFreeLightThemeData;
 
 function mergeTypography(
 	base: TypographyTheme,
