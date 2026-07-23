@@ -242,7 +242,10 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 	if (marks.has("insert")) classes.push("roadmap__inline", "roadmap__inline--insert");
 	const decorations: string[] = [];
 	if (marks.has("strikethrough")) decorations.push("line-through");
-	if (segment.destination || (segment.abbreviation && !segment.abbreviationIndicator)) {
+	if (
+		(segment.destination && !segment.abbreviationIndicator) ||
+		(segment.abbreviation && !segment.abbreviationIndicator)
+	) {
 		decorations.push("underline");
 	}
 	if (decorations.length > 0) attributes.push(`text-decoration="${decorations.join(" ")}"`);
@@ -641,6 +644,24 @@ function chamferedRectanglePath(rectangle: Rect, requestedCut: number): string {
 	return `M ${x + cut} ${y} H ${right - cut} L ${right} ${y + cut} V ${bottom - cut} L ${right - cut} ${bottom} H ${x + cut} L ${x} ${bottom - cut} V ${y + cut} Z`;
 }
 
+function roundedRectanglePath(rectangle: Rect, requestedRadius: number): string {
+	const radius = Math.max(0, Math.min(requestedRadius, rectangle.width / 2, rectangle.height / 2));
+	const right = rectRight(rectangle);
+	const bottom = rectBottom(rectangle);
+	return [
+		`M ${rectangle.x + radius} ${rectangle.y}`,
+		`H ${right - radius}`,
+		`Q ${right} ${rectangle.y} ${right} ${rectangle.y + radius}`,
+		`V ${bottom - radius}`,
+		`Q ${right} ${bottom} ${right - radius} ${bottom}`,
+		`H ${rectangle.x + radius}`,
+		`Q ${rectangle.x} ${bottom} ${rectangle.x} ${bottom - radius}`,
+		`V ${rectangle.y + radius}`,
+		`Q ${rectangle.x} ${rectangle.y} ${rectangle.x + radius} ${rectangle.y}`,
+		"Z",
+	].join(" ");
+}
+
 function scallopedRectanglePath(rectangle: Rect, requestedInset: number): string {
 	const { x, y, width, height } = rectangle;
 	const right = x + width;
@@ -708,11 +729,13 @@ function renderGroup(
 	const path =
 		board.shape === "chamfered"
 			? chamferedRectanglePath(enclosure, Math.max(8, board.padding))
-			: board.shape === "scalloped"
-				? scallopedRectanglePath(enclosure, board.padding)
-				: members.length > 0
-					? blobPath(members, board.padding)
-					: blobPath([group], 0);
+			: board.shape === "rounded"
+				? roundedRectanglePath(enclosure, Math.min(4, board.padding / 3))
+				: board.shape === "scalloped"
+					? scallopedRectanglePath(enclosure, board.padding)
+					: members.length > 0
+						? blobPath(members, board.padding)
+						: blobPath([group], 0);
 	const pattern = nested ? `${prefix}-nested-hatch` : `${prefix}-topic-hatch`;
 	const bottom = Math.max(...members.map(rectBottom));
 	const bottomMembers = members.filter((member) => bottom - rectBottom(member) < 1);
@@ -741,7 +764,7 @@ function renderGroup(
 	const anchorY = isTreeTopicGroup ? group.y + group.height / 2 : rectBottom(group);
 	const translateY = anchorY * (1 - scaleY);
 	const transform =
-		board.shape === "chamfered"
+		board.shape === "chamfered" || board.shape === "rounded"
 			? ""
 			: scaleX === 1 && scaleY === 1
 				? ""
@@ -861,9 +884,14 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	const path =
 		board.shape === "chamfered"
 			? chamferedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
-			: board.shape === "scalloped"
-				? scallopedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
-				: blobPath(rowRectangles, board.padding);
+			: board.shape === "rounded"
+				? roundedRectanglePath(
+						enclosingRectangle(rowRectangles, board.padding),
+						Math.min(4, board.padding / 3),
+					)
+				: board.shape === "scalloped"
+					? scallopedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
+					: blobPath(rowRectangles, board.padding);
 	const rows = legend.items
 		.map((item, row) => {
 			const tagStyle = badgeStyleForTag(item.tag, theme);
@@ -946,7 +974,7 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		${emojiSymbol("one", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M8 4 5.7 5.5v2.1l2-1.2V14h2.4V4Z"/>')}
 		${emojiSymbol("two", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M5.2 7.1c.1-2 1.4-3.2 3.5-3.2s3.5 1.2 3.5 3c0 1.3-.7 2.3-2.5 3.6l-1.9 1.4h4.6V14H5.1v-1.8l3.3-2.5c1.2-.9 1.6-1.5 1.6-2.3 0-.9-.5-1.5-1.4-1.5s-1.4.6-1.5 1.5Z"/>')}
 		${emojiSymbol("three", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M7 7.9h1.4c1 0 1.6-.4 1.6-1.1s-.6-1.1-1.5-1.1S7 6.2 7 7H5c.1-1.9 1.5-3.1 3.6-3.1 2.2 0 3.5 1.1 3.5 2.8 0 1-.6 1.8-1.6 2.1 1.2.3 1.9 1.2 1.9 2.4 0 1.9-1.5 3.1-3.8 3.1S5 13.1 4.9 11.1H7c.1.9.7 1.4 1.7 1.4s1.6-.5 1.6-1.3-.7-1.3-1.8-1.3H7Z"/>')}
-		${emojiSymbol("recycle", "0 0 18 18", '<path fill="#77b255" d="M7.2 1h4.1l3.1 5.2 1.7-1-.1 4.4-3.8-2.2 1.5-.9-2.2-3.7H7.2ZM14.4 9.1l1.6.9-2.2 3.8a3.6 3.6 0 0 1-3.1 1.8H6.4v1.8l-3.8-2.2L6.4 13v1.8h4.3c.7 0 1.3-.4 1.7-1ZM5.3 12.6H3.2l-1.7-3a3.5 3.5 0 0 1 0-3.5l2.1-3.6-1.5-.9L6 .7l.1 4.4-1.5-.9-2.1 3.6 2.1 3.7h.7Z"/><path fill="#3e721e" d="M2.1 1.6 6 .7l.1 4.4-1.5-.9-1.1 2L1.8 4.9l1.8-2.4ZM2.6 15.2 6.4 13v1.8H9v2.6H6.4v0ZM12.2 7.4l1.5-.9-1.5-2.6 2.2-1.2 1.7 2.5-.1 4.4Z"/><path fill="#9cc683" d="M7.2 1h4.1l.7 1.2H7.2ZM6.4 14.8h4.3c.7 0 1.3-.4 1.7-1l.5-.9 1.3.8-.4.7a3.6 3.6 0 0 1-3.1 1.8H6.4Z"/>')}
+		${emojiSymbol("recycle", "0 0 24 24", '<g fill="none" stroke="#4f8a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/><path d="M8.293 13.596 7.196 9.5 3.1 10.598"/><path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/><path d="m13.378 9.633 4.096 1.098 1.097-4.096"/></g>')}
 		${emojiSymbol("telescope", "0 0 12 12", '<path fill="#e7eaed" d="M4.2 5.1h2.9v2.1H4.2z"/><path fill="#9aaab4" d="M4.7 6.3h1.8l-.2 1.6 3.1 3H7.5L5.6 9.4 4.1 12H2.3l2.4-4Z"/><path fill="#282f33" d="m.1 1.2 2.7 1.4-1.2 2.2L0 4Z"/><path fill="#da2f47" d="m2.2 2 1.1-2 8.3 4.7-1.1 2Z"/><path fill="#e5707b" d="m2.7 1.1.6-1.1 8.3 4.7-.5.9Z"/><path fill="#9d0d26" d="m10.1 3.9 1.5.8-1.1 2-1.5-.8Z"/>')}
 	</defs>`;
 }

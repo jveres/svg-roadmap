@@ -22,6 +22,8 @@ app.innerHTML = `
 					<option value="fun" selected>Fun</option>
 					<option value="sci-fi">Sci-fi</option>
 					<option value="rose">Rose</option>
+					<option value="print">Print</option>
+					<option value="pro">Pro</option>
 				</select>
 			</label>
 			<label class="theme-picker">Mode
@@ -80,7 +82,10 @@ function selectedMode(): RoadmapColorMode {
 function selectedTheme(): RoadmapThemeSelection {
 	const preset = themePresetSelect.value;
 	return {
-		preset: preset === "sci-fi" || preset === "rose" ? preset : "fun",
+		preset:
+			preset === "sci-fi" || preset === "rose" || preset === "print" || preset === "pro"
+				? preset
+				: "fun",
 		mode: selectedMode(),
 	};
 }

@@ -29,6 +29,8 @@ export {
 	lightTheme,
 } from "./theme.ts";
 export { builtInThemes, resolveTheme } from "./themes/catalog.ts";
+export { printDarkTheme, printLightTheme, printTheme } from "./themes/print/theme.ts";
+export { proDarkTheme, proLightTheme, proTheme } from "./themes/pro/theme.ts";
 export { roseDarkTheme, roseLightTheme, roseTheme } from "./themes/rose/theme.ts";
 export { sciFiDarkTheme, sciFiLightTheme, sciFiTheme } from "./themes/sci-fi/theme.ts";
 export type * from "./types.ts";

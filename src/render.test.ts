@@ -382,6 +382,7 @@ describe("SVG rendering boundaries", () => {
 						text: "?",
 						width: 6,
 						marks: [],
+						destination: "https://example.com/definition",
 						abbreviation: "Definition of Done",
 						abbreviationIndicator: true,
 					},
@@ -396,6 +397,7 @@ describe("SVG rendering boundaries", () => {
 		expect(textElement(svg, "?")).toContain(
 			'class="roadmap__inline roadmap__inline--abbreviation-indicator"',
 		);
+		expect(textElement(svg, "?")).not.toContain("text-decoration=");
 		expect(svg).toContain("<title>Definition of Done</title>");
 		expect(svg).toContain(".roadmap__inline--abbreviation-indicator{cursor:help}");
 	});

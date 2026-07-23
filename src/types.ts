@@ -360,7 +360,7 @@ export interface CardTheme {
 }
 
 export interface BoardTheme {
-	readonly shape: "organic" | "chamfered" | "scalloped";
+	readonly shape: "organic" | "rounded" | "chamfered" | "scalloped";
 	readonly pattern:
 		| "crosshatch"
 		| "grid"

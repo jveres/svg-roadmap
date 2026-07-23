@@ -163,7 +163,7 @@ roadmap:
 
 		const generated = generateRoadmap(source);
 
-		expect(Object.keys(builtInThemes)).toEqual(["fun", "sci-fi", "rose"]);
+		expect(Object.keys(builtInThemes)).toEqual(["fun", "sci-fi", "rose", "print", "pro"]);
 		expect(generated.theme).toBe(builtInThemes["sci-fi"]?.modes.dark);
 		expect(generated.theme.name).toBe("sci-fi");
 		expect(generated.theme.mode).toBe("dark");
@@ -262,6 +262,46 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(generated.svg).not.toContain('<rect class="roadmap__insert-underline"');
 		expect(generated.svg).toContain("roadmap__inline--highlight");
 		expect(generated.svg).toContain("roadmap__inline--insert");
+	});
+
+	test("resolves Print as an artifact-free editorial theme", () => {
+		const generated = generateRoadmap(`---
+roadmap:
+  theme:
+    preset: print
+    mode: dark
+  background:
+    enabled: true
+    seed: ignored-by-print
+---
+
+# Editorial roadmap
+
+An intentionally restrained introduction.
+
+* Publish
+  + Sections
+    * Review [recommended]
+    * Release
+`);
+
+		expect(generated.theme).toBe(builtInThemes.print?.modes.dark);
+		expect(generated.theme.name).toBe("print");
+		expect(generated.theme.mode).toBe("dark");
+		expect(generated.theme.backgroundArtifacts).toBeUndefined();
+		expect(generated.layout.backgroundArtifacts).toEqual([]);
+		expect(generated.theme.heading.title.fontFamily).toContain("Iowan Old Style");
+		expect(generated.theme.chapter.shape).toBe("rounded");
+		expect(generated.theme.note.shape).toBe("rounded");
+		expect(generated.theme.boards.topic.shape).toBe("rounded");
+		expect(generated.theme.boards.topic.pattern).toBe("none");
+		expect(generated.theme.connectors.spine.routing).toBe("straight");
+		expect(generated.theme.connectors.chapterToTopics.routing).toBe("straight");
+		expect(generated.svg).toContain('data-roadmap-theme="print"');
+		expect(generated.svg).toContain('data-roadmap-shape="rounded"');
+		expect(generated.svg).toContain('data-roadmap-pattern="none"');
+		expect(generated.svg).not.toContain('<g class="roadmap__background-artifact ');
+		expect(generated.svg).not.toMatch(/<(?:path|rect) class="roadmap__frame-shadow"/u);
 	});
 
 	test("keeps Rose artifact geometry deterministic and outside content", () => {
