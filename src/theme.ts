@@ -535,12 +535,16 @@ function mergeCard(base: CardTheme, override: DeepPartial<CardTheme> | undefined
 }
 
 function mergeBoard(base: BoardTheme, override: DeepPartial<BoardTheme> | undefined): BoardTheme {
+	const stroke = override?.stroke ?? base.stroke;
+	const strokeWidth = override?.strokeWidth ?? base.strokeWidth;
 	return {
 		shape: override?.shape ?? base.shape,
 		pattern: override?.pattern ?? base.pattern,
 		background: override?.background ?? base.background,
 		hatch: override?.hatch ?? base.hatch,
 		hatchOpacity: override?.hatchOpacity ?? base.hatchOpacity,
+		...(stroke !== undefined ? { stroke } : {}),
+		...(strokeWidth !== undefined ? { strokeWidth } : {}),
 		padding: override?.padding ?? base.padding,
 	};
 }

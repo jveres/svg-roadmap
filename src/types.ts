@@ -390,6 +390,9 @@ export interface BoardTheme {
 	readonly background: string;
 	readonly hatch: string;
 	readonly hatchOpacity: number;
+	/** Optional ruled outline around the board; boards are borderless by default. */
+	readonly stroke?: string;
+	readonly strokeWidth?: number;
 	readonly padding: number;
 }
 

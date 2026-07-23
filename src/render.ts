@@ -884,7 +884,10 @@ function renderGroup(
 				? ""
 				: ` transform="matrix(${scaleX} 0 0 ${scaleY} ${translateX} ${translateY})"`;
 	const role = nested ? "nested" : "topic";
-	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"/>`;
+	const outline = board.stroke
+		? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"`
+		: "";
+	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"${outline}/>`;
 }
 
 export function orthogonalConnectorPath(connector: LayoutConnector, laneOffset = 0): string {
@@ -1043,7 +1046,10 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 		.join("");
 	const pathScaleX = 1.01;
 	const pathTranslateX = Math.round((legend.x + legend.width / 2) * (1 - pathScaleX) * 100) / 100;
-	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"/>${rows}</g>`;
+	const outline = board.stroke
+		? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"`
+		: "";
+	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
 }
 
 function renderBoardPattern(id: string, token: string, board: BoardTheme): string {
@@ -1126,7 +1132,9 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 				// the target instead of straddling its edge, where boards and
 				// badges would occlude half of them.
 				const size = Math.min(18, Math.max(7, connector.width * 4.5));
-				const refX = endShape === "arrow" ? 8 : endShape === "diamond" ? 9 : 8.7;
+				// The arrow's reference point sits one unit behind its tip so the
+				// tail always overlaps the stroke and stays visually attached.
+				const refX = endShape === "arrow" ? 7 : endShape === "diamond" ? 9 : 8.7;
 				return `<marker id="${prefix}-marker-${token}-${endShape}" viewBox="0 0 10 10" refX="${refX}" refY="5" markerWidth="${size}" markerHeight="${size}" markerUnits="userSpaceOnUse" orient="auto-start-reverse">${content}</marker>`;
 			})
 			.filter(Boolean)

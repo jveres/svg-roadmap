@@ -131,6 +131,8 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				background: paper,
 				hatch: paper,
 				hatchOpacity: 0,
+				stroke: rule,
+				strokeWidth: 1.25,
 				padding: 16,
 			},
 			nested: {
@@ -139,6 +141,8 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				background: paper,
 				hatch: paper,
 				hatchOpacity: 0,
+				stroke: "#8a8474",
+				strokeWidth: 1,
 				padding: 12,
 			},
 			legend: {
@@ -147,6 +151,8 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				background: paper,
 				hatch: paper,
 				hatchOpacity: 0,
+				stroke: "#8a8474",
+				strokeWidth: 1,
 				padding: 8,
 			},
 		},
@@ -262,9 +268,9 @@ export const asciiDarkTheme: RoadmapTheme = createTheme(
 		},
 		topicHeader: { stroke: inkDark, typography: { color: inkDark } },
 		boards: {
-			topic: { background: midnight, hatch: midnight },
-			nested: { background: midnight, hatch: midnight },
-			legend: { background: midnight, hatch: midnight },
+			topic: { background: midnight, hatch: midnight, stroke: "#c6cad3" },
+			nested: { background: midnight, hatch: midnight, stroke: "#5d6371" },
+			legend: { background: midnight, hatch: midnight, stroke: "#5d6371" },
 		},
 		connectors: {
 			spine: { color: "#5d6371", opacity: 0.9 },
