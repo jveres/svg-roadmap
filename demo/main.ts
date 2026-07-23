@@ -4,8 +4,28 @@ import {
 	type RoadmapGenerator,
 	type RoadmapThemeSelection,
 } from "../src/index.ts";
+import aiArchitect from "./ai-architect.md?raw";
 import softwareHygiene from "./software-hygiene.md?raw";
 import "./style.css";
+
+interface WorkbenchSample {
+	readonly label: string;
+	readonly source: string;
+	readonly preset: string;
+}
+
+const samples: Readonly<Record<string, WorkbenchSample>> = {
+	"software-hygiene": {
+		label: "Software Hygiene",
+		source: softwareHygiene,
+		preset: "fun",
+	},
+	"ai-architect": {
+		label: "AI Architect",
+		source: aiArchitect,
+		preset: "pro",
+	},
+};
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("The demo root element is missing.");
@@ -18,6 +38,13 @@ app.innerHTML = `
 		</div>
 		<div class="actions">
 			<label class="theme-picker">Roadmap
+				<select id="sample">
+					${Object.entries(samples)
+						.map(([id, sample]) => `<option value="${id}">${sample.label}</option>`)
+						.join("")}
+				</select>
+			</label>
+			<label class="theme-picker">Theme
 				<select id="theme-preset">
 					<option value="fun" selected>Fun</option>
 					<option value="sci-fi">Sci-fi</option>
@@ -61,6 +88,7 @@ function requiredElement<ElementType extends Element>(selector: string): Element
 }
 
 const source = requiredElement<HTMLTextAreaElement>("#source");
+const sampleSelect = requiredElement<HTMLSelectElement>("#sample");
 const themePresetSelect = requiredElement<HTMLSelectElement>("#theme-preset");
 const colorModeSelect = requiredElement<HTMLSelectElement>("#color-mode");
 const preview = requiredElement<HTMLDivElement>("#preview");
@@ -68,7 +96,16 @@ const stats = requiredElement<HTMLSpanElement>("#stats");
 const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
 const download = requiredElement<HTMLButtonElement>("#download");
 
-source.value = softwareHygiene;
+function loadSample(id: string): void {
+	const sample = samples[id];
+	if (!sample) return;
+	source.value = sample.source;
+	if ([...themePresetSelect.options].some((option) => option.value === sample.preset)) {
+		themePresetSelect.value = sample.preset;
+	}
+}
+
+loadSample(sampleSelect.value);
 let svg = "";
 let renderTimer: number | undefined;
 let generator: RoadmapGenerator | undefined;
@@ -134,6 +171,10 @@ function scheduleRender(): void {
 }
 
 source.addEventListener("input", scheduleRender);
+sampleSelect.addEventListener("change", () => {
+	loadSample(sampleSelect.value);
+	render();
+});
 themePresetSelect.addEventListener("change", render);
 colorModeSelect.addEventListener("change", render);
 systemTheme.addEventListener("change", () => {

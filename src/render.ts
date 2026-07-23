@@ -8,6 +8,7 @@ import {
 	rectRight,
 	verticalBumpPath,
 } from "./core/geometry.ts";
+import { twemojiArtwork } from "./core/emoji-artwork.ts";
 import { measureText } from "./core/inline.ts";
 import { escapeXml, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
@@ -308,6 +309,18 @@ const shortcodeEmojiGeometry: Readonly<Record<string, ShortcodeEmojiGeometry>> =
 	three: { widthEm: 1.125, heightEm: 1.125, baselineInset: 2.5 },
 	recycle: { widthEm: 1.125, heightEm: 1, baselineInset: 1.5 },
 	telescope: { widthEm: 0.96, heightEm: 0.88, baselineInset: 1.18, xOffsetEm: -0.08 },
+	four: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	five: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	six: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	seven: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	eight: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	nine: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	keycap_ten: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	cloud: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	star: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	sparkles: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	robot: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	rocket: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
 };
 
 function renderShortcodeEmoji(
@@ -385,9 +398,14 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			const transform = transforms ? ` transform="${transforms}"` : "";
 			const emoji = renderShortcodeEmoji(segment, x, y, segmentWidth, segmentFontSize, prefix);
 			const fittedTextLength = segment.width * scale;
+			// Emoji glyphs must keep their natural proportions: fitting them with
+			// textLength or a non-uniform paint scale visibly distorts them.
+			const emojiGlyphTransform = emojiTransform ? ` transform="${emojiTransform}"` : "";
 			const content = emoji
 				? `${title}${emoji}`
-				: `${title}<text x="${x}" y="${y}" textLength="${fittedTextLength}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${transform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`;
+				: segment.marks.includes("emoji")
+					? `${title}<text x="${segmentCenterX}" y="${y}" text-anchor="middle" xml:space="preserve"${emojiGlyphTransform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`
+					: `${title}<text x="${x}" y="${y}" textLength="${fittedTextLength}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${transform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`;
 			const destination = segment.destination
 				? safeLinkDestination(segment.destination)
 				: undefined;
@@ -466,17 +484,16 @@ function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): 
 }
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
-	if (theme.name === "rose") {
-		return renderFlowingText(node, { nativeHighlight: true, nativeInsert: true });
-	}
-	if (theme.name !== "sci-fi") return renderPositionedText(node, prefix);
+	if (theme.name !== "rose" && theme.name !== "sci-fi") return renderPositionedText(node, prefix);
+	const flowingOptions: FlowingTextOptions =
+		theme.name === "rose" ? { nativeHighlight: true, nativeInsert: true } : {};
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
 				(segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined) ||
-				segment.marks.includes("highlight"),
+				(theme.name === "sci-fi" && segment.marks.includes("highlight")),
 		);
-	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node);
+	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node, flowingOptions);
 
 	const paintedLines = paintedTextLines(node);
 	return node.text.lines
@@ -491,7 +508,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 			};
 			return requiresPositionedText(line)
 				? renderPositionedText(lineNode, prefix)
-				: renderFlowingText(lineNode);
+				: renderFlowingText(lineNode, flowingOptions);
 		})
 		.join("");
 }
@@ -980,6 +997,9 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		${emojiSymbol("three", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M7 7.9h1.4c1 0 1.6-.4 1.6-1.1s-.6-1.1-1.5-1.1S7 6.2 7 7H5c.1-1.9 1.5-3.1 3.6-3.1 2.2 0 3.5 1.1 3.5 2.8 0 1-.6 1.8-1.6 2.1 1.2.3 1.9 1.2 1.9 2.4 0 1.9-1.5 3.1-3.8 3.1S5 13.1 4.9 11.1H7c.1.9.7 1.4 1.7 1.4s1.6-.5 1.6-1.3-.7-1.3-1.8-1.3H7Z"/>')}
 		${emojiSymbol("recycle", "0 0 24 24", '<g fill="none" stroke="#4f8a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/><path d="M8.293 13.596 7.196 9.5 3.1 10.598"/><path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/><path d="m13.378 9.633 4.096 1.098 1.097-4.096"/></g>')}
 		${emojiSymbol("telescope", "0 0 12 12", '<path fill="#e7eaed" d="M4.2 5.1h2.9v2.1H4.2z"/><path fill="#9aaab4" d="M4.7 6.3h1.8l-.2 1.6 3.1 3H7.5L5.6 9.4 4.1 12H2.3l2.4-4Z"/><path fill="#282f33" d="m.1 1.2 2.7 1.4-1.2 2.2L0 4Z"/><path fill="#da2f47" d="m2.2 2 1.1-2 8.3 4.7-1.1 2Z"/><path fill="#e5707b" d="m2.7 1.1.6-1.1 8.3 4.7-.5.9Z"/><path fill="#9d0d26" d="m10.1 3.9 1.5.8-1.1 2-1.5-.8Z"/>')}
+		${Object.entries(twemojiArtwork)
+			.map(([id, artwork]) => emojiSymbol(id, artwork.viewBox, artwork.content))
+			.join("\n\t\t")}
 	</defs>`;
 }
 

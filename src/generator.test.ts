@@ -12,7 +12,14 @@ import { createTheme, darkTheme, lightTheme } from "./theme.ts";
 import { generateFunBackgroundArtifacts } from "./themes/fun/background-artifacts.ts";
 import { generateRoseBackgroundArtifacts } from "./themes/rose/background-artifacts.ts";
 import { generateSciFiBackgroundArtifacts } from "./themes/sci-fi/background-artifacts.ts";
-import type { LayoutGroup, LayoutNode, RoadmapTheme, RoadmapThemePreset } from "./types.ts";
+import type {
+	LayoutGroup,
+	LayoutNode,
+	Point,
+	Rect,
+	RoadmapTheme,
+	RoadmapThemePreset,
+} from "./types.ts";
 
 const markdown = `# Platform **Roadmap**
 
@@ -252,14 +259,19 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(generated.svg).toContain("roadmap__frame-detail--cameo");
 		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.55");
 		expect(generated.theme.chapter.typography.fontFamily).toContain("Iowan Old Style");
+		// The title line contains a shortcode emoji, so it renders positioned
+		// with the platform-independent SVG symbol instead of a font glyph.
 		expect(generated.svg).toMatch(
-			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Software Engineering <\/tspan><tspan[^>]*>Hygiene<\/tspan>.*?<tspan[^>]*>🧼<\/tspan><\/text>/u,
+			/class="roadmap__emoji roadmap__emoji--soap"[^>]*>.*?<use href="#[^"]*-emoji-soap"/u,
 		);
+		expect(generated.svg).not.toMatch(/<tspan[^>]*>🧼<\/tspan>/u);
 		expect(generated.svg).toMatch(
 			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Product <\/tspan><tspan[^>]*>discovery<\/tspan>.*?<a class="roadmap__link"[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a>/u,
 		);
+		// Lines without shortcode emoji keep Rose's native text decorations;
+		// the emoji title line falls back to painted decorations.
 		expect(generated.svg).not.toContain('<rect class="roadmap__highlight"');
-		expect(generated.svg).not.toContain('<rect class="roadmap__insert-underline"');
+		expect(generated.svg).toContain('<rect class="roadmap__insert-underline"');
 		expect(generated.svg).toContain("roadmap__inline--highlight");
 		expect(generated.svg).toContain("roadmap__inline--insert");
 	});
@@ -302,6 +314,47 @@ An intentionally restrained introduction.
 		expect(generated.svg).toContain('data-roadmap-pattern="none"');
 		expect(generated.svg).not.toContain('<g class="roadmap__background-artifact ');
 		expect(generated.svg).not.toMatch(/<(?:path|rect) class="roadmap__frame-shadow"/u);
+	});
+
+	test("keeps chapter connectors clear of tall tree descriptions", () => {
+		const filler = Array.from({ length: 30 }, (_, index) => `filler${index}`).join(" ");
+		const generated = generateRoadmap(`# Roadmap
+
+* Chapter one
+  * Alpha
+    * Nested
+  * Beta
+
+* Chapter two
+*A very long chapter description ${filler} that wraps onto many lines.*
+  * Gamma
+    * Nested
+  * Delta
+`);
+		const descriptions = generated.layout.elements.filter(
+			(element): element is LayoutNode =>
+				"role" in element && element.role === "chapter-description",
+		);
+		expect(descriptions.length).toBeGreaterThan(0);
+		const hitsRectangle = (from: Point, to: Point, rect: Rect): boolean => {
+			for (let step = 0; step <= 200; step += 1) {
+				const t = step / 200;
+				const x = from.x + (to.x - from.x) * t;
+				const y = from.y + (to.y - from.y) * t;
+				if (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height) {
+					return true;
+				}
+			}
+			return false;
+		};
+		for (const connector of generated.layout.connectors) {
+			if (connector.kind !== "chapterToTopics") continue;
+			for (const description of descriptions) {
+				expect(
+					hitsRectangle(connector.from, connector.to, noteLayoutRectangle(description)),
+				).toBe(false);
+			}
+		}
 	});
 
 	test("keeps Rose artifact geometry deterministic and outside content", () => {

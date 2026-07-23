@@ -456,8 +456,6 @@ function attachTopicChildren(
 		lockPreferredSide,
 		[context.spineObstacle],
 	);
-	const outsideStackOffset =
-		candidate.side === containerSide ? outsideRank * (containerSide > 0 ? 12 : 8) : 0;
 	const rightHullOvershoot = Math.max(0, (cluster.group.width - 52) / 16);
 	const horizontalCorrection =
 		candidate.side > 0
@@ -467,11 +465,7 @@ function attachTopicChildren(
 					? 5
 					: 2
 				: 0;
-	moveCluster(
-		cluster,
-		candidate.rect.x + horizontalCorrection,
-		candidate.rect.y + outsideStackOffset,
-	);
+	moveCluster(cluster, candidate.rect.x + horizontalCorrection, candidate.rect.y);
 	context.elements.push(cluster.group, ...cluster.nodes);
 	context.occupied.push(inflateRectangle(cluster.group, 1));
 	const from: Point = {
@@ -713,22 +707,66 @@ interface PlacedCompound {
 function translatePlacedCompound(
 	compound: PlacedCompound,
 	dx: number,
+	dy: number,
 	context: ChapterLayoutContext,
 ): void {
-	if (dx === 0) return;
-	moveElements(compound.elements, dx, 0);
+	if (dx === 0 && dy === 0) return;
+	moveElements(compound.elements, dx, dy);
 	const rootConnector = context.connectors[compound.rootConnectorIndex];
 	if (rootConnector) {
-		context.connectors[compound.rootConnectorIndex] = moveConnector(rootConnector, dx, 0, false);
+		context.connectors[compound.rootConnectorIndex] = moveConnector(rootConnector, dx, dy, false);
 	}
 	for (let index = compound.childConnectorStart; index < compound.childConnectorEnd; index += 1) {
 		const connector = context.connectors[index];
-		if (connector) context.connectors[index] = moveConnector(connector, dx, 0);
+		if (connector) context.connectors[index] = moveConnector(connector, dx, dy);
 	}
 	for (const index of compound.occupiedIndexes) {
 		const rectangle = context.occupied[index];
-		if (rectangle) rectangle.x += dx;
+		if (rectangle) {
+			rectangle.x += dx;
+			rectangle.y += dy;
+		}
 	}
+}
+
+function segmentIntersectsRectangle(from: Point, to: Point, rectangle: Rect): boolean {
+	const deltaX = to.x - from.x;
+	const deltaY = to.y - from.y;
+	let entry = 0;
+	let exit = 1;
+	const clip = (direction: number, distance: number): boolean => {
+		if (direction === 0) return distance >= 0;
+		const ratio = distance / direction;
+		if (direction < 0) {
+			if (ratio > exit) return false;
+			if (ratio > entry) entry = ratio;
+		} else {
+			if (ratio < entry) return false;
+			if (ratio < exit) exit = ratio;
+		}
+		return true;
+	};
+	return (
+		clip(-deltaX, from.x - rectangle.x) &&
+		clip(deltaX, rectRight(rectangle) - from.x) &&
+		clip(-deltaY, from.y - rectangle.y) &&
+		clip(deltaY, rectBottom(rectangle) - from.y) &&
+		entry <= exit
+	);
+}
+
+/**
+ * The vertical push required for a chapter-to-topics connector to pass beside
+ * an obstacle (the chapter description note): lowering the target steepens the
+ * straight connector until it exits on the chapter's side of the obstacle.
+ */
+function treeConnectorClearance(from: Point, to: Point, obstacle: Rect): number {
+	if (!segmentIntersectsRectangle(from, to, obstacle)) return 0;
+	const bottom = rectBottom(obstacle);
+	const clearedX = from.x >= rectRight(obstacle) ? rectRight(obstacle) : obstacle.x;
+	if (from.x > obstacle.x && from.x < rectRight(obstacle)) return 0;
+	const clearedY = from.y + ((bottom - from.y) * (from.x - to.x)) / (from.x - clearedX);
+	return Number.isFinite(clearedY) ? Math.max(0, clearedY - to.y) : 0;
 }
 
 function layoutTreeGroups(
@@ -739,6 +777,7 @@ function layoutTreeGroups(
 	initialSide: -1 | 1,
 	chapterNode: LayoutNode,
 	context: ChapterLayoutContext,
+	descriptionObstacle?: Rect,
 ): number {
 	const localGroupGap = Math.min(80, context.options.groupGap);
 	const clusters: {
@@ -843,13 +882,33 @@ function layoutTreeGroups(
 			childConnectorEnd: context.connectors.length,
 			occupiedIndexes,
 		};
-		translatePlacedCompound(compound, dx, context);
+		translatePlacedCompound(compound, dx, 0, context);
 		placedCompounds.push(compound);
 	}
 
 	for (const compound of placedCompounds) {
 		const dx = compound.side < 0 ? 0 : context.options.groupOutsetRight;
-		translatePlacedCompound(compound, dx, context);
+		translatePlacedCompound(compound, dx, 0, context);
+	}
+
+	if (descriptionObstacle) {
+		const carriedShift = new Map<-1 | 1, number>([
+			[-1, 0],
+			[1, 0],
+		]);
+		for (const compound of placedCompounds) {
+			let dy = carriedShift.get(compound.side) ?? 0;
+			const rootConnector = context.connectors[compound.rootConnectorIndex];
+			if (rootConnector) {
+				const to = { x: rootConnector.to.x, y: rootConnector.to.y + dy };
+				dy += treeConnectorClearance(rootConnector.from, to, descriptionObstacle);
+			}
+			translatePlacedCompound(compound, 0, dy, context);
+			carriedShift.set(compound.side, dy);
+			for (const element of compound.elements) {
+				bottom = Math.max(bottom, rectBottom(element));
+			}
+		}
 	}
 	return bottom;
 }
@@ -1107,6 +1166,10 @@ export function layoutRoadmap(
 			contentY = grid.bottom + options.commentGap * 2;
 		}
 		if (treeGroups.length > 0) {
+			const descriptionObstacle =
+				descriptionNode && descriptionNode.placement === "tree-description"
+					? inflateRectangle(noteLayoutRectangle(descriptionNode), options.overlapPadding)
+					: undefined;
 			bottom = Math.max(
 				bottom,
 				layoutTreeGroups(
@@ -1117,6 +1180,7 @@ export function layoutRoadmap(
 					chapterSide,
 					chapterNode,
 					chapterContext,
+					descriptionObstacle,
 				),
 			);
 		}

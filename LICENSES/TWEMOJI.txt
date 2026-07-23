@@ -1,0 +1,15 @@
+Twemoji
+=======
+
+Portions of the emoji artwork embedded in generated SVGs (the symbols for
+4-10 keycaps, cloud, star, sparkles, robot, and rocket) are copied from the
+Twemoji project maintained at https://github.com/jdecked/twemoji.
+
+Copyright 2019 Twitter, Inc and other contributors.
+Copyright 2024 the Twemoji community and contributors.
+
+The graphics are licensed under the Creative Commons Attribution 4.0
+International License (CC-BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Attribution: Twemoji graphics by Twitter, Inc and other contributors.
