@@ -48,6 +48,16 @@ function cardTokenPrefix(node: LayoutNode): string {
 	return node.role;
 }
 
+/** Note cards that paint a repeating pattern over their fill, keyed by token. */
+function patternedCards(theme: RoadmapTheme): readonly (readonly [string, CardTheme])[] {
+	return (
+		[
+			["chapter-description", theme.note],
+			["floating-note", theme.floatingNote],
+		] as const
+	).filter(([, card]) => card.pattern !== undefined && card.pattern !== "none");
+}
+
 function textToken(node: LayoutNode): string {
 	if (node.role === "heading") {
 		return node.depth === 0
@@ -115,6 +125,13 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 			[`${name}-board-background`, board.background],
 			[`${name}-board-hatch`, board.hatch],
 			[`${name}-board-hatch-opacity`, board.hatchOpacity],
+		);
+	}
+	for (const [name, card] of patternedCards(theme)) {
+		variables.push(
+			[`${name}-board-background`, card.fill],
+			[`${name}-board-hatch`, card.hatch ?? card.fill],
+			[`${name}-board-hatch-opacity`, card.hatchOpacity ?? 1],
 		);
 	}
 	for (const [name, connector] of Object.entries(theme.connectors)) {
@@ -243,10 +260,7 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 	if (marks.has("insert")) classes.push("roadmap__inline", "roadmap__inline--insert");
 	const decorations: string[] = [];
 	if (marks.has("strikethrough")) decorations.push("line-through");
-	if (
-		(segment.destination && !segment.abbreviationIndicator) ||
-		(segment.abbreviation && !segment.abbreviationIndicator)
-	) {
+	if (segment.destination && !segment.abbreviationIndicator) {
 		decorations.push("underline");
 	}
 	if (decorations.length > 0) attributes.push(`text-decoration="${decorations.join(" ")}"`);
@@ -254,7 +268,6 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 	else attributes.push(`fill="${cssToken(textToken(node))}"`);
 	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
 		classes.push("roadmap__inline", "roadmap__inline--abbreviation");
-		attributes.push(`text-decoration-color="${cssToken("inline-abbreviation-underline")}"`);
 	}
 	if (segment.abbreviationIndicator) {
 		classes.push("roadmap__inline", "roadmap__inline--abbreviation-indicator");
@@ -290,6 +303,13 @@ function segmentBackground(
 	if (segment.marks.includes("code")) {
 		return `<rect class="roadmap__code-background" x="${x - 2}" y="${baseline - fontSize * 0.82}" width="${width + 4}" height="${fontSize}" rx="2" fill="${cssToken("inline-code-background")}"/>`;
 	}
+	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
+		// Defined terms get a painted dotted rule (browsers do not reliably
+		// honor text-decoration-style on SVG text), so they read as
+		// definitions rather than links.
+		const y = baseline + 2.5;
+		return `<line class="roadmap__abbreviation-underline" x1="${x}" y1="${y}" x2="${x + width}" y2="${y}" stroke="${cssToken("inline-abbreviation-underline")}" stroke-width="1" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>`;
+	}
 	return "";
 }
 
@@ -316,6 +336,9 @@ const shortcodeEmojiGeometry: Readonly<Record<string, ShortcodeEmojiGeometry>> =
 	eight: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
 	nine: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
 	keycap_ten: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	"100": { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	poop: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
+	tada: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
 	cloud: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
 	star: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
 	sparkles: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
@@ -497,6 +520,9 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 			(segment) =>
 				(segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined) ||
 				segment.marks.includes("code") ||
+				(segment.abbreviation !== undefined &&
+					!segment.destination &&
+					!segment.abbreviationIndicator) ||
 				(!nativeDecorations &&
 					(segment.marks.includes("highlight") || segment.marks.includes("insert"))),
 		);
@@ -581,9 +607,13 @@ function fittedCapsuleFrame(node: LayoutNode): Rect {
 	return { x: centerX - width / 2, y: centerY - height / 2, width, height };
 }
 
-function renderCardFrame(node: LayoutNode, card: CardTheme): string {
+function renderCardFrame(node: LayoutNode, card: CardTheme, prefix: string): string {
 	const token = cardTokenPrefix(node);
-	const attributes = `class="roadmap__frame" data-roadmap-shape="${card.shape}" fill="${cssToken(`${token}-background`)}" stroke="${cssToken(`${token}-border`)}" stroke-width="${cssToken(`${token}-border-width`)}"`;
+	const fill =
+		card.pattern !== undefined && card.pattern !== "none"
+			? `url(#${prefix}-${token}-hatch)`
+			: cssToken(`${token}-background`);
+	const attributes = `class="roadmap__frame" data-roadmap-shape="${card.shape}" fill="${fill}" stroke="${cssToken(`${token}-border`)}" stroke-width="${cssToken(`${token}-border-width`)}"`;
 	const shadowAttributes = `class="roadmap__frame-shadow" fill="${cssToken("shadow-color")}" fill-opacity="${cssToken("shadow-opacity")}" stroke="none"`;
 	const height = node.kind === "chapter" ? node.height - 1 : node.height;
 	const rectangle =
@@ -728,7 +758,7 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
 		: "";
 	const card = cardTheme(node, theme);
-	const frame = card ? renderCardFrame(node, card) : "";
+	const frame = card ? renderCardFrame(node, card, prefix) : "";
 	const headingBackdrop =
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
@@ -988,6 +1018,14 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic)}
 		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested)}
 		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend)}
+		${patternedCards(theme)
+			.map(([token, card]) =>
+				renderBoardPattern(`${prefix}-${token}-hatch`, token, {
+					...theme.boards.topic,
+					pattern: card.pattern ?? "none",
+				}),
+			)
+			.join("\n\t\t")}
 		<filter id="${prefix}-soft-shadow" x="-30%" y="-30%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="${cssToken("soft-shadow-blur")}" result="soft-offset"/><feOffset in="soft-offset" dx="${cssToken("soft-shadow-offset-x")}" dy="${cssToken("soft-shadow-offset-y")}" result="soft-offset"/><feColorMatrix type="saturate" in="soft-offset" values="${cssToken("soft-shadow-saturation")}"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 		${symbol("check", "0 0 512 512", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM369 209 241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>')}
 		${symbol("heart", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M50 31c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 45.7 50 31.6V31z" opacity=".2"/><path fill="currentColor" d="M50 29c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 43.7 50 29.6V29z"/>')}
@@ -1018,7 +1056,6 @@ function baseStyles(): string {
 	.roadmap__frame-shadow{transform:translate(var(--roadmap-shadow-offset-x),var(--roadmap-shadow-offset-y));pointer-events:none}
 	.roadmap__text text{dominant-baseline:auto}
 	.roadmap__link{text-decoration:none}
-	.roadmap__inline--abbreviation{text-decoration-style:dotted}
 	.roadmap__inline--abbreviation-indicator{cursor:help}
 	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--highlight{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-highlight-background);text-decoration-thickness:.96em;text-underline-offset:-.4em;text-decoration-skip-ink:none}
 	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--insert{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-insert-underline);text-decoration-thickness:.09em;text-underline-offset:.12em;text-decoration-skip-ink:none}
@@ -1058,10 +1095,17 @@ export function renderRoadmapSvg(
 		sortedConnectors,
 		theme.connectors.topicToChildren.laneSpacing,
 	);
-	const connectors = sortedConnectors
-		.map((connector) =>
-			renderConnector(connector, theme, prefix, laneOffsets.get(connector.id) ?? 0),
-		)
+	const renderedConnector = (connector: LayoutConnector): string =>
+		renderConnector(connector, theme, prefix, laneOffsets.get(connector.id) ?? 0);
+	// Spine and chapter connectors stay under the boards; topic-to-children
+	// links paint above them so they visibly reach their parent topic card.
+	const underlayConnectors = sortedConnectors
+		.filter((connector) => connector.kind !== "topicToChildren")
+		.map(renderedConnector)
+		.join("");
+	const overlayConnectors = sortedConnectors
+		.filter((connector) => connector.kind === "topicToChildren")
+		.map(renderedConnector)
 		.join("");
 	const backgroundArtifacts = layout.backgroundArtifacts
 		.map((artifact) => renderBackgroundArtifact(artifact, prefix))
@@ -1090,8 +1134,9 @@ export function renderRoadmapSvg(
 	${renderDefinitions(prefix, theme)}
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>
-	<g class="roadmap__connectors">${connectors}</g>
+	<g class="roadmap__connectors">${underlayConnectors}</g>
 	<g class="roadmap__groups">${groups}</g>
+	<g class="roadmap__connectors roadmap__connectors--children">${overlayConnectors}</g>
 	<g class="roadmap__nodes">${nodes}</g>
 	<g class="roadmap__legends">${legends}</g>
 </svg>`;

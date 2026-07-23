@@ -141,10 +141,13 @@ export const lightTheme: RoadmapTheme = {
 	floatingNote: {
 		shape: "organic",
 		fill: "#ffffff",
-		stroke: "#000000",
-		strokeWidth: 1,
+		pattern: "crosshatch",
+		hatch: "#d8d4f4",
+		hatchOpacity: 80 / 255,
+		stroke: "none",
+		strokeWidth: 0,
 		radius: 42,
-		shadow: true,
+		shadow: false,
 		paddingX: 5,
 		paddingY: 12,
 		minWidth: 0,
@@ -360,7 +363,9 @@ export const darkTheme: RoadmapTheme = {
 	floatingNote: {
 		...lightTheme.floatingNote,
 		fill: "#242630",
-		stroke: "#9295a5",
+		hatch: "#7d76aa",
+		hatchOpacity: 0.38,
+		stroke: "none",
 		typography: { ...lightTheme.floatingNote.typography, color: "#e1dfed" },
 	},
 	topic: {
@@ -493,9 +498,15 @@ function mergeLegend(
 }
 
 function mergeCard(base: CardTheme, override: DeepPartial<CardTheme> | undefined): CardTheme {
+	const pattern = override?.pattern ?? base.pattern;
+	const hatch = override?.hatch ?? base.hatch;
+	const hatchOpacity = override?.hatchOpacity ?? base.hatchOpacity;
 	return {
 		shape: override?.shape ?? base.shape,
 		fill: override?.fill ?? base.fill,
+		...(pattern !== undefined ? { pattern } : {}),
+		...(hatch !== undefined ? { hatch } : {}),
+		...(hatchOpacity !== undefined ? { hatchOpacity } : {}),
 		stroke: override?.stroke ?? base.stroke,
 		strokeWidth: override?.strokeWidth ?? base.strokeWidth,
 		radius: override?.radius ?? base.radius,

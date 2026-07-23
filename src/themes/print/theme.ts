@@ -73,6 +73,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 		floatingNote: {
 			shape: "rounded",
 			fill: "#ffffff",
+			pattern: "none",
 			stroke: hairline,
 			strokeWidth: 1,
 			radius: 0,

@@ -348,6 +348,10 @@ export interface LegendTheme extends TypographyTheme {
 export interface CardTheme {
 	readonly shape: "rounded" | "chamfered" | "capsule" | "organic" | "cameo" | "petal";
 	readonly fill: string;
+	/** Optional repeating pattern painted over the fill; the fill is the pattern base. */
+	readonly pattern?: BoardTheme["pattern"];
+	readonly hatch?: string;
+	readonly hatchOpacity?: number;
 	readonly stroke: string;
 	readonly strokeWidth: number;
 	readonly radius: number;

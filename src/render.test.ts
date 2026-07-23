@@ -644,8 +644,8 @@ describe("SVG rendering boundaries", () => {
 
 	it.each([
 		{
-			label: "five-line rich text",
-			expectedLines: 5,
+			label: "four-line rich text",
+			expectedLines: 4,
 			source:
 				"This is a ==prototype== of a simple collaborative tool for generating **roadmap chart (tm)** from [markdown](https://commonmark.org) text. Text styles: _italic_, **bold**, ~sub~, ^sup^, etc. All [GitHub emojis](https://github.com) supported: :poop: :tada: :boom: :100: and [shortcuts](https://example.com): 8-) :-@ +-",
 		},

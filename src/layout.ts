@@ -443,6 +443,9 @@ function attachTopicChildren(
 		context.theme,
 		context.options,
 	);
+	// Like the reference renderer, children never avoid the spine corridor:
+	// blocking it would force every full-width topic's children onto one side
+	// instead of alternating at their parent's row.
 	const candidate = openCandidate(
 		{
 			...cluster.group,
@@ -454,7 +457,6 @@ function attachTopicChildren(
 		context.options,
 		containerSide,
 		lockPreferredSide,
-		[context.spineObstacle],
 	);
 	const rightHullOvershoot = Math.max(0, (cluster.group.width - 52) / 16);
 	const horizontalCorrection =
@@ -465,11 +467,18 @@ function attachTopicChildren(
 					? 5
 					: 2
 				: 0;
-	moveCluster(cluster, candidate.rect.x + horizontalCorrection, candidate.rect.y);
+	moveCluster(
+		cluster,
+		candidate.rect.x + horizontalCorrection,
+		Math.max(candidate.rect.y, container.y),
+	);
 	context.elements.push(cluster.group, ...cluster.nodes);
 	context.occupied.push(inflateRectangle(cluster.group, 1));
+	// The reference renderer leaves a small gap so links never touch the
+	// parent topic card.
+	const linkGap = 4;
 	const from: Point = {
-		x: candidate.side < 0 ? parentNode.x : rectRight(parentNode),
+		x: candidate.side < 0 ? parentNode.x - linkGap : rectRight(parentNode) + linkGap,
 		y: parentNode.y + parentNode.height / 2,
 	};
 	const to: Point = {
@@ -832,11 +841,20 @@ function layoutTreeGroups(
 		const childConnectorStart = context.connectors.length;
 		const childOccupiedStart = context.occupied.length;
 		bottom = Math.max(bottom, rectBottom(cluster.group));
+		// Children follow their parent's column: topics sharing a row send
+		// their children to their own column's side (locked, overlaps push
+		// down), while full-width topics prefer the cluster's chapter side.
+		const clusterCenterX = cluster.group.x + cluster.group.width / 2;
+		const clusterNodes = [...cluster.byTopic.values()];
 		let branchIndex = 0;
 		for (const topic of group.topics) {
 			const node = cluster.byTopic.get(topic.id);
 			if (!node) continue;
-			const preferredSide = side > 0 && branchIndex % 2 === 1 ? ((side * -1) as -1 | 1) : side;
+			const sharesRow = clusterNodes.some(
+				(other) => other !== node && Math.abs(other.y - node.y) < 1,
+			);
+			const columnSide: -1 | 1 = node.x + node.width / 2 < clusterCenterX ? -1 : 1;
+			const preferredSide = sharesRow ? columnSide : side;
 			bottom = Math.max(
 				bottom,
 				attachTopicChildren(
@@ -845,9 +863,9 @@ function layoutTreeGroups(
 					cluster.group,
 					preferredSide,
 					side,
-					side > 0 ? Math.floor(branchIndex / 2) : branchIndex,
+					branchIndex,
 					context,
-					side > 0,
+					sharesRow,
 				),
 			);
 			if (topic.children.length > 0) branchIndex += 1;

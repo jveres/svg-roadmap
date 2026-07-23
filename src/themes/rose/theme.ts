@@ -48,6 +48,9 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 		floatingNote: {
 			shape: "petal",
 			fill: "#fffafd",
+			pattern: "lace",
+			hatch: "#e6a4c0",
+			hatchOpacity: 0.18,
 			stroke: "#d982aa",
 			strokeWidth: 1,
 			shadow: true,
@@ -205,6 +208,8 @@ export const roseDarkTheme: RoadmapTheme = createTheme(
 		note: { fill: "#351f2c", stroke: "#91546f", typography: { color: "#f3dce6" } },
 		floatingNote: {
 			fill: "#2b1a25",
+			hatch: "#a95e7e",
+			hatchOpacity: 0.2,
 			stroke: "#a86383",
 			typography: { color: "#f3dce6" },
 		},

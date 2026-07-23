@@ -67,6 +67,9 @@ export const proLightTheme: RoadmapTheme = createTheme(
 		floatingNote: {
 			shape: "rounded",
 			fill: "#ffffff",
+			pattern: "grid",
+			hatch: "#c3ccd6",
+			hatchOpacity: 0.25,
 			stroke: "#b9c6d4",
 			strokeWidth: 1,
 			radius: 4,
@@ -222,6 +225,8 @@ export const proDarkTheme: RoadmapTheme = createTheme(
 		},
 		floatingNote: {
 			fill: "#171d26",
+			hatch: "#2e3a49",
+			hatchOpacity: 0.45,
 			stroke: "#3d4b5c",
 			typography: { color: "#b4bec9" },
 		},

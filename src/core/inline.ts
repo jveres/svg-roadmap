@@ -18,6 +18,7 @@ export interface InlineRun {
 }
 
 const shortcodeEmoji: Readonly<Record<string, string>> = {
+	"100": "💯",
 	beginner: "🔰",
 	boom: "💥",
 	cloud: "☁️",
@@ -27,6 +28,7 @@ const shortcodeEmoji: Readonly<Record<string, string>> = {
 	keycap_ten: "🔟",
 	nine: "9️⃣",
 	one: "1️⃣",
+	poop: "💩",
 	recycle: "♻️",
 	robot: "🤖",
 	rocket: "🚀",
@@ -35,6 +37,7 @@ const shortcodeEmoji: Readonly<Record<string, string>> = {
 	soap: "🧼",
 	sparkles: "✨",
 	star: "⭐",
+	tada: "🎉",
 	telescope: "🔭",
 	three: "3️⃣",
 	two: "2️⃣",
