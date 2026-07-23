@@ -901,9 +901,20 @@ export function orthogonalConnectorPath(connector: LayoutConnector, laneOffset =
 export function orthogonalLaneOffsets(
 	connectors: readonly LayoutConnector[],
 	laneSpacing: number,
+	avoidX: readonly number[] = [],
 ): ReadonlyMap<string, number> {
 	const offsets = new Map<string, number>();
 	if (laneSpacing <= 0) return offsets;
+	// Lanes must not run along vertical rules such as outlined board edges.
+	const laneClearance = 3.5;
+	const clearedLane = (lane: number): number => {
+		for (const forbidden of avoidX) {
+			if (Math.abs(lane - forbidden) < laneClearance) {
+				return forbidden + (lane >= forbidden ? laneClearance : -laneClearance);
+			}
+		}
+		return lane;
+	};
 	const sides = new Map<number, LayoutConnector[]>();
 	for (const connector of connectors) {
 		if (connector.kind !== "topicToChildren") continue;
@@ -941,7 +952,7 @@ export function orthogonalLaneOffsets(
 			const laneSpan = effectiveSpacing * Math.max(0, cluster.length - 1);
 			const firstLane = low + (gap - laneSpan) / 2;
 			for (const [index, connector] of cluster.entries()) {
-				const laneX = firstLane + index * effectiveSpacing;
+				const laneX = clearedLane(firstLane + index * effectiveSpacing);
 				const naturalMiddleX = (connector.from.x + connector.to.x) / 2;
 				offsets.set(connector.id, laneX - naturalMiddleX);
 			}
@@ -1089,7 +1100,7 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		<linearGradient id="${prefix}-topic-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("topic-header-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("topic-header-gradient-end")}"/><stop offset="1" stop-color="${cssToken("topic-header-gradient-end")}"/></linearGradient>
 		${
 			theme.shadow.pattern === "halftone"
-				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="3" height="3"><rect width="1.5" height="1.5" fill="${cssToken("shadow-color")}"/></pattern>`
+				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="2" height="2"><rect width="1" height="1" fill="${cssToken("shadow-color")}"/><rect x="1" y="1" width="1" height="1" fill="${cssToken("shadow-color")}"/></pattern>`
 				: ""
 		}
 		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic)}
@@ -1204,9 +1215,13 @@ export function renderRoadmapSvg(
 		const order = { spine: 0, chapterToTopics: 1, topicToChildren: 2 } as const;
 		return order[left.kind] - order[right.kind];
 	});
+	const boardEdges = layout.elements
+		.filter((element) => element.kind === "group")
+		.flatMap((group) => [group.x, group.x + group.width]);
 	const laneOffsets = orthogonalLaneOffsets(
 		sortedConnectors,
 		theme.connectors.topicToChildren.laneSpacing,
+		boardEdges,
 	);
 	const renderedConnector = (connector: LayoutConnector): string =>
 		renderConnector(connector, theme, prefix, laneOffsets.get(connector.id) ?? 0);

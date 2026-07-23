@@ -191,10 +191,10 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 		},
 		shadow: {
 			color: ink,
-			opacity: 0.55,
+			opacity: 0.5,
 			pattern: "halftone",
-			offsetX: 5,
-			offsetY: 5,
+			offsetX: 4,
+			offsetY: 4,
 			softBlur: 0.5,
 			softOffsetX: 1,
 			softOffsetY: 1,
