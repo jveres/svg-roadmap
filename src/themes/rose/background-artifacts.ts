@@ -17,6 +17,9 @@ const blush = "var(--roadmap-rose-artifact-blush)";
 const berry = "var(--roadmap-rose-artifact-berry)";
 const lavender = "var(--roadmap-rose-artifact-lavender)";
 const pearl = "var(--roadmap-rose-artifact-pearl)";
+const apricot = "var(--roadmap-rose-artifact-apricot)";
+const mint = "var(--roadmap-rose-artifact-mint)";
+const sky = "var(--roadmap-rose-artifact-sky)";
 const strokeWidth = "var(--roadmap-rose-artifact-stroke-width)";
 
 function motifShapes(motif: number, variant: number): readonly LayoutBackgroundArtifactShape[] {
@@ -30,6 +33,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 				...outline,
 			},
 			{ kind: "circle", cx: 0, cy: 1, radius: 2.8, fill: pearl },
+			{ kind: "circle", cx: 12, cy: 9, radius: 2, fill: mint },
 		];
 	}
 	if (motif === 1) {
@@ -44,7 +48,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 				(d, index): LayoutBackgroundArtifactShape => ({
 					kind: "path",
 					d,
-					fill: index % 2 === 0 ? blush : lavender,
+					fill: [blush, lavender, apricot, sky][index] ?? blush,
 				}),
 			),
 			{ kind: "circle", cx: 0, cy: 0, radius: 4 + variant * 0.4, fill: pearl },
@@ -55,11 +59,12 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 			{
 				kind: "path",
 				d: "M 0 -22 L 3 -6 L 17 -13 L 7 0 L 20 7 L 4 4 L 0 21 L -4 4 L -20 7 L -7 0 L -17 -13 L -3 -6 Z",
-				stroke: lavender,
+				stroke: sky,
 				...outline,
 			},
 			{ kind: "circle", cx: 0, cy: 0, radius: 3, fill: pearl },
-			{ kind: "circle", cx: 19, cy: -16, radius: 2, fill: blush },
+			{ kind: "circle", cx: 19, cy: -16, radius: 2, fill: apricot },
+			{ kind: "circle", cx: -17, cy: 15, radius: 1.8, fill: mint },
 		];
 	}
 	if (motif === 3) {
@@ -73,7 +78,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 			{
 				kind: "path",
 				d: "M -2 2 L -14 19 L 0 12 L 14 19 L 2 2",
-				stroke: lavender,
+				stroke: sky,
 				strokeWidth: 1.2,
 				fill: "none",
 			},
@@ -81,36 +86,99 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 		];
 	}
 	if (motif === 4) {
-		const palette = [blush, lavender, berry, pearl] as const;
-		return Array.from({ length: 9 }, (_, index): LayoutBackgroundArtifactShape => {
-			const angle = index * 0.92 + variant * 0.15;
-			const distance = 4 + index * 2.2;
-			return {
-				kind: "circle",
-				cx: Math.cos(angle) * distance,
-				cy: Math.sin(angle) * distance,
-				radius: 1.8 + (index % 3) * 0.55,
-				fill: palette[index % palette.length] ?? blush,
-			};
-		});
+		const pearlColors = [pearl, apricot, lavender, mint, berry, sky, pearl] as const;
+		return [
+			{
+				kind: "path",
+				d: "M -24 -4 Q -12 14 0 2 Q 12 14 24 -4",
+				stroke: lavender,
+				strokeWidth: 1.1,
+				fill: "none",
+			},
+			...pearlColors.map(
+				(fill, index): LayoutBackgroundArtifactShape => ({
+					kind: "circle",
+					cx: -21 + index * 7,
+					cy: -1 + Math.sin((index / 6) * Math.PI) * 9,
+					radius: 2.1 + (index % 2) * 0.35,
+					fill,
+				}),
+			),
+			{
+				kind: "path",
+				d: "M 0 3 C -6 8 -5 15 0 17 C 5 15 6 8 0 3 Z",
+				fill: apricot,
+			},
+		];
 	}
 	if (motif === 5) {
 		return [
 			{
 				kind: "path",
-				d: `M -24 4 C -18 -${8 + variant} -12 -${8 + variant} -6 4 S 6 ${16 + variant} 12 4 S 20 -${8 + variant} 25 4`,
-				stroke: blush,
+				d: `M -25 ${6 + variant} C -17 -10 -8 -10 -2 1 C 5 13 14 13 24 -3`,
+				stroke: sky,
 				...outline,
 			},
-			{ kind: "circle", cx: -24, cy: 4, radius: 2.7, fill: pearl },
-			{ kind: "circle", cx: 25, cy: 4, radius: 2.7, fill: berry },
+			{
+				kind: "path",
+				d: "M 18 -4 C 10 -12 5 -7 9 -1 C 13 4 17 1 19 -2 C 21 1 25 4 29 -1 C 33 -7 26 -12 20 -4 Z M 18 0 L 14 10 L 20 5 L 25 10 L 21 0",
+				stroke: berry,
+				strokeWidth: 1.35,
+				fill: "none",
+			},
+			{ kind: "circle", cx: 19.5, cy: -2, radius: 2.4, fill: mint },
 		];
 	}
+	if (motif === 6) {
+		return [
+			{
+				kind: "path",
+				d: "M -2 -2 C -10 -18 -24 -13 -19 -1 C -15 8 -7 7 -2 2 M 2 -2 C 10 -18 24 -13 19 -1 C 15 8 7 7 2 2 M -2 3 C -8 11 -5 18 0 10 C 5 18 8 11 2 3",
+				stroke: sky,
+				...outline,
+			},
+			{ kind: "circle", cx: 0, cy: -1, radius: 2.2, fill: pearl },
+			{ kind: "circle", cx: 0, cy: 4, radius: 1.7, fill: apricot },
+		];
+	}
+	if (motif === 7) {
+		return [
+			{ kind: "circle", cx: 0, cy: -2, radius: 14, stroke: sky, ...outline },
+			{ kind: "circle", cx: 0, cy: -2, radius: 10, stroke: mint, strokeWidth: 1, fill: "none" },
+			{
+				kind: "path",
+				d: "M -4 12 L -10 24 L 0 18 L 10 24 L 4 12",
+				stroke: berry,
+				strokeWidth: 1.2,
+				fill: "none",
+			},
+			{
+				kind: "path",
+				d: "M 0 -8 C -5 -12 -9 -6 -5 -2 C -2 1 0 0 0 -2 C 0 0 2 1 5 -2 C 9 -6 5 -12 0 -8 Z",
+				fill: pearl,
+			},
+		];
+	}
+	const petals = Array.from({ length: 6 }, (_, index): LayoutBackgroundArtifactShape => {
+		const angle = (index * Math.PI) / 3;
+		return {
+			kind: "circle",
+			cx: Math.cos(angle) * 7,
+			cy: Math.sin(angle) * 7,
+			radius: 5,
+			fill: [blush, lavender, apricot, mint, sky, lavender][index] ?? blush,
+		};
+	});
 	return [
-		{ kind: "circle", cx: -13, cy: 5, radius: 10, stroke: lavender, ...outline },
-		{ kind: "circle", cx: 4, cy: -7, radius: 7, stroke: blush, ...outline },
-		{ kind: "circle", cx: 17, cy: 9, radius: 4, fill: berry },
-		{ kind: "circle", cx: 20, cy: -15, radius: 2.4, fill: pearl },
+		...petals,
+		{ kind: "circle", cx: 0, cy: 0, radius: 4.2, fill: pearl },
+		{
+			kind: "path",
+			d: "M -5 10 L -12 23 L 0 17 L 12 23 L 5 10",
+			stroke: berry,
+			strokeWidth: 1.2,
+			fill: "none",
+		},
 	];
 }
 
@@ -153,11 +221,12 @@ export function generateRoseBackgroundArtifacts({
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
+			const motif = (Math.floor(random() * 9) + column * 2 + row * 3) % 9;
 			artifacts.push({
 				id: `rose-background-${column}-${row}`,
 				bounds,
 				transform: `translate(${x} ${y}) rotate(${roundArtifactCoordinate(random() * 360)}) scale(${roundArtifactCoordinate(size / 50)})`,
-				shapes: motifShapes(Math.floor(random() * 7), Math.floor(random() * 3)),
+				shapes: motifShapes(motif, Math.floor(random() * 3)),
 			});
 		}
 	}

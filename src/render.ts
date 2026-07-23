@@ -232,11 +232,14 @@ function renderNodeBadges(node: LayoutNode, theme: RoadmapTheme, prefix: string)
 
 function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: number): string {
 	const attributes: string[] = [];
+	const classes: string[] = [];
 	const marks = new Set(segment.marks);
 	if (marks.has("strong")) attributes.push('font-weight="700"');
 	if (marks.has("emphasis")) attributes.push('font-style="italic"');
 	if (marks.has("code"))
 		attributes.push('font-family="ui-monospace, SFMono-Regular, Menlo, monospace"');
+	if (marks.has("highlight")) classes.push("roadmap__inline", "roadmap__inline--highlight");
+	if (marks.has("insert")) classes.push("roadmap__inline", "roadmap__inline--insert");
 	const decorations: string[] = [];
 	if (marks.has("strikethrough")) decorations.push("line-through");
 	if (segment.destination || (segment.abbreviation && !segment.abbreviationIndicator)) {
@@ -246,14 +249,17 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 	if (segment.destination) attributes.push(`fill="${cssToken("inline-link")}"`);
 	else attributes.push(`fill="${cssToken(textToken(node))}"`);
 	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
-		attributes.push('class="roadmap__inline roadmap__inline--abbreviation"');
+		classes.push("roadmap__inline", "roadmap__inline--abbreviation");
 		attributes.push(`text-decoration-color="${cssToken("inline-abbreviation-underline")}"`);
 	}
 	if (segment.abbreviationIndicator) {
-		attributes.push('class="roadmap__inline roadmap__inline--abbreviation-indicator"');
+		classes.push("roadmap__inline", "roadmap__inline--abbreviation-indicator");
 		attributes.push(`font-size="${fontSize}"`);
 	} else if (marks.has("superscript") || marks.has("subscript")) {
 		attributes.push(`font-size="${fontSize * 0.75}"`);
+	}
+	if (classes.length > 0) {
+		attributes.unshift(`class="${[...new Set(classes)].join(" ")}"`);
 	}
 	return attributes.join(" ");
 }
@@ -375,9 +381,10 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			const transforms = [paintTransform, emojiTransform].filter(Boolean).join(" ");
 			const transform = transforms ? ` transform="${transforms}"` : "";
 			const emoji = renderShortcodeEmoji(segment, x, y, segmentWidth, segmentFontSize, prefix);
+			const fittedTextLength = segment.width * scale;
 			const content = emoji
 				? `${title}${emoji}`
-				: `${title}<text x="${x}" y="${y}" xml:space="preserve"${transform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`;
+				: `${title}<text x="${x}" y="${y}" textLength="${fittedTextLength}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${transform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`;
 			const destination = segment.destination
 				? safeLinkDestination(segment.destination)
 				: undefined;
@@ -392,7 +399,12 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}">${backgrounds.join("")}${text.join("")}</g>`;
 }
 
-function renderFlowingText(node: LayoutNode): string {
+interface FlowingTextOptions {
+	readonly nativeHighlight?: boolean;
+	readonly nativeInsert?: boolean;
+}
+
+function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): string {
 	const scale = node.text.renderScale;
 	const renderScaleX = node.text.renderScaleX ?? 1;
 	const renderScaleY = node.text.renderScaleY ?? 1;
@@ -409,9 +421,14 @@ function renderFlowingText(node: LayoutNode): string {
 		let backgroundX = paintedLine.x;
 		for (const segment of line.segments) {
 			const segmentWidth = segment.width * scale * renderScaleX;
-			backgrounds.push(
-				segmentBackground(segment, node, backgroundX, baseline, fontSize, segmentWidth),
-			);
+			const decorationIsNative =
+				(options.nativeHighlight && segment.marks.includes("highlight")) ||
+				(options.nativeInsert && segment.marks.includes("insert"));
+			if (!decorationIsNative) {
+				backgrounds.push(
+					segmentBackground(segment, node, backgroundX, baseline, fontSize, segmentWidth),
+				);
+			}
 			backgroundX += segmentWidth;
 		}
 
@@ -446,12 +463,17 @@ function renderFlowingText(node: LayoutNode): string {
 }
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+	if (theme.name === "rose") {
+		return renderFlowingText(node, { nativeHighlight: true, nativeInsert: true });
+	}
 	if (theme.name !== "sci-fi") return renderPositionedText(node, prefix);
-	const hasCustomEmoji = (line: TextLine): boolean =>
+	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
-			(segment) => segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined,
+			(segment) =>
+				(segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined) ||
+				segment.marks.includes("highlight"),
 		);
-	if (!node.text.lines.some(hasCustomEmoji)) return renderFlowingText(node);
+	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node);
 
 	const paintedLines = paintedTextLines(node);
 	return node.text.lines
@@ -464,7 +486,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 				height: paintedLine.height,
 				text: { ...node.text, lines: [line] },
 			};
-			return hasCustomEmoji(line)
+			return requiresPositionedText(line)
 				? renderPositionedText(lineNode, prefix)
 				: renderFlowingText(lineNode);
 		})
@@ -545,8 +567,8 @@ function renderCardFrame(node: LayoutNode, card: CardTheme): string {
 		if (card.shape === "chamfered") {
 			return `<path ${paint} d="${chamferedRectanglePath(rectangle, card.radius)}"/>`;
 		}
-		if (card.shape === "ribbon") {
-			return `<path ${paint} d="${ribbonCardPath(rectangle)}"/>`;
+		if (card.shape === "cameo") {
+			return `<path ${paint} d="${cameoCardPath(rectangle)}"/>`;
 		}
 		if (card.shape === "petal") {
 			return `<path ${paint} d="${petalCardPath(rectangle)}"/>`;
@@ -570,16 +592,36 @@ function renderCardFrame(node: LayoutNode, card: CardTheme): string {
 		return `<path ${paint} d="${path}"/>`;
 	};
 
-	return `${card.shadow ? renderShape(shadowAttributes) : ""}${renderShape(attributes)}`;
+	const detail =
+		card.shape === "cameo"
+			? `<path class="roadmap__frame-detail roadmap__frame-detail--cameo" d="${cameoCardPath(insetRectangle(rectangle, Math.max(2, rectangle.height * 0.14)))}" fill="none" stroke="${cssToken(`${token}-border`)}" stroke-width="var(--roadmap-frame-detail-width,0.7)" stroke-opacity="var(--roadmap-frame-detail-opacity,0.45)" pointer-events="none"/>`
+			: "";
+	return `${card.shadow ? renderShape(shadowAttributes) : ""}${renderShape(attributes)}${detail}`;
 }
 
-function ribbonCardPath(rectangle: Rect): string {
+function insetRectangle(rectangle: Rect, inset: number): Rect {
+	return {
+		x: rectangle.x + inset,
+		y: rectangle.y + inset,
+		width: Math.max(1, rectangle.width - inset * 2),
+		height: Math.max(1, rectangle.height - inset * 2),
+	};
+}
+
+function cameoCardPath(rectangle: Rect): string {
 	const { x, y, width, height } = rectangle;
 	const right = x + width;
 	const bottom = y + height;
-	const centerY = y + height / 2;
-	const tail = Math.min(height * 0.28, width * 0.09);
-	return `M ${x + tail} ${y} H ${right - tail} L ${right} ${y + tail} L ${right - tail * 0.72} ${centerY} L ${right} ${bottom - tail} L ${right - tail} ${bottom} H ${x + tail} L ${x} ${bottom - tail} L ${x + tail * 0.72} ${centerY} L ${x} ${y + tail} Z`;
+	return [
+		`M ${x + width * 0.16} ${y}`,
+		`C ${x + width * 0.34} ${y} ${x + width * 0.66} ${y} ${x + width * 0.84} ${y}`,
+		`C ${x + width * 0.94} ${y} ${right} ${y + height * 0.18} ${right} ${y + height * 0.5}`,
+		`C ${right} ${y + height * 0.82} ${x + width * 0.94} ${bottom} ${x + width * 0.84} ${bottom}`,
+		`C ${x + width * 0.65} ${bottom} ${x + width * 0.35} ${bottom} ${x + width * 0.16} ${bottom}`,
+		`C ${x + width * 0.06} ${bottom} ${x} ${y + height * 0.82} ${x} ${y + height * 0.5}`,
+		`C ${x} ${y + height * 0.18} ${x + width * 0.06} ${y} ${x + width * 0.16} ${y}`,
+		"Z",
+	].join(" ");
 }
 
 function petalCardPath(rectangle: Rect): string {
@@ -869,6 +911,12 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 		decoration = `<circle cx="6" cy="6" r="1.25" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
 	} else if (board.pattern === "lace") {
 		decoration = `<path d="M -4 7 Q 0 1 4 7 T 12 7 T 20 7" fill="none" ${paint}/><circle cx="4" cy="7" r="1.15" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
+	} else if (board.pattern === "floral-lace") {
+		return `<pattern id="${id}" data-roadmap-pattern="floral-lace" patternUnits="userSpaceOnUse" width="18" height="18"><rect width="18" height="18" fill="${cssToken(`${token}-board-background`)}"/><path d="M 9 0 L 18 9 L 9 18 L 0 9 Z" fill="none" ${paint}/><g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><ellipse cx="9" cy="6.4" rx="1.15" ry="2.1"/><ellipse cx="11.6" cy="9" rx="2.1" ry="1.15"/><ellipse cx="9" cy="11.6" rx="1.15" ry="2.1"/><ellipse cx="6.4" cy="9" rx="2.1" ry="1.15"/><circle cx="9" cy="9" r="1.05"/></g></pattern>`;
+	} else if (board.pattern === "pearls") {
+		return `<pattern id="${id}" data-roadmap-pattern="pearls" patternUnits="userSpaceOnUse" width="16" height="16"><rect width="16" height="16" fill="${cssToken(`${token}-board-background`)}"/><path d="M -4 4 Q 0 11 4 4 T 12 4 T 20 4" fill="none" ${paint}/><g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><circle cx="0" cy="4" r="1.25"/><circle cx="4" cy="8" r="1.05"/><circle cx="8" cy="4" r="1.25"/><circle cx="12" cy="8" r="1.05"/><circle cx="16" cy="4" r="1.25"/></g></pattern>`;
+	} else if (board.pattern === "bows") {
+		return `<pattern id="${id}" data-roadmap-pattern="bows" patternUnits="userSpaceOnUse" width="24" height="18"><rect width="24" height="18" fill="${cssToken(`${token}-board-background`)}"/><path d="M 12 8 C 7 3 3 5 5 9 C 7 12 10 10 12 8 C 14 10 17 12 19 9 C 21 5 17 3 12 8 Z M 11 9 L 8 15 L 12 12 L 16 15 L 13 9" fill="none" ${paint}/><circle cx="12" cy="8.5" r="1.35" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/></pattern>`;
 	}
 	return `<pattern id="${id}" data-roadmap-pattern="${board.pattern}" patternUnits="userSpaceOnUse" width="12" height="12">${background}${decoration}</pattern>`;
 }
@@ -913,6 +961,8 @@ function baseStyles(): string {
 	.roadmap__link{text-decoration:none}
 	.roadmap__inline--abbreviation{text-decoration-style:dotted}
 	.roadmap__inline--abbreviation-indicator{cursor:help}
+	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--highlight{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-highlight-background);text-decoration-thickness:.96em;text-underline-offset:-.4em;text-decoration-skip-ink:none}
+	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--insert{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-insert-underline);text-decoration-thickness:.09em;text-underline-offset:.12em;text-decoration-skip-ink:none}
 	.roadmap__node--heading .roadmap__frame{display:none}`;
 }
 

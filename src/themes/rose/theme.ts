@@ -3,6 +3,7 @@ import type { RoadmapTheme, RoadmapThemePreset } from "../../types.ts";
 import { generateRoseBackgroundArtifacts } from "./background-artifacts.ts";
 
 const fontFamily = 'ui-rounded, "Avenir Next", "Nunito", system-ui, sans-serif';
+const displayFontFamily = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif';
 
 export const roseLightTheme: RoadmapTheme = createTheme(
 	{
@@ -14,22 +15,28 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 			"topic-header-gradient-start": "#fce8f3",
 			"topic-header-gradient-end": "#eadcf8",
 			"board-hatch-stroke-width": 1.4,
+			"frame-detail-width": 0.55,
+			"frame-detail-opacity": 0.34,
 		},
 		canvas: { background: "#fff8fb" },
 		heading: {
-			title: { color: "#5b2944", fontFamily, fontWeight: 700 },
-			section: { color: "#74405d", fontFamily, fontWeight: 600 },
+			title: { color: "#5b2944", fontFamily: displayFontFamily, fontWeight: 700 },
+			section: { color: "#74405d", fontFamily: displayFontFamily, fontWeight: 600 },
 			minor: { color: "#82546c", fontFamily },
 		},
 		legend: { color: "#82546c", fontFamily },
 		chapter: {
-			shape: "ribbon",
+			shape: "cameo",
 			stroke: "#d96b9b",
 			strokeWidth: 1.5,
 			radius: 24,
 			shadow: true,
-			paddingX: 20,
-			typography: { color: "#592640", fontFamily, fontWeight: 600 },
+			paddingX: 22,
+			typography: {
+				color: "#592640",
+				fontFamily: displayFontFamily,
+				fontWeight: 600,
+			},
 		},
 		note: {
 			shape: "petal",
@@ -66,18 +73,22 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 			typography: { color: "#633753", fontFamily },
 		},
 		topicHeader: {
-			shape: "ribbon",
+			shape: "cameo",
 			stroke: "#b878a7",
 			strokeWidth: 1.25,
 			radius: 18,
 			shadow: true,
-			paddingX: 18,
-			typography: { color: "#65334f", fontFamily, fontWeight: 700 },
+			paddingX: 22,
+			typography: {
+				color: "#65334f",
+				fontFamily: displayFontFamily,
+				fontWeight: 700,
+			},
 		},
 		boards: {
 			topic: {
 				shape: "scalloped",
-				pattern: "lace",
+				pattern: "floral-lace",
 				background: "#fff3f8",
 				hatch: "#e6a4c0",
 				hatchOpacity: 0.22,
@@ -85,7 +96,7 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 			},
 			nested: {
 				shape: "scalloped",
-				pattern: "lace",
+				pattern: "pearls",
 				background: "#faf2ff",
 				hatch: "#bc9bda",
 				hatchOpacity: 0.24,
@@ -93,7 +104,7 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 			},
 			legend: {
 				shape: "scalloped",
-				pattern: "lace",
+				pattern: "bows",
 				background: "#fff5f9",
 				hatch: "#d993b4",
 				hatchOpacity: 0.22,
@@ -146,6 +157,9 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				"rose-artifact-berry": "#b9658d",
 				"rose-artifact-lavender": "#ab91c8",
 				"rose-artifact-pearl": "#e9b7c9",
+				"rose-artifact-apricot": "#d9a07f",
+				"rose-artifact-mint": "#85b7a8",
+				"rose-artifact-sky": "#86aeca",
 				"rose-artifact-stroke-width": 1.7,
 				"background-artifact-opacity": 0.34,
 			},
@@ -225,6 +239,9 @@ export const roseDarkTheme: RoadmapTheme = createTheme(
 				"rose-artifact-berry": "#c26a94",
 				"rose-artifact-lavender": "#a487c4",
 				"rose-artifact-pearl": "#d6a5b9",
+				"rose-artifact-apricot": "#c58d70",
+				"rose-artifact-mint": "#78a99c",
+				"rose-artifact-sky": "#789db8",
 				"rose-artifact-stroke-width": 1.7,
 				"background-artifact-opacity": 0.38,
 			},

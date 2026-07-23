@@ -28,7 +28,12 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1.5,
 			radius: 14,
 			shadow: true,
-			typography: { color: "#10263d", fontFamily, fontWeight: 600 },
+			typography: {
+				color: "#10263d",
+				fontFamily,
+				fontWeight: 600,
+				renderScaleX: 1,
+			},
 		},
 		note: {
 			shape: "capsule",

@@ -179,9 +179,10 @@ background artifacts. `Sci-fi` uses clean translucent surfaces, cyan and violet
 accents, geometric orbital and signal motifs, chamfered cards and boards,
 capsule notes, technical grid and dot patterns, a straight architectural spine,
 and orthogonal circuit-like branches for an optimistic near-future look.
-`Rose` uses blush, berry, and lavender colors with fishtail ribbon labels,
-petal-edged cards and notes, scalloped lace boards, curved branches, a
-double-strand spine, and soft petal, pearl, bow, and sparkle motifs.
+`Rose` uses blush, berry, and lavender colors with vintage cameo labels and
+fine inset keylines, petal-edged cards and notes, floral lace, pearl, and bow
+boards, curved branches, a double-strand spine, and soft pearl, bow, and floral
+motifs.
 
 The `lightTheme` and `darkTheme` exports remain convenient Fun resolved-mode
 values for the lower-level API. Typography and spacing properties affect

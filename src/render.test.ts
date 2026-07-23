@@ -310,6 +310,7 @@ describe("SVG rendering boundaries", () => {
 		const svg = renderRoadmapSvg(layout, sciFiLightTheme, { idPrefix: "sci-fi-emoji-line" });
 
 		expect(svg).toContain('class="roadmap__emoji roadmap__emoji--beginner"');
+		expect(svg).toContain('textLength="58" lengthAdjust="spacingAndGlyphs"');
 		expect(svg).toMatch(
 			/<text class="roadmap__flow-line"[^>]*><tspan[^>]*>key people\. <\/tspan><a[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a><\/text>/u,
 		);

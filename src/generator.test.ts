@@ -155,7 +155,7 @@ roadmap:
     density: 1
 ---
 
-# Utopian systems
+# Utopian ==systems==
 
 * Explore
   * Discover
@@ -186,6 +186,12 @@ roadmap:
 		expect(spinePath?.split(" L ")).toHaveLength(2);
 		expect(generated.svg).toContain("--roadmap-sci-fi-artifact-cyan:#58e1f5");
 		expect(generated.svg).not.toContain("--roadmap-background-artifact-coral:");
+		expect(generated.svg).toContain('<rect class="roadmap__highlight"');
+		expect(generated.svg).toContain("roadmap__inline--highlight");
+		expect(generated.svg).not.toContain(
+			'.roadmap[data-roadmap-theme="sci-fi"] .roadmap__inline--highlight',
+		);
+		expect(generated.theme.chapter.typography.renderScaleX).toBe(1);
 		expect(
 			generated.layout.backgroundArtifacts.every((artifact) =>
 				artifact.id.startsWith("sci-fi-background-"),
@@ -205,7 +211,9 @@ roadmap:
     density: 1
 ---
 
-# Growing together
+# Software Engineering ++_Hygiene_++ :soap:
+
+Product **discovery** with [Product Owners](https://example.com) and ==highlights==.
 
 * Discover
   * Listen
@@ -214,34 +222,46 @@ roadmap:
 		expect(generated.theme).toBe(builtInThemes.rose?.modes.dark);
 		expect(generated.theme.name).toBe("rose");
 		expect(generated.theme.mode).toBe("dark");
-		expect(generated.theme.chapter.shape).toBe("ribbon");
+		expect(generated.theme.chapter.shape).toBe("cameo");
 		expect(generated.theme.note.shape).toBe("petal");
 		expect(generated.theme.topic.shape).toBe("petal");
 		expect(generated.theme.nestedTopic.shape).toBe("petal");
-		expect(generated.theme.topicHeader.shape).toBe("ribbon");
+		expect(generated.theme.topicHeader.shape).toBe("cameo");
 		expect(generated.theme.boards.topic.shape).toBe("scalloped");
-		expect(generated.theme.boards.topic.pattern).toBe("lace");
-		expect(generated.theme.boards.nested.pattern).toBe("lace");
+		expect(generated.theme.boards.topic.pattern).toBe("floral-lace");
+		expect(generated.theme.boards.nested.pattern).toBe("pearls");
+		expect(generated.theme.boards.legend.pattern).toBe("bows");
 		expect(generated.theme.connectors.spine.routing).toBe("braided");
 		expect(generated.theme.connectors.topicToChildren.routing).toBe("curved");
 		expect(generated.svg).toContain('data-roadmap-theme="rose"');
-		expect(generated.svg).toContain('data-roadmap-shape="ribbon"');
+		expect(generated.svg).toContain('data-roadmap-shape="cameo"');
 		expect(generated.svg).toContain('data-roadmap-shape="petal"');
 		expect(generated.svg).toContain('data-roadmap-shape="scalloped"');
-		expect(generated.svg).toContain('data-roadmap-pattern="lace"');
+		expect(generated.svg).toContain('data-roadmap-pattern="floral-lace"');
+		expect(generated.svg).toContain('data-roadmap-pattern="pearls"');
+		expect(generated.svg).toContain('data-roadmap-pattern="bows"');
 		expect(generated.svg).toContain('data-roadmap-routing="braided"');
 		expect(generated.svg).toContain("--roadmap-rose-artifact-blush:#d982aa");
 		expect(generated.svg).not.toContain("--roadmap-sci-fi-artifact-cyan:");
-		const chapter = generated.layout.elements.find(
-			(element): element is LayoutNode => element.kind === "chapter",
-		);
-		if (!chapter) throw new Error("Rose chapter fixture was not generated");
-		const ribbonPath = generated.svg.match(
-			/roadmap__node--chapter[^>]*>.*?<path class="roadmap__frame" data-roadmap-shape="ribbon"[^>]* d="([^"]+)"/u,
+		const cameoPath = generated.svg.match(
+			/roadmap__node--chapter[^>]*>.*?<path class="roadmap__frame" data-roadmap-shape="cameo"[^>]* d="([^"]+)"/u,
 		)?.[1];
-		const chapterHeight = chapter.height - 1;
-		const tail = Math.min(chapterHeight * 0.28, chapter.width * 0.09);
-		expect(ribbonPath?.startsWith(`M ${chapter.x + tail} ${chapter.y} H `)).toBe(true);
+		expect(cameoPath).toBeDefined();
+		expect(cameoPath).not.toMatch(/[HL]/u);
+		expect(cameoPath?.split(" C ")).toHaveLength(7);
+		expect(generated.svg).toContain("roadmap__frame-detail--cameo");
+		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.55");
+		expect(generated.theme.chapter.typography.fontFamily).toContain("Iowan Old Style");
+		expect(generated.svg).toMatch(
+			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Software Engineering <\/tspan><tspan[^>]*>Hygiene<\/tspan>.*?<tspan[^>]*>🧼<\/tspan><\/text>/u,
+		);
+		expect(generated.svg).toMatch(
+			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Product <\/tspan><tspan[^>]*>discovery<\/tspan>.*?<a class="roadmap__link"[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a>/u,
+		);
+		expect(generated.svg).not.toContain('<rect class="roadmap__highlight"');
+		expect(generated.svg).not.toContain('<rect class="roadmap__insert-underline"');
+		expect(generated.svg).toContain("roadmap__inline--highlight");
+		expect(generated.svg).toContain("roadmap__inline--insert");
 	});
 
 	test("keeps Rose artifact geometry deterministic and outside content", () => {
