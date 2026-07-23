@@ -147,6 +147,8 @@ function pointInRect(point: Point, rect: Rect, tolerance = 0.5): boolean {
 	);
 }
 
+// Deliberately independent of the layout module's segment clipper so the
+// invariants cannot inherit a bug from the code under test.
 function segmentIntersectsRect(from: Point, to: Point, rect: Rect): boolean {
 	const deltaX = to.x - from.x;
 	const deltaY = to.y - from.y;

@@ -47,7 +47,12 @@ function generateFromDocument(
 		: { preset: document.settings.theme.preset };
 	const theme = resolveTheme(options.theme ?? documentTheme, options.themes);
 	const layout = layoutRoadmap(document, theme, options.layout);
-	const svg = renderRoadmapSvg(layout, theme, options.render);
+	const animatedBackground =
+		options.render?.animatedBackground ?? document.settings.background.animated;
+	const svg = renderRoadmapSvg(layout, theme, {
+		...options.render,
+		...(animatedBackground !== undefined ? { animatedBackground } : {}),
+	});
 	return { document, layout, svg, theme };
 }
 

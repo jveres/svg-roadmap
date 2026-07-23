@@ -7,6 +7,7 @@ roadmap:
     seed: software-hygiene
     density: 0.55
     size: 0.8
+    animated: 1.5
 ---
 
 # Software Engineering ++_Hygiene_++ :soap:

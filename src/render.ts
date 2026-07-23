@@ -8,6 +8,7 @@ import {
 	rectRight,
 	verticalBumpPath,
 } from "./core/geometry.ts";
+import { createSeededRandom } from "./core/background-artifacts.ts";
 import { twemojiArtwork } from "./core/emoji-artwork.ts";
 import { measureText } from "./core/inline.ts";
 import { escapeXml, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
@@ -42,6 +43,14 @@ function escapeStyleText(value: string): string {
 
 function cssToken(name: string): string {
 	return `var(--roadmap-${name})`;
+}
+
+function kebabToken(value: string): string {
+	return value.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+}
+
+function boardOutline(board: BoardTheme): string {
+	return board.stroke ? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"` : "";
 }
 
 function cardTokenPrefix(node: LayoutNode): string {
@@ -161,7 +170,7 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 		);
 	}
 	for (const [name, connector] of Object.entries(theme.connectors)) {
-		const token = name.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+		const token = kebabToken(name);
 		variables.push(
 			[`connector-${token}-color`, connector.color],
 			[`connector-${token}-width`, connector.width],
@@ -884,9 +893,7 @@ function renderGroup(
 				? ""
 				: ` transform="matrix(${scaleX} 0 0 ${scaleY} ${translateX} ${translateY})"`;
 	const role = nested ? "nested" : "topic";
-	const outline = board.stroke
-		? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"`
-		: "";
+	const outline = boardOutline(board);
 	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"${outline}/>`;
 }
 
@@ -967,7 +974,7 @@ function renderConnector(
 	prefix: string,
 	laneOffset: number,
 ): string {
-	const token = connector.kind.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+	const token = kebabToken(connector.kind);
 	const connectorTheme = theme.connectors[connector.kind];
 	const path =
 		connectorTheme.routing === "orthogonal"
@@ -1057,9 +1064,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 		.join("");
 	const pathScaleX = 1.01;
 	const pathTranslateX = Math.round((legend.x + legend.width / 2) * (1 - pathScaleX) * 100) / 100;
-	const outline = board.stroke
-		? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"`
-		: "";
+	const outline = boardOutline(board);
 	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
 }
 
@@ -1124,7 +1129,7 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 			.map(([kind, connector]) => {
 				const endShape = connector.endShape ?? "none";
 				if (endShape === "none" || connector.routing === "braided") return "";
-				const token = kind.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+				const token = kebabToken(kind);
 				const paint = `fill="${cssToken(`connector-${token}-color`)}" fill-opacity="${cssToken(`connector-${token}-opacity`)}"`;
 				// The ring is filled with the canvas color so the connector line
 				// underneath does not show through its center.
@@ -1186,7 +1191,81 @@ function baseStyles(): string {
 	.roadmap__node--heading .roadmap__frame{display:none}`;
 }
 
-function renderBackgroundArtifact(artifact: LayoutBackgroundArtifact, prefix: string): string {
+const artifactMotionVariants = 4;
+
+interface MotionHarmonic {
+	readonly amplitude: number;
+	readonly frequency: number;
+	readonly phase: number;
+}
+
+interface MotionAxes {
+	readonly x: readonly MotionHarmonic[];
+	readonly y: readonly MotionHarmonic[];
+	readonly rotate: readonly MotionHarmonic[];
+	readonly scale: readonly MotionHarmonic[];
+}
+
+/**
+ * The wandering-motion harmonic tables are constants: each axis layers two
+ * sine harmonics with integer frequencies (so the loop closes seamlessly)
+ * whose amplitudes and phases come from fixed seeds. Layering keeps the drift
+ * from ever reading as a pendulum.
+ */
+const artifactMotionAxes: readonly MotionAxes[] = Array.from(
+	{ length: artifactMotionVariants },
+	(_, variant) => {
+		const random = createSeededRandom(`artifact-motion:${variant}`);
+		const harmonic = (base: number, spread: number, frequency: number): MotionHarmonic => ({
+			amplitude: base + random() * spread,
+			frequency,
+			phase: random(),
+		});
+		return {
+			x: [harmonic(1.4, 1.4, 1), harmonic(0.5, 0.9, 3)],
+			y: [harmonic(2, 1.8, 1), harmonic(0.8, 1, 2)],
+			rotate: [harmonic(1.8, 2, 1), harmonic(0.9, 1.1, 2)],
+			scale: [harmonic(0.022, 0.02, 1), harmonic(0.009, 0.011, 3)],
+		};
+	},
+);
+
+/**
+ * Samples the harmonic tables into shared CSS keyframe variants; twelve
+ * linear steps preserve the curve without per-artifact keyframe bloat.
+ */
+function artifactMotionKeyframes(intensity: number): string {
+	const steps = 12;
+	const sample = (harmonics: readonly MotionHarmonic[], t: number): number =>
+		harmonics.reduce(
+			(sum, harmonic) =>
+				sum + harmonic.amplitude * Math.sin(2 * Math.PI * (harmonic.frequency * t + harmonic.phase)),
+			0,
+		);
+	const round = (value: number): number => Math.round(value * 100) / 100;
+	return artifactMotionAxes
+		.map((axes, variant) => {
+			const stops: string[] = [];
+			for (let step = 0; step <= steps; step += 1) {
+				const t = step / steps;
+				const x = (sample(axes.x, t) * intensity).toFixed(2);
+				const y = (sample(axes.y, t) * intensity).toFixed(2);
+				const rotate = (sample(axes.rotate, t) * intensity).toFixed(2);
+				const scale = (1 + sample(axes.scale, t) * intensity).toFixed(3);
+				stops.push(
+					`${round(t * 100)}%{transform:translate(${x}px,${y}px) rotate(${rotate}deg) scale(${scale})}`,
+				);
+			}
+			return `@keyframes roadmap-artifact-drift-${variant}{${stops.join("")}}`;
+		})
+		.join("\n\t");
+}
+
+function renderBackgroundArtifact(
+	artifact: LayoutBackgroundArtifact,
+	prefix: string,
+	animated = false,
+): string {
 	const shapes = artifact.shapes
 		.map((shape) => {
 			const paint = `${shape.fill ? ` fill="${escapeXml(shape.fill)}"` : ""}${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth === undefined ? "" : ` stroke-width="${shape.strokeWidth}"`}`;
@@ -1196,7 +1275,14 @@ function renderBackgroundArtifact(artifact: LayoutBackgroundArtifact, prefix: st
 		})
 		.join("");
 	const transform = artifact.transform ? ` transform="${escapeXml(artifact.transform)}"` : "";
-	return `<g id="${prefix}-${safeId(artifact.id)}" class="roadmap__background-artifact"${transform}>${shapes}</g>`;
+	// Motion lives on an inner group so the artifact's placement transform is
+	// untouched; the variant, tempo, and phase derive from the artifact id to
+	// stay deterministic.
+	const seed = Number.parseInt(hashString(artifact.id), 36) >>> 0;
+	const content = animated
+		? `<g class="roadmap__background-artifact-motion" style="animation-name:roadmap-artifact-drift-${seed % artifactMotionVariants};animation-duration:${(7 + (seed % 50) / 10).toFixed(1)}s;animation-delay:-${((seed >>> 4) % 90) / 10}s">${shapes}</g>`
+		: shapes;
+	return `<g id="${prefix}-${safeId(artifact.id)}" class="roadmap__background-artifact"${transform}>${content}</g>`;
 }
 
 export function renderRoadmapSvg(
@@ -1235,9 +1321,22 @@ export function renderRoadmapSvg(
 		.filter((connector) => connector.kind === "topicToChildren")
 		.map(renderedConnector)
 		.join("");
+	const rawIntensity =
+		typeof options.animatedBackground === "number"
+			? options.animatedBackground
+			: options.animatedBackground
+				? 1
+				: 0;
+	const intensity = Math.min(4, Math.max(0, rawIntensity));
+	const animatedBackground = intensity > 0 && layout.backgroundArtifacts.length > 0;
 	const backgroundArtifacts = layout.backgroundArtifacts
-		.map((artifact) => renderBackgroundArtifact(artifact, prefix))
+		.map((artifact) => renderBackgroundArtifact(artifact, prefix, animatedBackground))
 		.join("");
+	const animationStyles = animatedBackground
+		? `\n\t.roadmap__background-artifact-motion{animation-timing-function:linear;animation-iteration-count:infinite}
+	${artifactMotionKeyframes(intensity)}
+	@media (prefers-reduced-motion:reduce){.roadmap__background-artifact-motion{animation:none}}`
+		: "";
 	const groups = layout.elements
 		.filter((element): element is LayoutGroup => element.kind === "group")
 		.map((group) => renderGroup(group, layout.elements, theme, prefix))
@@ -1258,7 +1357,7 @@ export function renderRoadmapSvg(
 	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
 	<title id="${titleId}">${escapeXml(title)}</title>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
-	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${userCss}</style>
+	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>
 	${renderDefinitions(prefix, theme)}
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>

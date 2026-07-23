@@ -8,7 +8,7 @@ interface FrontmatterMap {
 
 export const defaultRoadmapSettings: RoadmapSettings = {
 	theme: { preset: "fun" },
-	background: { enabled: false, seed: "default", density: 0.55, size: 1 },
+	background: { enabled: false, seed: "default", density: 0.55, size: 1, animated: false },
 };
 
 export class RoadmapFrontmatterError extends Error {
@@ -127,7 +127,7 @@ function parseBackground(value: FrontmatterValue | undefined): RoadmapSettings["
 	if (!isMap(value)) {
 		throw new RoadmapFrontmatterError("The roadmap background must be a boolean or a mapping.");
 	}
-	assertKnownKeys(value, ["enabled", "seed", "density", "size"], "background");
+	assertKnownKeys(value, ["enabled", "seed", "density", "size", "animated"], "background");
 	const enabled = value.enabled ?? true;
 	if (typeof enabled !== "boolean") {
 		throw new RoadmapFrontmatterError("The background enabled setting must be a boolean.");
@@ -144,7 +144,16 @@ function parseBackground(value: FrontmatterValue | undefined): RoadmapSettings["
 	if (typeof size !== "number" || size < 0.25 || size > 3) {
 		throw new RoadmapFrontmatterError("The background size must be between 0.25 and 3.");
 	}
-	return { enabled, seed: String(rawSeed), density, size };
+	const animated = value.animated ?? defaultRoadmapSettings.background.animated;
+	if (
+		typeof animated !== "boolean" &&
+		(typeof animated !== "number" || animated < 0 || animated > 4)
+	) {
+		throw new RoadmapFrontmatterError(
+			"The background animated setting must be a boolean or a number between 0 and 4.",
+		);
+	}
+	return { enabled, seed: String(rawSeed), density, size, animated };
 }
 
 export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSettings {

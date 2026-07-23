@@ -127,6 +127,11 @@ export interface RoadmapBackgroundSettings {
 	readonly seed: string;
 	readonly density: number;
 	readonly size: number;
+	/**
+	 * Animate the artifacts with a deterministic drift loop. `true` uses the
+	 * default intensity of `1`; a number from `0` to `4` scales the motion.
+	 */
+	readonly animated?: boolean | number;
 }
 
 export interface RoadmapSettings {
@@ -530,6 +535,11 @@ export interface RoadmapRenderOptions {
 	readonly responsive?: boolean;
 	readonly title?: string;
 	readonly description?: string;
+	/**
+	 * Animate background artifacts; numbers scale the motion intensity.
+	 * Defaults to the document's background setting.
+	 */
+	readonly animatedBackground?: boolean | number;
 }
 
 export interface RoadmapThemeSelection {

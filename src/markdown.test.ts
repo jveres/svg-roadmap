@@ -25,7 +25,13 @@ roadmap:
 
 		expect(document.settings).toEqual({
 			theme: { preset: "fun", mode: "dark" },
-			background: { enabled: true, seed: "stable-demo", density: 0.7, size: 1.4 },
+			background: {
+				enabled: true,
+				seed: "stable-demo",
+				density: 0.7,
+				size: 1.4,
+				animated: false,
+			},
 		});
 		expect(document.steps).toHaveLength(1);
 	});

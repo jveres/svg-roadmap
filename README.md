@@ -164,11 +164,16 @@ roadmap:
     seed: engineering-2026
     density: 0.55
     size: 0.8
+    animated: 1.5
 ---
 ```
 
 `density` accepts values from `0` to `1`. `size` is a scale from `0.25` to `3`;
-`1` uses the theme's default artifact size. Programmatic `theme` options
+`1` uses the theme's default artifact size. `animated` adds a deterministic
+CSS drift loop to the artifacts: `true` uses the default intensity of `1`, and
+a number from `0` to `4` scales the motion. No scripts are involved,
+`prefers-reduced-motion` is respected, and each artifact gets its own phase and
+tempo. Programmatic `theme` options
 override the front-matter theme, which lets an editor follow the system color
 scheme without rewriting its source.
 

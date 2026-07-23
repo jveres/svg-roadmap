@@ -601,6 +601,7 @@ export function createTheme(
 				generate: overrideArtifacts.generate ?? baseArtifacts?.generate,
 			}
 		: baseArtifacts;
+	const shadowPattern = override.shadow?.pattern ?? base.shadow.pattern;
 	const unknown = mergeTag(base.badges.unknown, override.badges?.unknown);
 	const tagNames = new Set([
 		...Object.keys(base.badges.tags),
@@ -656,9 +657,7 @@ export function createTheme(
 		shadow: {
 			color: override.shadow?.color ?? base.shadow.color,
 			opacity: override.shadow?.opacity ?? base.shadow.opacity,
-			...((override.shadow?.pattern ?? base.shadow.pattern) !== undefined
-				? { pattern: override.shadow?.pattern ?? base.shadow.pattern }
-				: {}),
+			...(shadowPattern !== undefined ? { pattern: shadowPattern } : {}),
 			offsetX: override.shadow?.offsetX ?? base.shadow.offsetX,
 			offsetY: override.shadow?.offsetY ?? base.shadow.offsetY,
 			softBlur: override.shadow?.softBlur ?? base.shadow.softBlur,

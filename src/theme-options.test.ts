@@ -76,6 +76,46 @@ describe("theme customization options", () => {
 		);
 	});
 
+	test("animated backgrounds emit a deterministic drift loop on request", () => {
+		const animatedSource = `---
+roadmap:
+  background:
+    enabled: true
+    seed: motion
+    animated: true
+---
+
+# Motion
+
+* Chapter
+  * Topic
+`;
+		const animated = generateRoadmap(animatedSource);
+		expect(animated.layout.backgroundArtifacts.length).toBeGreaterThan(0);
+		expect(animated.svg).toContain("@keyframes roadmap-artifact-drift");
+		expect(animated.svg).toContain('class="roadmap__background-artifact-motion"');
+		expect(animated.svg).toContain("prefers-reduced-motion");
+		expect(animated.svg).toMatch(/animation-duration:\d+\.\d+s;animation-delay:-\d+(?:\.\d+)?s/u);
+		expect(animated.svg).toBe(generateRoadmap(animatedSource).svg);
+		expect(animated.svg).not.toContain("<script");
+
+		const still = generateRoadmap(animatedSource.replace("    animated: true\n", ""));
+		expect(still.svg).not.toContain("@keyframes roadmap-artifact-drift");
+		expect(still.svg).not.toContain("roadmap__background-artifact-motion");
+
+		// Four shared wandering variants; intensity rescales their amplitudes.
+		expect(animated.svg.match(/@keyframes roadmap-artifact-drift-\d/gu)).toHaveLength(4);
+		expect(animated.svg).toMatch(/animation-name:roadmap-artifact-drift-\d/u);
+		const intense = generateRoadmap(
+			animatedSource.replace("    animated: true\n", "    animated: 2\n"),
+		);
+		const keyframesOf = (svg: string): string =>
+			svg.match(/@keyframes roadmap-artifact-drift-0\{[^}]*\}/u)?.[0] ?? "";
+		expect(keyframesOf(intense.svg)).not.toBe(keyframesOf(animated.svg));
+		expect(generateRoadmap(animatedSource.replace("    animated: true\n", "    animated: 0\n")).svg)
+			.not.toContain("@keyframes roadmap-artifact-drift");
+	});
+
 	test("legend uppercase and letter spacing carry into layout and markup", () => {
 		const generated = generateRoadmap(source, {
 			theme: { legend: { letterSpacing: 1.5, textTransform: "uppercase" } },
