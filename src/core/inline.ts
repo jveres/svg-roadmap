@@ -252,13 +252,15 @@ function characterWidth(
 	bold: boolean,
 	category: FontCategory,
 ): number {
+	// Emoji keep their pictographic advance even in monospace text: emoji
+	// glyphs and the SVG symbols drawn in their place are ~1em wide, not 1ch.
+	if (pictographPattern.test(character)) return fontSize * 1.05;
 	if (category === "monospace") return fontSize * 0.6;
 	const units = (bold ? arialBold : arialRegular).get(character);
 	if (units !== undefined) {
 		const familyScale = category === "serif" ? 1.04 : 1;
 		return (units / 1000) * fontSize * familyScale;
 	}
-	if (pictographPattern.test(character)) return fontSize * 1.05;
 	if (cjkPattern.test(character)) return fontSize;
 	if (whitespacePattern.test(character)) return fontSize * 0.278;
 	return fontSize * 0.556;

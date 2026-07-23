@@ -485,13 +485,20 @@ function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): 
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	if (theme.name !== "rose" && theme.name !== "sci-fi") return renderPositionedText(node, prefix);
-	const flowingOptions: FlowingTextOptions =
-		theme.name === "rose" ? { nativeHighlight: true, nativeInsert: true } : {};
+	const nativeDecorations = theme.name === "rose";
+	const flowingOptions: FlowingTextOptions = nativeDecorations
+		? { nativeHighlight: true, nativeInsert: true }
+		: {};
+	// Painted decoration rects must line up with glyphs exactly. WebKit
+	// distributes textLength across a flowing line differently from other
+	// engines, so lines with painted decorations render positioned instead.
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
 				(segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined) ||
-				(theme.name === "sci-fi" && segment.marks.includes("highlight")),
+				segment.marks.includes("code") ||
+				(!nativeDecorations &&
+					(segment.marks.includes("highlight") || segment.marks.includes("insert"))),
 		);
 	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node, flowingOptions);
 
