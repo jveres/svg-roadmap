@@ -51,6 +51,9 @@ app.innerHTML = `
 					<option value="rose">Rose</option>
 					<option value="print">Print</option>
 					<option value="pro">Pro</option>
+					<option value="retro">Retro</option>
+					<option value="arcade">Arcade</option>
+					<option value="ascii">ASCII</option>
 				</select>
 			</label>
 			<label class="theme-picker">Mode
@@ -105,7 +108,48 @@ function loadSample(id: string): void {
 	}
 }
 
+const settingsStorageKey = "roadmap-workbench-settings";
+
+interface WorkbenchSettings {
+	readonly sample?: string;
+	readonly theme?: string;
+	readonly mode?: string;
+}
+
+function loadStoredSettings(): WorkbenchSettings {
+	try {
+		return JSON.parse(localStorage.getItem(settingsStorageKey) ?? "{}") as WorkbenchSettings;
+	} catch {
+		return {};
+	}
+}
+
+function saveSettings(): void {
+	try {
+		localStorage.setItem(
+			settingsStorageKey,
+			JSON.stringify({
+				sample: sampleSelect.value,
+				theme: themePresetSelect.value,
+				mode: colorModeSelect.value,
+			}),
+		);
+	} catch {
+		// Storage may be unavailable (private browsing); settings just do not persist.
+	}
+}
+
+function applyStoredValue(select: HTMLSelectElement, value: string | undefined): void {
+	if (value && [...select.options].some((option) => option.value === value)) {
+		select.value = value;
+	}
+}
+
+const storedSettings = loadStoredSettings();
+applyStoredValue(sampleSelect, storedSettings.sample);
 loadSample(sampleSelect.value);
+applyStoredValue(themePresetSelect, storedSettings.theme);
+applyStoredValue(colorModeSelect, storedSettings.mode);
 let svg = "";
 let renderTimer: number | undefined;
 let generator: RoadmapGenerator | undefined;
@@ -120,7 +164,13 @@ function selectedTheme(): RoadmapThemeSelection {
 	const preset = themePresetSelect.value;
 	return {
 		preset:
-			preset === "sci-fi" || preset === "rose" || preset === "print" || preset === "pro"
+			preset === "sci-fi" ||
+			preset === "rose" ||
+			preset === "print" ||
+			preset === "pro" ||
+			preset === "retro" ||
+			preset === "arcade" ||
+			preset === "ascii"
 				? preset
 				: "fun",
 		mode: selectedMode(),
@@ -173,10 +223,17 @@ function scheduleRender(): void {
 source.addEventListener("input", scheduleRender);
 sampleSelect.addEventListener("change", () => {
 	loadSample(sampleSelect.value);
+	saveSettings();
 	render();
 });
-themePresetSelect.addEventListener("change", render);
-colorModeSelect.addEventListener("change", render);
+themePresetSelect.addEventListener("change", () => {
+	saveSettings();
+	render();
+});
+colorModeSelect.addEventListener("change", () => {
+	saveSettings();
+	render();
+});
 systemTheme.addEventListener("change", () => {
 	if (colorModeSelect.value === "system") render();
 });

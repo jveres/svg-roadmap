@@ -997,6 +997,7 @@ function createLegend(
 		badgeSize,
 		badgeCellSize,
 		badgeAdvance,
+		letterSpacing: theme.legend.letterSpacing ?? 0,
 		iconColumnWidth,
 		color: theme.legend.color,
 		fontFamily: theme.legend.fontFamily,
@@ -1007,16 +1008,20 @@ function createLegend(
 		renderScaleX,
 		renderScaleY,
 	};
+	const legendLabel = (label: string): string =>
+		theme.legend.textTransform === "uppercase" ? label.toUpperCase() : label;
 	const labelWidth =
 		Math.max(
-			...styles.map(([, style]) =>
-				measureText(
-					style.label,
-					paintedFontSize,
-					[],
-					theme.legend.fontWeight,
-					theme.legend.fontFamily,
-				),
+			...styles.map(
+				([, style]) =>
+					measureText(
+						legendLabel(style.label),
+						paintedFontSize,
+						[],
+						theme.legend.fontWeight,
+						theme.legend.fontFamily,
+					) +
+					metrics.letterSpacing * legendLabel(style.label).length,
 			),
 		) * renderScaleX;
 	const padding = theme.boards.legend.padding;
@@ -1025,13 +1030,13 @@ function createLegend(
 		id: "roadmap-legend",
 		x: options.padding,
 		y: Math.max(10, options.padding / 2),
-		width: Math.ceil(padding * 2 + iconColumnWidth + 6 + labelWidth),
+		width: Math.ceil(padding * 2 + iconColumnWidth + 14 + labelWidth),
 		height: Math.ceil(
 			padding * 2 + styles.length * rowHeight + Math.max(0, styles.length - 1) * metrics.rowGap,
 		),
 		items: styles.map(([tag, style]) => ({
 			tag,
-			label: style.label,
+			label: legendLabel(style.label),
 			icons: style.badges.map((badge) => badge.icon),
 		})),
 		metrics,

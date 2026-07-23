@@ -48,6 +48,17 @@ function cardTokenPrefix(node: LayoutNode): string {
 	return node.role;
 }
 
+function themeCards(theme: RoadmapTheme): readonly (readonly [string, CardTheme])[] {
+	return [
+		["chapter", theme.chapter],
+		["chapter-description", theme.note],
+		["floating-note", theme.floatingNote],
+		["topic", theme.topic],
+		["nested-topic", theme.nestedTopic],
+		["topic-header", theme.topicHeader],
+	] as const;
+}
+
 /** Note cards that paint a repeating pattern over their fill, keyed by token. */
 function patternedCards(theme: RoadmapTheme): readonly (readonly [string, CardTheme])[] {
 	return (
@@ -56,6 +67,11 @@ function patternedCards(theme: RoadmapTheme): readonly (readonly [string, CardTh
 			["floating-note", theme.floatingNote],
 		] as const
 	).filter(([, card]) => card.pattern !== undefined && card.pattern !== "none");
+}
+
+/** Cards with a generic gradient fill, keyed by token. */
+function gradientCards(theme: RoadmapTheme): readonly (readonly [string, CardTheme])[] {
+	return themeCards(theme).filter(([, card]) => card.gradient !== undefined);
 }
 
 function textToken(node: LayoutNode): string {
@@ -114,6 +130,16 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 			[`${name}-corner-radius`, card.radius],
 			[`${name}-text`, card.typography.color],
 		);
+		if (card.shadowColor !== undefined) variables.push([`${name}-shadow-color`, card.shadowColor]);
+		if (card.shadowOpacity !== undefined) {
+			variables.push([`${name}-shadow-opacity`, card.shadowOpacity]);
+		}
+		if (card.gradient) {
+			variables.push(
+				[`${name}-card-gradient-start`, card.gradient.start],
+				[`${name}-card-gradient-end`, card.gradient.end],
+			);
+		}
 	}
 	const boards = [
 		["topic", theme.boards.topic],
@@ -607,14 +633,27 @@ function fittedCapsuleFrame(node: LayoutNode): Rect {
 	return { x: centerX - width / 2, y: centerY - height / 2, width, height };
 }
 
-function renderCardFrame(node: LayoutNode, card: CardTheme, prefix: string): string {
+function renderCardFrame(
+	node: LayoutNode,
+	card: CardTheme,
+	prefix: string,
+	shadowPattern: "solid" | "halftone" = "solid",
+): string {
 	const token = cardTokenPrefix(node);
 	const fill =
 		card.pattern !== undefined && card.pattern !== "none"
 			? `url(#${prefix}-${token}-hatch)`
-			: cssToken(`${token}-background`);
+			: card.gradient
+				? `url(#${prefix}-${token}-card-gradient)`
+				: cssToken(`${token}-background`);
 	const attributes = `class="roadmap__frame" data-roadmap-shape="${card.shape}" fill="${fill}" stroke="${cssToken(`${token}-border`)}" stroke-width="${cssToken(`${token}-border-width`)}"`;
-	const shadowAttributes = `class="roadmap__frame-shadow" fill="${cssToken("shadow-color")}" fill-opacity="${cssToken("shadow-opacity")}" stroke="none"`;
+	// The halftone shadow pattern paints with the global shadow color; per-card
+	// shadow color overrides only apply to solid shadows.
+	const shadowFill =
+		shadowPattern === "halftone"
+			? `url(#${prefix}-shadow-halftone)`
+			: `var(--roadmap-${token}-shadow-color, ${cssToken("shadow-color")})`;
+	const shadowAttributes = `class="roadmap__frame-shadow" fill="${shadowFill}" fill-opacity="var(--roadmap-${token}-shadow-opacity, ${cssToken("shadow-opacity")})" stroke="none"`;
 	const height = node.kind === "chapter" ? node.height - 1 : node.height;
 	const rectangle =
 		node.kind === "note" && (card.shape === "organic" || card.shape === "petal")
@@ -653,7 +692,22 @@ function renderCardFrame(node: LayoutNode, card: CardTheme, prefix: string): str
 		card.shape === "cameo"
 			? `<path class="roadmap__frame-detail roadmap__frame-detail--cameo" d="${cameoCardPath(insetRectangle(rectangle, Math.max(2, rectangle.height * 0.14)))}" fill="none" stroke="${cssToken(`${token}-border`)}" stroke-width="var(--roadmap-frame-detail-width,0.7)" stroke-opacity="var(--roadmap-frame-detail-opacity,0.45)" pointer-events="none"/>`
 			: "";
-	return `${card.shadow ? renderShape(shadowAttributes) : ""}${renderShape(attributes)}${detail}`;
+	const insetKeyline = (): string => {
+		if (card.detailInset === undefined || card.shape === "cameo" || card.shape === "organic") {
+			return "";
+		}
+		const inner = insetRectangle(rectangle, card.detailInset);
+		const paint = `class="roadmap__frame-detail" fill="none" stroke="${cssToken(`${token}-border`)}" stroke-width="var(--roadmap-frame-detail-width,0.7)" stroke-opacity="var(--roadmap-frame-detail-opacity,0.45)" pointer-events="none"`;
+		if (card.shape === "chamfered") {
+			return `<path ${paint} d="${chamferedRectanglePath(inner, Math.max(0, card.radius - card.detailInset))}"/>`;
+		}
+		if (card.shape === "petal") return `<path ${paint} d="${petalCardPath(inner)}"/>`;
+		if (card.shape === "capsule") {
+			return `<rect ${paint} x="${inner.x}" y="${inner.y}" width="${inner.width}" height="${inner.height}" rx="${inner.height / 2}"/>`;
+		}
+		return `<rect ${paint} x="${inner.x}" y="${inner.y}" width="${inner.width}" height="${inner.height}" rx="${Math.max(0, card.radius - card.detailInset)}"/>`;
+	};
+	return `${card.shadow ? renderShape(shadowAttributes) : ""}${renderShape(attributes)}${detail}${insetKeyline()}`;
 }
 
 function insetRectangle(rectangle: Rect, inset: number): Rect {
@@ -758,7 +812,9 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
 		: "";
 	const card = cardTheme(node, theme);
-	const frame = card ? renderCardFrame(node, card, prefix) : "";
+	const frame = card
+		? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
+		: "";
 	const headingBackdrop =
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
@@ -907,7 +963,12 @@ function renderConnector(
 				: connector.kind === "topicToChildren"
 					? bundledCurvePath(connector.from, connector.to)
 					: verticalBumpPath(connector.from, connector.to);
-	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"`;
+	const endShape = connectorTheme.endShape ?? "none";
+	const marker =
+		endShape !== "none" && connectorTheme.routing !== "braided"
+			? ` marker-end="url(#${prefix}-marker-${token}-${endShape})"`
+			: "";
+	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"${marker}`;
 	if (connectorTheme.routing !== "braided") {
 		return `<path id="${prefix}-${safeId(connector.id)}" ${attributes}/>`;
 	}
@@ -932,7 +993,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 				height: metrics.rowHeight,
 			},
 			{
-				x: legend.x + board.padding + metrics.iconColumnWidth + 2,
+				x: legend.x + board.padding + metrics.iconColumnWidth + 10,
 				y,
 				width: labelWidth + 11,
 				height: metrics.rowHeight,
@@ -970,13 +1031,14 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 					),
 				)
 				.join("");
-			const textX = legend.x + board.padding + metrics.iconColumnWidth + 6;
+			const textX = legend.x + board.padding + metrics.iconColumnWidth + 14;
 			const baseline = y + metrics.badgeSize * 0.77;
 			const transform =
 				metrics.renderScaleX === 1 && metrics.renderScaleY === 1
 					? ""
 					: ` transform="matrix(${metrics.renderScaleX} 0 0 ${metrics.renderScaleY} ${textX * (1 - metrics.renderScaleX)} ${baseline * (1 - metrics.renderScaleY)})"`;
-			return `${badges}<text class="roadmap__legend-label" x="${textX}" y="${baseline}"${transform} font-family="${escapeXml(metrics.fontFamily)}" font-size="${fontSize}" font-weight="${metrics.fontWeight}" font-style="${metrics.fontStyle}" fill="${cssToken("legend-text")}">${escapeXml(item.label)}</text>`;
+			const spacing = metrics.letterSpacing === 0 ? "" : ` letter-spacing="${metrics.letterSpacing}"`;
+			return `${badges}<text class="roadmap__legend-label" x="${textX}" y="${baseline}"${transform}${spacing} font-family="${escapeXml(metrics.fontFamily)}" font-size="${fontSize}" font-weight="${metrics.fontWeight}" font-style="${metrics.fontStyle}" fill="${cssToken("legend-text")}">${escapeXml(item.label)}</text>`;
 		})
 		.join("");
 	const pathScaleX = 1.01;
@@ -995,6 +1057,10 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 		decoration = `<path d="M 0 0 H 12 M 0 0 V 12" fill="none" ${paint}/>`;
 	} else if (board.pattern === "dots") {
 		decoration = `<circle cx="6" cy="6" r="1.25" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
+	} else if (board.pattern === "halftone") {
+		decoration = `<g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><circle cx="3" cy="3" r="1.7"/><circle cx="9" cy="9" r="1.7"/><circle cx="9" cy="3" r="0.9"/><circle cx="3" cy="9" r="0.9"/></g>`;
+	} else if (board.pattern === "waves") {
+		decoration = `<path d="M 0 3.5 Q 3 0.5 6 3.5 T 12 3.5 M 0 9.5 Q 3 6.5 6 9.5 T 12 9.5" fill="none" ${paint} stroke-linecap="round"/>`;
 	} else if (board.pattern === "lace") {
 		decoration = `<path d="M -4 7 Q 0 1 4 7 T 12 7 T 20 7" fill="none" ${paint}/><circle cx="4" cy="7" r="1.15" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
 	} else if (board.pattern === "floral-lace") {
@@ -1015,6 +1081,11 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 	return `<defs>
 		<linearGradient id="${prefix}-chapter-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("chapter-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("chapter-gradient-end")}"/><stop offset="1" stop-color="${cssToken("chapter-gradient-end")}"/></linearGradient>
 		<linearGradient id="${prefix}-topic-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("topic-header-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("topic-header-gradient-end")}"/><stop offset="1" stop-color="${cssToken("topic-header-gradient-end")}"/></linearGradient>
+		${
+			theme.shadow.pattern === "halftone"
+				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="3" height="3"><rect width="1.5" height="1.5" fill="${cssToken("shadow-color")}"/></pattern>`
+				: ""
+		}
 		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic)}
 		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested)}
 		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend)}
@@ -1025,6 +1096,40 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 					pattern: card.pattern ?? "none",
 				}),
 			)
+			.join("\n\t\t")}
+		${gradientCards(theme)
+			.map(
+				([token]) =>
+					`<linearGradient id="${prefix}-${token}-card-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken(`${token}-card-gradient-start`)}"/><stop offset="1" stop-color="${cssToken(`${token}-card-gradient-end`)}"/></linearGradient>`,
+			)
+			.join("\n\t\t")}
+		${Object.entries(theme.connectors)
+			.map(([kind, connector]) => {
+				const endShape = connector.endShape ?? "none";
+				if (endShape === "none" || connector.routing === "braided") return "";
+				const token = kind.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+				const paint = `fill="${cssToken(`connector-${token}-color`)}" fill-opacity="${cssToken(`connector-${token}-opacity`)}"`;
+				// The ring is filled with the canvas color so the connector line
+				// underneath does not show through its center.
+				const outline = `fill="${cssToken("canvas-background")}" stroke="${cssToken(`connector-${token}-color`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-width="1.6"`;
+				const content =
+					endShape === "arrow"
+						? `<path d="M 0 1 L 8 5 L 0 9 Z" ${paint}/>`
+						: endShape === "diamond"
+							? `<path d="M 5 1 L 9 5 L 5 9 L 1 5 Z" ${paint}/>`
+							: endShape === "circle"
+								? `<circle cx="5" cy="5" r="3" ${outline}/>`
+								: `<circle cx="5" cy="5" r="3.2" ${paint}/>`;
+				// userSpaceOnUse keeps end shapes legible on hairline connectors,
+				// scaled from the stroke width with a floor. The reference point
+				// sits at the leading edge of each shape so markers rest against
+				// the target instead of straddling its edge, where boards and
+				// badges would occlude half of them.
+				const size = Math.min(18, Math.max(7, connector.width * 4.5));
+				const refX = endShape === "arrow" ? 8 : endShape === "diamond" ? 9 : 8.7;
+				return `<marker id="${prefix}-marker-${token}-${endShape}" viewBox="0 0 10 10" refX="${refX}" refY="5" markerWidth="${size}" markerHeight="${size}" markerUnits="userSpaceOnUse" orient="auto-start-reverse">${content}</marker>`;
+			})
+			.filter(Boolean)
 			.join("\n\t\t")}
 		<filter id="${prefix}-soft-shadow" x="-30%" y="-30%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="${cssToken("soft-shadow-blur")}" result="soft-offset"/><feOffset in="soft-offset" dx="${cssToken("soft-shadow-offset-x")}" dy="${cssToken("soft-shadow-offset-y")}" result="soft-offset"/><feColorMatrix type="saturate" in="soft-offset" values="${cssToken("soft-shadow-saturation")}"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 		${symbol("check", "0 0 512 512", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM369 209 241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>')}

@@ -19,7 +19,7 @@ import type {
  * are not.
  */
 
-const presets = ["fun", "sci-fi", "rose", "print", "pro"] as const;
+const presets = ["fun", "sci-fi", "rose", "print", "pro", "retro", "arcade", "ascii"] as const;
 
 const wideWord = "Superlongunbreakablelabelwithoutanyspacesatall";
 const filler = Array.from({ length: 28 }, (_, index) => `word${index}`).join(" ");

@@ -42,6 +42,9 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			color: inkMuted,
 			fontFamily: bodyFontFamily,
 			fontStyle: "normal",
+			fontSize: 9.5,
+			letterSpacing: 0.8,
+			textTransform: "uppercase",
 		},
 		chapter: {
 			shape: "rounded",
@@ -112,8 +115,11 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			paddingX: 16,
 			typography: {
 				color: ink,
-				fontFamily: displayFontFamily,
+				fontFamily: bodyFontFamily,
+				fontSize: 11.5,
 				fontWeight: 600,
+				letterSpacing: 1.1,
+				textTransform: "uppercase",
 			},
 		},
 		boards: {

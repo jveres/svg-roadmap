@@ -36,6 +36,7 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				color: "#592640",
 				fontFamily: displayFontFamily,
 				fontWeight: 600,
+				letterSpacing: 0.4,
 			},
 		},
 		note: {
@@ -86,6 +87,7 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				color: "#65334f",
 				fontFamily: displayFontFamily,
 				fontWeight: 700,
+				letterSpacing: 0.4,
 			},
 		},
 		boards: {

@@ -40,6 +40,9 @@ export const proLightTheme: RoadmapTheme = createTheme(
 			color: slateMuted,
 			fontFamily: bodyFontFamily,
 			fontStyle: "normal",
+			fontSize: 9.5,
+			letterSpacing: 0.6,
+			textTransform: "uppercase",
 		},
 		chapter: {
 			shape: "rounded",
@@ -104,7 +107,10 @@ export const proLightTheme: RoadmapTheme = createTheme(
 			typography: {
 				color: "#243242",
 				fontFamily: monoFontFamily,
+				fontSize: 11.5,
 				fontWeight: 600,
+				letterSpacing: 0.5,
+				textTransform: "uppercase",
 			},
 		},
 		boards: {
@@ -147,6 +153,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				width: 1.25,
 				dash: "",
 				opacity: 0.7,
+				endShape: "arrow",
 			},
 			topicToChildren: {
 				routing: "orthogonal",
@@ -155,6 +162,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				width: 1,
 				dash: "",
 				opacity: 0.75,
+				endShape: "arrow",
 			},
 		},
 		inline: {

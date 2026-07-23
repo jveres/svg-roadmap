@@ -15,8 +15,9 @@ tools.
 - Generates SVG strings without a DOM, canvas, or layout framework.
 - Implements rectangle overlap checks, collision resolution, convex hulls, and
   Bézier connectors in the core.
-- Includes `Fun`, utopian `Sci-fi`, feminine `Rose`, editorial `Print`, and
-  engineering-grade `Pro` roadmap themes with light and dark modes.
+- Includes `Fun`, utopian `Sci-fi`, feminine `Rose`, editorial `Print`,
+  engineering-grade `Pro`, seventies `Retro`, neon `Arcade`, and terminal
+  `ASCII` roadmap themes with light and dark modes.
 - Supports optional, seeded background decoration owned by each theme.
 - Exposes typed design tokens, CSS classes, and `data-roadmap-element` hooks.
 - Preserves headings, comments, links, emphasis, highlights, inserts, tags,
@@ -173,8 +174,8 @@ scheme without rewriting its source.
 
 ## Themes and restyling
 
-`Fun`, `Sci-fi`, `Rose`, `Print`, and `Pro` are built-in roadmap theme
-presets. Each
+`Fun`, `Sci-fi`, `Rose`, `Print`, `Pro`, `Retro`, `Arcade`, and `ASCII` are
+built-in roadmap theme presets. Each
 preset supplies a complete appearance and light and dark palettes; decorative
 background artifacts are an optional theme capability. `Sci-fi` uses clean
 translucent surfaces, cyan and violet accents, geometric orbital and signal
@@ -189,7 +190,16 @@ type, sharp flat cards with hairline rules, serif italic pull-quote notes,
 solid ink chapter blocks, restrained badges, and no background artifacts for a
 minimal editorial result. `Pro` targets software professionals with cool slate
 surfaces, monospace display type, blueprint grid and dot boards, orthogonal
-connectors, a steel-blue accent, and no background artifacts.
+connectors, a steel-blue accent, and no background artifacts. `Retro` leans
+into the seventies with cream paper, burnt orange, avocado, and mustard,
+chunky rounded display type, capsule chapters with hard offset shadows,
+polka-dot boards, and thick curved connectors, over warm espresso surfaces in
+dark mode. `Arcade` is an eighties cabinet: marquee display type, neon pink
+and cyan on deep violet, chamfered bezels with inner keylines, synthwave grid
+boards, and dotted pellet-trail branch connectors. `ASCII` reads like a hand-set
+monospace diagram zine on warm paper: unfilled hairline boxes, a double-ruled
+chapter frame, tracked uppercase labels, warm-grayscale badges, and dashed
+right-angle connectors with arrowheads, printed in negative for dark mode.
 
 The `lightTheme` and `darkTheme` exports remain convenient Fun resolved-mode
 values for the lower-level API. Typography and spacing properties affect

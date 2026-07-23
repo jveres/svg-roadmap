@@ -247,6 +247,7 @@ export interface LayoutLegendItem {
 }
 
 export interface LayoutLegendMetrics {
+	readonly letterSpacing: number;
 	readonly rowHeight: number;
 	readonly rowGap: number;
 	readonly badgeSize: number;
@@ -335,6 +336,9 @@ export interface TypographyTheme {
 	readonly fontWeight: number;
 	readonly fontStyle: "normal" | "italic";
 	readonly lineHeight: number;
+	/** Additional advance per character in pixels at the given font size. */
+	readonly letterSpacing?: number;
+	readonly textTransform?: "none" | "uppercase";
 	readonly renderScale?: number;
 	readonly renderScaleX?: number;
 	readonly renderScaleY?: number;
@@ -352,6 +356,13 @@ export interface CardTheme {
 	readonly pattern?: BoardTheme["pattern"];
 	readonly hatch?: string;
 	readonly hatchOpacity?: number;
+	/** Optional gradient fill; takes effect when no pattern is set. */
+	readonly gradient?: { readonly start: string; readonly end: string };
+	/** Inner keyline outline inset by this many pixels (sticker look). */
+	readonly detailInset?: number;
+	/** Overrides for the global shadow paint on this card only. */
+	readonly shadowColor?: string;
+	readonly shadowOpacity?: number;
 	readonly stroke: string;
 	readonly strokeWidth: number;
 	readonly radius: number;
@@ -373,6 +384,8 @@ export interface BoardTheme {
 		| "floral-lace"
 		| "pearls"
 		| "bows"
+		| "waves"
+		| "halftone"
 		| "none";
 	readonly background: string;
 	readonly hatch: string;
@@ -387,6 +400,8 @@ export interface ConnectorTheme {
 	readonly width: number;
 	readonly dash: string;
 	readonly opacity: number;
+	/** Marker drawn at the target end of the connector; braided spines ignore it. */
+	readonly endShape?: "none" | "arrow" | "dot" | "circle" | "diamond";
 }
 
 export interface BackgroundArtifactContext {
@@ -441,6 +456,8 @@ export interface RoadmapTheme {
 	readonly shadow: {
 		readonly color: string;
 		readonly opacity: number;
+		/** Hard offset shadows paint solid by default; halftone uses a dot grid. */
+		readonly pattern?: "solid" | "halftone";
 		readonly offsetX: number;
 		readonly offsetY: number;
 		readonly softBlur: number;

@@ -461,6 +461,8 @@ function mergeTypography(
 	const renderScaleX = override?.renderScaleX ?? base.renderScaleX;
 	const renderScaleY = override?.renderScaleY ?? base.renderScaleY;
 	const baselineRatio = override?.baselineRatio ?? base.baselineRatio;
+	const letterSpacing = override?.letterSpacing ?? base.letterSpacing;
+	const textTransform = override?.textTransform ?? base.textTransform;
 	return {
 		color: override?.color ?? base.color,
 		fontFamily: override?.fontFamily ?? base.fontFamily,
@@ -468,6 +470,8 @@ function mergeTypography(
 		fontWeight: override?.fontWeight ?? base.fontWeight,
 		fontStyle: override?.fontStyle ?? base.fontStyle,
 		lineHeight: override?.lineHeight ?? base.lineHeight,
+		...(letterSpacing !== undefined ? { letterSpacing } : {}),
+		...(textTransform !== undefined ? { textTransform } : {}),
 		...(renderScale !== undefined ? { renderScale } : {}),
 		...(renderScaleX !== undefined ? { renderScaleX } : {}),
 		...(renderScaleY !== undefined ? { renderScaleY } : {}),
@@ -501,12 +505,23 @@ function mergeCard(base: CardTheme, override: DeepPartial<CardTheme> | undefined
 	const pattern = override?.pattern ?? base.pattern;
 	const hatch = override?.hatch ?? base.hatch;
 	const hatchOpacity = override?.hatchOpacity ?? base.hatchOpacity;
+	const gradientStart = override?.gradient?.start ?? base.gradient?.start;
+	const gradientEnd = override?.gradient?.end ?? base.gradient?.end;
+	const detailInset = override?.detailInset ?? base.detailInset;
+	const shadowColor = override?.shadowColor ?? base.shadowColor;
+	const shadowOpacity = override?.shadowOpacity ?? base.shadowOpacity;
 	return {
 		shape: override?.shape ?? base.shape,
 		fill: override?.fill ?? base.fill,
 		...(pattern !== undefined ? { pattern } : {}),
 		...(hatch !== undefined ? { hatch } : {}),
 		...(hatchOpacity !== undefined ? { hatchOpacity } : {}),
+		...(gradientStart !== undefined && gradientEnd !== undefined
+			? { gradient: { start: gradientStart, end: gradientEnd } }
+			: {}),
+		...(detailInset !== undefined ? { detailInset } : {}),
+		...(shadowColor !== undefined ? { shadowColor } : {}),
+		...(shadowOpacity !== undefined ? { shadowOpacity } : {}),
 		stroke: override?.stroke ?? base.stroke,
 		strokeWidth: override?.strokeWidth ?? base.strokeWidth,
 		radius: override?.radius ?? base.radius,
@@ -534,6 +549,7 @@ function mergeConnector(
 	base: ConnectorTheme,
 	override: DeepPartial<ConnectorTheme> | undefined,
 ): ConnectorTheme {
+	const endShape = override?.endShape ?? base.endShape;
 	return {
 		routing: override?.routing ?? base.routing,
 		laneSpacing: override?.laneSpacing ?? base.laneSpacing,
@@ -541,6 +557,7 @@ function mergeConnector(
 		width: override?.width ?? base.width,
 		dash: override?.dash ?? base.dash,
 		opacity: override?.opacity ?? base.opacity,
+		...(endShape !== undefined ? { endShape } : {}),
 	};
 }
 
@@ -635,6 +652,9 @@ export function createTheme(
 		shadow: {
 			color: override.shadow?.color ?? base.shadow.color,
 			opacity: override.shadow?.opacity ?? base.shadow.opacity,
+			...((override.shadow?.pattern ?? base.shadow.pattern) !== undefined
+				? { pattern: override.shadow?.pattern ?? base.shadow.pattern }
+				: {}),
 			offsetX: override.shadow?.offsetX ?? base.shadow.offsetX,
 			offsetY: override.shadow?.offsetY ?? base.shadow.offsetY,
 			softBlur: override.shadow?.softBlur ?? base.shadow.softBlur,

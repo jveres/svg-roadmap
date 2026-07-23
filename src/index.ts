@@ -31,6 +31,9 @@ export {
 export { builtInThemes, resolveTheme } from "./themes/catalog.ts";
 export { printDarkTheme, printLightTheme, printTheme } from "./themes/print/theme.ts";
 export { proDarkTheme, proLightTheme, proTheme } from "./themes/pro/theme.ts";
+export { retroDarkTheme, retroLightTheme, retroTheme } from "./themes/retro/theme.ts";
+export { arcadeDarkTheme, arcadeLightTheme, arcadeTheme } from "./themes/arcade/theme.ts";
+export { asciiDarkTheme, asciiLightTheme, asciiTheme } from "./themes/ascii/theme.ts";
 export { roseDarkTheme, roseLightTheme, roseTheme } from "./themes/rose/theme.ts";
 export { sciFiDarkTheme, sciFiLightTheme, sciFiTheme } from "./themes/sci-fi/theme.ts";
 export type * from "./types.ts";

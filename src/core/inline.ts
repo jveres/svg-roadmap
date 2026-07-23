@@ -329,9 +329,15 @@ export function wrapInline(
 	const pushLine = (): void => {
 		if ((lines.at(-1)?.segments.length ?? 0) > 0) lines.push({ width: 0, segments: [] });
 	};
+	const letterSpacing = typography.letterSpacing ?? 0;
+	const measureRun = (text: string, fontSize: number, marks: readonly InlineMark[]): number =>
+		measureText(text, fontSize, marks, typography.fontWeight, typography.fontFamily) +
+		letterSpacing * Array.from(text).length;
 
 	for (const run of runs) {
-		const tokens = run.text.split(/(\n|\s+)/u).filter(Boolean);
+		const runText =
+			typography.textTransform === "uppercase" ? run.text.toUpperCase() : run.text;
+		const tokens = runText.split(/(\n|\s+)/u).filter(Boolean);
 		for (const token of tokens) {
 			if (token === "\n") {
 				pushLine();
@@ -341,13 +347,7 @@ export function wrapInline(
 			const runFontSize = run.abbreviationIndicator
 				? abbreviationIndicatorSize
 				: typography.fontSize;
-			let tokenWidth = measureText(
-				value,
-				runFontSize,
-				run.marks,
-				typography.fontWeight,
-				typography.fontFamily,
-			);
+			let tokenWidth = measureRun(value, runFontSize, run.marks);
 			let line = lines.at(-1);
 			if (!line) continue;
 			if (/^\s+$/u.test(value) && line.segments.length === 0) continue;
@@ -374,24 +374,12 @@ export function wrapInline(
 				let split = 1;
 				while (
 					split < characters.length &&
-					measureText(
-						characters.slice(0, split + 1).join(""),
-						runFontSize,
-						run.marks,
-						typography.fontWeight,
-						typography.fontFamily,
-					) <= maxWidth
+					measureRun(characters.slice(0, split + 1).join(""), runFontSize, run.marks) <= maxWidth
 				) {
 					split += 1;
 				}
 				const head = characters.slice(0, split).join("");
-				const headWidth = measureText(
-					head,
-					runFontSize,
-					run.marks,
-					typography.fontWeight,
-					typography.fontFamily,
-				);
+				const headWidth = measureRun(head, runFontSize, run.marks);
 				const segment: TextLineSegment = {
 					text: head,
 					width: headWidth,
@@ -405,13 +393,7 @@ export function wrapInline(
 				line.segments.push(segment);
 				line.width += headWidth;
 				value = characters.slice(split).join("");
-				tokenWidth = measureText(
-					value,
-					runFontSize,
-					run.marks,
-					typography.fontWeight,
-					typography.fontFamily,
-				);
+				tokenWidth = measureRun(value, runFontSize, run.marks);
 				pushLine();
 				line = lines.at(-1);
 				if (!line) break;

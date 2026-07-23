@@ -445,7 +445,7 @@ describe("SVG rendering boundaries", () => {
 		});
 
 		expect(svg).toContain(
-			'class="roadmap__frame-shadow" fill="var(--roadmap-shadow-color)" fill-opacity="var(--roadmap-shadow-opacity)" stroke="none"',
+			'class="roadmap__frame-shadow" fill="var(--roadmap-topic-shadow-color, var(--roadmap-shadow-color))" fill-opacity="var(--roadmap-topic-shadow-opacity, var(--roadmap-shadow-opacity))" stroke="none"',
 		);
 		expect(svg).toContain("--roadmap-shadow-offset-x:3px");
 		expect(svg).toContain("--roadmap-shadow-offset-y:3px");
@@ -467,6 +467,7 @@ describe("SVG rendering boundaries", () => {
 		expect(legend).toBeDefined();
 		if (!legend) throw new Error("Legend layout was not generated");
 		expect(legend.metrics).toEqual({
+			letterSpacing: 0,
 			rowHeight: 16,
 			rowGap: 0,
 			badgeSize: 14,
@@ -482,13 +483,13 @@ describe("SVG rendering boundaries", () => {
 			renderScaleX: 1,
 			renderScaleY: 1,
 		});
-		expect({ width: legend.width, height: legend.height }).toEqual({ width: 167, height: 42 });
+		expect({ width: legend.width, height: legend.height }).toEqual({ width: 175, height: 42 });
 		expect(generated.svg).toContain(
-			'<path d="M 32.46 15.46 C 46.1 12.21 182.41 13.59 196.09 15.46 C 209.76 17.34 201.09 34.59 196.58 37.96 C 192.07 41.34 155.62 54.56 141.94 55.94 C 128.27 57.32 41.59 57.91 32.46 54.54 C 23.34 51.16 18.83 18.72 32.46 15.46 Z"',
+			'<path d="M 32.46 15.46 C 46.77 12.21 189.74 13.59 204.09 15.46 C 218.43 17.34 209.09 34.59 204.58 37.96 C 200.07 41.34 164.28 54.56 149.94 55.94 C 135.6 57.32 42.25 57.91 32.46 54.54 C 22.67 51.16 18.16 18.72 32.46 15.46 Z"',
 		);
-		expect(generated.svg).toContain('transform="matrix(1.01 0 0 1 -1.08 1.5)"');
+		expect(generated.svg).toContain('transform="matrix(1.01 0 0 1 -1.12 1.5)"');
 		expect(textElement(generated.svg, "Personal recommendation")).toBe(
-			'<text class="roadmap__legend-label" x="63" y="30.78" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="400" font-style="italic" fill="var(--roadmap-legend-text)">Personal recommendation</text>',
+			'<text class="roadmap__legend-label" x="71" y="30.78" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="400" font-style="italic" fill="var(--roadmap-legend-text)">Personal recommendation</text>',
 		);
 		expect(generated.svg).toContain('roadmap__badge--heart" transform="translate(36 20)"');
 		expect(generated.svg).toContain('roadmap__badge--check" transform="translate(48 20)"');
@@ -518,6 +519,7 @@ describe("SVG rendering boundaries", () => {
 		expect(legend).toBeDefined();
 		if (!legend) throw new Error("Legend layout was not generated");
 		expect(legend.metrics).toMatchObject({
+			letterSpacing: 0,
 			rowHeight: 20,
 			rowGap: 5,
 			badgeSize: 18,
@@ -529,8 +531,8 @@ describe("SVG rendering boundaries", () => {
 			renderScaleX: 1.25,
 			renderScaleY: 0.9,
 		});
-		expect({ width: legend.width, height: legend.height }).toEqual({ width: 170, height: 55 });
-		expect(textX(generated.svg, "Personal recommendation")).toBe(72);
+		expect({ width: legend.width, height: legend.height }).toEqual({ width: 178, height: 55 });
+		expect(textX(generated.svg, "Personal recommendation")).toBe(80);
 		expect(
 			textY(generated.svg, "Recommended") - textY(generated.svg, "Personal recommendation"),
 		).toBe(25);

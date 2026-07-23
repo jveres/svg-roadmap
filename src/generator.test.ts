@@ -10,6 +10,7 @@ import {
 } from "./index.ts";
 import { createTheme, darkTheme, lightTheme } from "./theme.ts";
 import { generateFunBackgroundArtifacts } from "./themes/fun/background-artifacts.ts";
+import { generateRetroBackgroundArtifacts } from "./themes/retro/background-artifacts.ts";
 import { generateRoseBackgroundArtifacts } from "./themes/rose/background-artifacts.ts";
 import { generateSciFiBackgroundArtifacts } from "./themes/sci-fi/background-artifacts.ts";
 import type {
@@ -170,7 +171,16 @@ roadmap:
 
 		const generated = generateRoadmap(source);
 
-		expect(Object.keys(builtInThemes)).toEqual(["fun", "sci-fi", "rose", "print", "pro"]);
+		expect(Object.keys(builtInThemes)).toEqual([
+			"fun",
+			"sci-fi",
+			"rose",
+			"print",
+			"pro",
+			"retro",
+			"arcade",
+			"ascii",
+		]);
 		expect(generated.theme).toBe(builtInThemes["sci-fi"]?.modes.dark);
 		expect(generated.theme.name).toBe("sci-fi");
 		expect(generated.theme.mode).toBe("dark");
@@ -378,6 +388,29 @@ An intentionally restrained introduction.
 		expect(changed).not.toEqual(first);
 		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
 		expect(first.every((artifact) => artifact.id.startsWith("rose-background-"))).toBe(true);
+	});
+
+	test("keeps Retro artifact geometry deterministic and outside content", () => {
+		const content = { x: 260, y: 0, width: 380, height: 600 };
+		const context = {
+			width: 900,
+			height: 600,
+			avoid: [content],
+			settings: { enabled: true, seed: "groovy-garden", density: 1, size: 1 },
+		} as const;
+
+		const first = generateRetroBackgroundArtifacts(context);
+		const repeated = generateRetroBackgroundArtifacts(context);
+		const changed = generateRetroBackgroundArtifacts({
+			...context,
+			settings: { ...context.settings, seed: "disco-garden" },
+		});
+
+		expect(first.length).toBeGreaterThan(0);
+		expect(repeated).toEqual(first);
+		expect(changed).not.toEqual(first);
+		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
+		expect(first.every((artifact) => artifact.id.startsWith("retro-background-"))).toBe(true);
 	});
 
 	test("keeps Sci-fi artifact geometry deterministic and outside content", () => {

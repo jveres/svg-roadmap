@@ -14,6 +14,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			"topic-header-gradient-start": "#e4fbff",
 			"topic-header-gradient-end": "#eeeaff",
 			"board-hatch-stroke-width": 1,
+			"frame-detail-width": 0.6,
+			"frame-detail-opacity": 0.5,
 		},
 		canvas: { background: "#f6fbff" },
 		heading: {
@@ -28,10 +30,12 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1.5,
 			radius: 14,
 			shadow: true,
+			detailInset: 2.5,
 			typography: {
 				color: "#10263d",
 				fontFamily,
 				fontWeight: 600,
+				letterSpacing: 0.5,
 				renderScaleX: 1,
 			},
 		},
@@ -71,7 +75,16 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			shape: "chamfered",
 			stroke: "#7f8ce1",
 			radius: 10,
-			typography: { color: "#17364d", fontFamily, fontWeight: 600 },
+			detailInset: 2,
+			shadowColor: "#8b7ee8",
+			shadowOpacity: 0.2,
+			typography: {
+				color: "#17364d",
+				fontFamily,
+				fontWeight: 600,
+				letterSpacing: 0.8,
+				textTransform: "uppercase",
+			},
 		},
 		boards: {
 			topic: {
@@ -104,6 +117,7 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				width: 2,
 				dash: "3 8",
 				opacity: 0.7,
+				endShape: "circle",
 			},
 			topicToChildren: {
 				routing: "orthogonal",
@@ -112,6 +126,7 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				width: 2,
 				dash: "3 7",
 				opacity: 0.65,
+				endShape: "circle",
 			},
 		},
 		inline: {

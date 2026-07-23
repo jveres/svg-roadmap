@@ -1,7 +1,10 @@
 import { createTheme, darkTheme, funTheme, lightTheme } from "../theme.ts";
 import type { RoadmapTheme, RoadmapThemeCatalog, ThemeInput } from "../types.ts";
 import { printTheme } from "./print/theme.ts";
+import { arcadeTheme } from "./arcade/theme.ts";
+import { asciiTheme } from "./ascii/theme.ts";
 import { proTheme } from "./pro/theme.ts";
+import { retroTheme } from "./retro/theme.ts";
 import { roseTheme } from "./rose/theme.ts";
 import { sciFiTheme } from "./sci-fi/theme.ts";
 
@@ -11,6 +14,9 @@ export const builtInThemes: RoadmapThemeCatalog = {
 	rose: roseTheme,
 	print: printTheme,
 	pro: proTheme,
+	retro: retroTheme,
+	arcade: arcadeTheme,
+	ascii: asciiTheme,
 };
 
 export function resolveTheme(
