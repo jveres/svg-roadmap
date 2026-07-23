@@ -1,10 +1,12 @@
 import { createTheme, darkTheme, funTheme, lightTheme } from "../theme.ts";
 import type { RoadmapTheme, RoadmapThemeCatalog, ThemeInput } from "../types.ts";
+import { roseTheme } from "./rose/theme.ts";
 import { sciFiTheme } from "./sci-fi/theme.ts";
 
 export const builtInThemes: RoadmapThemeCatalog = {
 	fun: funTheme,
 	"sci-fi": sciFiTheme,
+	rose: roseTheme,
 };
 
 export function resolveTheme(

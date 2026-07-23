@@ -10,6 +10,7 @@ import {
 } from "./index.ts";
 import { createTheme, darkTheme, lightTheme } from "./theme.ts";
 import { generateFunBackgroundArtifacts } from "./themes/fun/background-artifacts.ts";
+import { generateRoseBackgroundArtifacts } from "./themes/rose/background-artifacts.ts";
 import { generateSciFiBackgroundArtifacts } from "./themes/sci-fi/background-artifacts.ts";
 import type { LayoutGroup, LayoutNode, RoadmapTheme, RoadmapThemePreset } from "./types.ts";
 
@@ -162,7 +163,7 @@ roadmap:
 
 		const generated = generateRoadmap(source);
 
-		expect(Object.keys(builtInThemes)).toEqual(["fun", "sci-fi"]);
+		expect(Object.keys(builtInThemes)).toEqual(["fun", "sci-fi", "rose"]);
 		expect(generated.theme).toBe(builtInThemes["sci-fi"]?.modes.dark);
 		expect(generated.theme.name).toBe("sci-fi");
 		expect(generated.theme.mode).toBe("dark");
@@ -177,7 +178,9 @@ roadmap:
 		expect(generated.svg).toContain('data-roadmap-theme="sci-fi"');
 		expect(generated.svg).toContain('data-roadmap-pattern="grid"');
 		expect(generated.svg).toContain('data-roadmap-pattern="dots"');
-		expect(generated.svg).toMatch(/roadmap__node--chapter[^>]*><path class="roadmap__frame"/u);
+		expect(generated.svg).toMatch(
+			/roadmap__node--chapter[^>]*><path class="roadmap__frame-shadow"[^>]*\/><path class="roadmap__frame"/u,
+		);
 		expect(generated.svg).toMatch(/roadmap__connector--chapterToTopics[^>]* d="M [^"]* L /u);
 		const spinePath = generated.svg.match(/roadmap__connector--spine[^>]* d="([^"]+)"/u)?.[1];
 		expect(spinePath?.split(" L ")).toHaveLength(2);
@@ -188,6 +191,80 @@ roadmap:
 				artifact.id.startsWith("sci-fi-background-"),
 			),
 		).toBe(true);
+	});
+
+	test("resolves Rose as an isolated built-in theme", () => {
+		const generated = generateRoadmap(`---
+roadmap:
+  theme:
+    preset: rose
+    mode: dark
+  background:
+    enabled: true
+    seed: rose-garden
+    density: 1
+---
+
+# Growing together
+
+* Discover
+  * Listen
+    * Learn`);
+
+		expect(generated.theme).toBe(builtInThemes.rose?.modes.dark);
+		expect(generated.theme.name).toBe("rose");
+		expect(generated.theme.mode).toBe("dark");
+		expect(generated.theme.chapter.shape).toBe("ribbon");
+		expect(generated.theme.note.shape).toBe("petal");
+		expect(generated.theme.topic.shape).toBe("petal");
+		expect(generated.theme.nestedTopic.shape).toBe("petal");
+		expect(generated.theme.topicHeader.shape).toBe("ribbon");
+		expect(generated.theme.boards.topic.shape).toBe("scalloped");
+		expect(generated.theme.boards.topic.pattern).toBe("lace");
+		expect(generated.theme.boards.nested.pattern).toBe("lace");
+		expect(generated.theme.connectors.spine.routing).toBe("braided");
+		expect(generated.theme.connectors.topicToChildren.routing).toBe("curved");
+		expect(generated.svg).toContain('data-roadmap-theme="rose"');
+		expect(generated.svg).toContain('data-roadmap-shape="ribbon"');
+		expect(generated.svg).toContain('data-roadmap-shape="petal"');
+		expect(generated.svg).toContain('data-roadmap-shape="scalloped"');
+		expect(generated.svg).toContain('data-roadmap-pattern="lace"');
+		expect(generated.svg).toContain('data-roadmap-routing="braided"');
+		expect(generated.svg).toContain("--roadmap-rose-artifact-blush:#d982aa");
+		expect(generated.svg).not.toContain("--roadmap-sci-fi-artifact-cyan:");
+		const chapter = generated.layout.elements.find(
+			(element): element is LayoutNode => element.kind === "chapter",
+		);
+		if (!chapter) throw new Error("Rose chapter fixture was not generated");
+		const ribbonPath = generated.svg.match(
+			/roadmap__node--chapter[^>]*>.*?<path class="roadmap__frame" data-roadmap-shape="ribbon"[^>]* d="([^"]+)"/u,
+		)?.[1];
+		const chapterHeight = chapter.height - 1;
+		const tail = Math.min(chapterHeight * 0.28, chapter.width * 0.09);
+		expect(ribbonPath?.startsWith(`M ${chapter.x + tail} ${chapter.y} H `)).toBe(true);
+	});
+
+	test("keeps Rose artifact geometry deterministic and outside content", () => {
+		const content = { x: 260, y: 0, width: 380, height: 600 };
+		const context = {
+			width: 900,
+			height: 600,
+			avoid: [content],
+			settings: { enabled: true, seed: "rose-garden", density: 1, size: 1 },
+		} as const;
+
+		const first = generateRoseBackgroundArtifacts(context);
+		const repeated = generateRoseBackgroundArtifacts(context);
+		const changed = generateRoseBackgroundArtifacts({
+			...context,
+			settings: { ...context.settings, seed: "peony-garden" },
+		});
+
+		expect(first.length).toBeGreaterThan(0);
+		expect(repeated).toEqual(first);
+		expect(changed).not.toEqual(first);
+		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
+		expect(first.every((artifact) => artifact.id.startsWith("rose-background-"))).toBe(true);
 	});
 
 	test("keeps Sci-fi artifact geometry deterministic and outside content", () => {
@@ -320,6 +397,86 @@ Standalone note.
 
 		expect(right.x - (left.x + left.width)).toBe(10);
 		expect(left.width + 10 + right.width).toBe(wide.width);
+	});
+
+	test("packs intrinsic grid columns and pairs child cells that fit the widest cell", () => {
+		const generated = generateRoadmap(`* 1️⃣ Collection
+  + Techniques
+    * Data scraping
+    * Batch processing
+    * Streaming
+    * ELT vs ETL
+  * Concepts
+    * OLAP vs OLTP
+    * Data lake
+    * Data warehouse
+    * Data lakehouse
+    * Object storage
+    * CDC
+  * Languages
+    * Python
+    * SQL
+    * NoSQL
+    * GraphQL
+    * Scripting
+  * Cloud-based tools
+    * ELK
+    * Databricks
+    * Azure Data Services
+    * Google Cloud Smart Analytics
+    * AWS Analytics Services
+  * Open source tools
+    * Spark
+    * Beam
+    * Flink
+    * Kafka
+    * Debezium
+    * Airflow
+    * Hudi
+    * Iceberg
+    * Delta Lake
+  * Quality risks
+    * Selection criteria
+    * Schema versioning
+    * Compliance
+    * Access control
+	    * Backup and restore`);
+		const nodes = generated.layout.elements.filter(
+			(element): element is LayoutNode => element.kind !== "group" && element.kind !== "legend",
+		);
+		const findNode = (label: string): LayoutNode => {
+			const node = nodes.find(
+				(candidate) =>
+					candidate.text.lines
+						.flatMap((line) => line.segments.map((segment) => segment.text))
+						.join("") === label,
+			);
+			if (!node) throw new Error(`Grid node was not found: ${label}`);
+			return node;
+		};
+		const headers = [
+			"Techniques",
+			"Concepts",
+			"Languages",
+			"Cloud-based tools",
+			"Open source tools",
+			"Quality risks",
+		].map(findNode);
+		const spark = findNode("Spark");
+		const beam = findNode("Beam");
+		const airflow = findNode("Airflow");
+		const hudi = findNode("Hudi");
+		const openSource = findNode("Open source tools");
+		const gridGroups = generated.layout.elements.filter(
+			(element): element is LayoutGroup => element.kind === "group" && element.layout === "grid",
+		);
+
+		expect(gridGroups).toHaveLength(1);
+		expect(new Set(headers.map((header) => header.y)).size).toBe(1);
+		expect(spark.y).toBe(beam.y);
+		expect(airflow.y).toBe(hudi.y);
+		expect(beam.x + beam.width).toBe(openSource.x + openSource.width);
+		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
 	test("keeps optical text fitting scoped by note placement", () => {

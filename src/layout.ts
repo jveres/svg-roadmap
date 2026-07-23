@@ -88,7 +88,7 @@ const defaults: RequiredLayoutOptions = {
 	branchGapRightInner: 25,
 	overlapPadding: 10,
 	spineClearance: 12,
-	maxGridColumns: 5,
+	maxGridColumns: Number.MAX_SAFE_INTEGER,
 	showLegend: true,
 };
 
@@ -547,31 +547,54 @@ function flattenGridTopic(
 }
 
 interface GridChunk {
-	readonly columns: readonly GridEntry[][];
+	readonly columns: readonly GridColumn[];
 	readonly width: number;
 }
 
+interface GridColumn {
+	readonly rows: readonly (readonly GridEntry[])[];
+	readonly width: number;
+}
+
+function packGridColumn(entries: readonly GridEntry[], itemGap: number): GridColumn {
+	const width = Math.max(1, ...entries.map((entry) => entry.node.width));
+	const rows: GridEntry[][] = [];
+	for (let index = 0; index < entries.length; index += 1) {
+		const entry = entries[index];
+		if (!entry) continue;
+		const next = entries[index + 1];
+		const canPair =
+			index > 0 &&
+			next !== undefined &&
+			entry.relativeDepth === 1 &&
+			next.relativeDepth === 1 &&
+			entry.parentId === next.parentId &&
+			entry.node.width + itemGap + next.node.width <= width;
+		if (canPair && next) {
+			rows.push([entry, next]);
+			index += 1;
+		} else {
+			rows.push([entry]);
+		}
+	}
+	return { rows, width };
+}
+
 function splitGridColumns(
-	columns: readonly GridEntry[][],
-	availableWidth: number,
+	columns: readonly GridColumn[],
 	options: RequiredLayoutOptions,
 	padding: number,
 ): GridChunk[] {
 	const chunks: GridChunk[] = [];
-	let current: GridEntry[][] = [];
+	let current: GridColumn[] = [];
 	let width = padding * 2;
 	for (const column of columns) {
-		const columnWidth = Math.max(1, ...column.map((entry) => entry.node.width));
-		const nextWidth = width + (current.length > 0 ? options.gridItemGap : 0) + columnWidth;
-		if (
-			current.length > 0 &&
-			(nextWidth > availableWidth || current.length >= options.maxGridColumns)
-		) {
+		if (current.length > 0 && current.length >= options.maxGridColumns) {
 			chunks.push({ columns: current, width });
 			current = [];
 			width = padding * 2;
 		}
-		width += (current.length > 0 ? options.gridItemGap : 0) + columnWidth;
+		width += (current.length > 0 ? options.gridItemGap : 0) + column.width;
 		current.push(column);
 	}
 	if (current.length > 0) chunks.push({ columns: current, width });
@@ -585,20 +608,22 @@ function layoutGridGroup(
 	context: ChapterLayoutContext,
 ): { bottom: number; anchors: Point[] } {
 	const padding = context.theme.boards.topic.padding;
-	const columns = group.topics.map((topic) => flattenGridTopic(topic, context.theme));
-	const chunks = splitGridColumns(
-		columns,
-		context.options.width - context.options.padding * 2,
-		context.options,
-		padding,
+	const columns = group.topics.map((topic) =>
+		packGridColumn(flattenGridTopic(topic, context.theme), context.options.gridItemGap),
 	);
+	const chunks = splitGridColumns(columns, context.options, padding);
 	let y = startY;
 	const anchors: Point[] = [];
 
 	for (const [chunkIndex, chunk] of chunks.entries()) {
-		const rowCount = Math.max(0, ...chunk.columns.map((column) => column.length));
+		const rowCount = Math.max(0, ...chunk.columns.map((column) => column.rows.length));
 		const rowHeights = Array.from({ length: rowCount }, (_, row) =>
-			Math.max(0, ...chunk.columns.map((column) => column[row]?.node.height ?? 0)),
+			Math.max(
+				0,
+				...chunk.columns.flatMap((column) =>
+					(column.rows[row] ?? []).map((entry) => entry.node.height),
+				),
+			),
 		);
 		const rowY: number[] = [];
 		let contentY = y + padding;
@@ -612,7 +637,9 @@ function layoutGridGroup(
 			id: `${group.id}-grid-${chunkIndex + 1}`,
 			depth: 1,
 			layout: "grid",
-			memberIds: chunk.columns.flatMap((column) => column.map((entry) => entry.node.id)),
+			memberIds: chunk.columns.flatMap((column) =>
+				column.rows.flatMap((row) => row.map((entry) => entry.node.id)),
+			),
 			x: centerX - chunk.width / 2,
 			y,
 			width: chunk.width,
@@ -626,22 +653,36 @@ function layoutGridGroup(
 				2;
 		const byId = new Map<string, LayoutNode>();
 		for (const column of chunk.columns) {
-			const columnWidth = Math.max(1, ...column.map((entry) => entry.node.width));
-			for (const [row, entry] of column.entries()) {
-				const indent = Math.min(20, Math.max(0, entry.relativeDepth - 1) * 7);
-				entry.node.x = x + indent;
-				entry.node.y = rowY[row] ?? grid.y + padding;
-				entry.node.width = Math.max(32, columnWidth - indent);
-				entry.node.height = rowHeights[row] ?? entry.node.height;
-				byId.set(entry.topic.id, entry.node);
-				context.elements.push(entry.node);
+			for (const [rowIndex, entries] of column.rows.entries()) {
+				const pairedExtra =
+					entries.length === 2
+						? (column.width -
+								entries.reduce((total, entry) => total + entry.node.width, 0) -
+								context.options.gridItemGap) /
+							2
+						: 0;
+				let entryX = x;
+				for (const entry of entries) {
+					const indent = Math.min(20, Math.max(0, entry.relativeDepth - 1) * 7);
+					const width =
+						entries.length === 2
+							? entry.node.width + pairedExtra
+							: Math.max(32, column.width - indent);
+					entry.node.x = entryX + indent;
+					entry.node.y = rowY[rowIndex] ?? grid.y + padding;
+					entry.node.width = Math.max(32, width - indent);
+					entry.node.height = rowHeights[rowIndex] ?? entry.node.height;
+					byId.set(entry.topic.id, entry.node);
+					context.elements.push(entry.node);
+					entryX += width + context.options.gridItemGap;
+				}
 			}
-			x += columnWidth + context.options.gridItemGap;
+			x += column.width + context.options.gridItemGap;
 		}
 		context.elements.push(grid);
 		context.occupied.push(inflateRectangle(grid, 1));
 		for (const column of chunk.columns) {
-			for (const entry of column) {
+			for (const entry of column.rows.flat()) {
 				if (!entry.parentId || entry.relativeDepth < 2) continue;
 				const parent = byId.get(entry.parentId);
 				if (!parent) continue;

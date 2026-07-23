@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { noteBlobGeometry, paintedNodeFrameRectangle, paintedTextLines } from "./core/frames.ts";
 import { organicBlobPolygon, pointInPolygon } from "./core/geometry.ts";
-import { generateRoadmap, generateRoadmapSvgSync, lightTheme, renderRoadmapSvg } from "./index.ts";
+import {
+	generateRoadmap,
+	generateRoadmapSvgSync,
+	lightTheme,
+	renderRoadmapSvg,
+	sciFiLightTheme,
+} from "./index.ts";
 import { orthogonalConnectorPath, orthogonalLaneOffsets } from "./render.ts";
 import type {
 	LayoutConnector,
@@ -196,6 +202,119 @@ describe("SVG rendering boundaries", () => {
 		expect(textY(chapterSvg, "alpha ")).toBe(34.2);
 	});
 
+	it("should fit adjacent sci-fi inline runs as one browser-independent line", () => {
+		const lines: readonly TextLine[] = [
+			{
+				width: 100,
+				segments: [
+					{ text: "competencies cover ", width: 70, marks: [] },
+					{ text: "end to end", width: 30, marks: ["strong"] },
+				],
+			},
+		];
+		const layout: RoadmapLayout = {
+			width: 200,
+			height: 80,
+			elements: [layoutNode("sci-fi-mixed-runs", lines)],
+			connectors: [],
+			backgroundArtifacts: [],
+			title: "Sci-fi inline flow",
+			maxDepth: 1,
+		};
+
+		const svg = renderRoadmapSvg(layout, sciFiLightTheme, { idPrefix: "sci-fi-flow" });
+
+		expect(svg).toContain('text-anchor="middle"');
+		expect(svg).toContain('class="roadmap__flow-line" x="100" y="34.5"');
+		expect(svg).toContain(">competencies cover </tspan>");
+		expect(svg).toMatch(/<tspan\b[^>]*font-weight="700"[^>]*>end to end<\/tspan>/u);
+		expect(svg).toContain('textLength="100" lengthAdjust="spacingAndGlyphs"');
+	});
+
+	it("should fit sci-fi capsule notes symmetrically around painted text", () => {
+		const lines: readonly TextLine[] = [
+			{ width: 80, segments: [{ text: "Chapter description", width: 80, marks: [] }] },
+		];
+		const layout: RoadmapLayout = {
+			width: 200,
+			height: 80,
+			elements: [
+				layoutNode("sci-fi-note", lines, {
+					kind: "note",
+					placement: "tree-description",
+				}),
+			],
+			connectors: [],
+			backgroundArtifacts: [],
+			title: "Sci-fi capsule geometry",
+			maxDepth: 1,
+		};
+
+		const svg = renderRoadmapSvg(layout, sciFiLightTheme, { idPrefix: "sci-fi-capsule" });
+		const frame = svg.match(
+			/<rect class="roadmap__frame"[^>]* x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)" rx="([^"]+)"\/>/u,
+		);
+		if (!frame) throw new Error("Sci-fi capsule frame was not rendered");
+		const [, xValue, yValue, widthValue, heightValue, radiusValue] = frame;
+		const x = Number(xValue);
+		const y = Number(yValue);
+		const width = Number(widthValue);
+		const height = Number(heightValue);
+		const radius = Number(radiusValue);
+
+		expect(x + width / 2).toBe(100);
+		expect(y + height / 2).toBe(31);
+		expect(width).toBeGreaterThanOrEqual(98);
+		expect(height).toBeLessThan(42);
+		expect(radius).toBe(height / 2);
+		expect(svg).toContain('textLength="80" lengthAdjust="spacingAndGlyphs"');
+	});
+
+	it("should limit sci-fi custom emoji positioning to the line that contains the emoji", () => {
+		const lines: readonly TextLine[] = [
+			{
+				width: 70,
+				segments: [
+					{ text: "🔰", width: 12, marks: ["emoji"], shortcode: "beginner" },
+					{ text: " Description", width: 58, marks: [] },
+				],
+			},
+			{
+				width: 100,
+				segments: [
+					{ text: "key people. ", width: 50, marks: [] },
+					{
+						text: "Product Owners",
+						width: 50,
+						marks: [],
+						destination: "https://example.com/product-owner",
+					},
+				],
+			},
+		];
+		const layout: RoadmapLayout = {
+			width: 200,
+			height: 100,
+			elements: [
+				layoutNode("sci-fi-emoji-note", lines, {
+					kind: "note",
+					placement: "tree-description",
+				}),
+			],
+			connectors: [],
+			backgroundArtifacts: [],
+			title: "Sci-fi emoji line isolation",
+			maxDepth: 1,
+		};
+
+		const svg = renderRoadmapSvg(layout, sciFiLightTheme, { idPrefix: "sci-fi-emoji-line" });
+
+		expect(svg).toContain('class="roadmap__emoji roadmap__emoji--beginner"');
+		expect(svg).toMatch(
+			/<text class="roadmap__flow-line"[^>]*><tspan[^>]*>key people\. <\/tspan><a[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a><\/text>/u,
+		);
+	});
+
 	it("should preserve natural link proportions across lines", () => {
 		const destination = "https://example.com";
 		const lines: readonly TextLine[] = [
@@ -315,6 +434,22 @@ describe("SVG rendering boundaries", () => {
 			".roadmap__node,.roadmap__group,.roadmap__legend{vector-effect:non-scaling-stroke}",
 		);
 		expect(svg).not.toContain(".roadmap__connector{vector-effect:non-scaling-stroke}");
+	});
+
+	it("should paint Fun card shadows as cross-browser SVG geometry", () => {
+		const svg = generateRoadmapSvgSync("* Chapter\n  * Topic", {
+			render: { idPrefix: "fun-shadow" },
+		});
+
+		expect(svg).toContain(
+			'class="roadmap__frame-shadow" fill="var(--roadmap-shadow-color)" fill-opacity="var(--roadmap-shadow-opacity)" stroke="none"',
+		);
+		expect(svg).toContain("--roadmap-shadow-offset-x:3px");
+		expect(svg).toContain("--roadmap-shadow-offset-y:3px");
+		expect(svg).toContain(
+			".roadmap__frame-shadow{transform:translate(var(--roadmap-shadow-offset-x),var(--roadmap-shadow-offset-y));pointer-events:none}",
+		);
+		expect(svg).not.toContain('id="fun-shadow-shadow"');
 	});
 
 	it("should preserve legacy legend paint with shared default metrics", () => {

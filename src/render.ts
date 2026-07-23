@@ -25,6 +25,7 @@ import type {
 	RoadmapRenderOptions,
 	RoadmapTheme,
 	TagStyle,
+	TextLine,
 	TextLineSegment,
 } from "./types.ts";
 
@@ -71,8 +72,8 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 		["inline-abbreviation-underline", theme.inline.abbreviation],
 		["shadow-color", theme.shadow.color],
 		["shadow-opacity", theme.shadow.opacity],
-		["shadow-offset-x", theme.shadow.offsetX],
-		["shadow-offset-y", theme.shadow.offsetY],
+		["shadow-offset-x", `${theme.shadow.offsetX}px`],
+		["shadow-offset-y", `${theme.shadow.offsetY}px`],
 		["soft-shadow-blur", theme.shadow.softBlur],
 		["soft-shadow-offset-x", theme.shadow.softOffsetX],
 		["soft-shadow-offset-y", theme.shadow.softOffsetY],
@@ -318,7 +319,22 @@ function renderShortcodeEmoji(
 	return `<g class="roadmap__emoji roadmap__emoji--${safeId(segment.shortcode)}" data-shortcode="${escapeXml(segment.shortcode)}" role="img" aria-label="${escapeXml(segment.text)}"><use href="#${prefix}-emoji-${safeId(segment.shortcode)}" x="${emojiX}" y="${emojiY}" width="${width}" height="${height}"/></g>`;
 }
 
-function renderText(node: LayoutNode, prefix: string): string {
+function segmentBaselineShift(segment: TextLineSegment, fontSize: number): number {
+	if (segment.abbreviationIndicator) return fontSize * 0.37;
+	if (segment.marks.includes("superscript")) return fontSize * 0.34;
+	if (segment.marks.includes("subscript")) return -fontSize * 0.22;
+	return 0;
+}
+
+function segmentTitle(segment: TextLineSegment): string {
+	const title =
+		segment.abbreviation && (!segment.destination || segment.abbreviationIndicator)
+			? segment.abbreviation
+			: segment.linkTitle;
+	return title ? `<title>${escapeXml(title)}</title>` : "";
+}
+
+function renderPositionedText(node: LayoutNode, prefix: string): string {
 	const scale = node.text.renderScale;
 	const renderScaleX = node.text.renderScaleX ?? 1;
 	const renderScaleY = node.text.renderScaleY ?? 1;
@@ -345,12 +361,7 @@ function renderText(node: LayoutNode, prefix: string): string {
 					: segment.marks.includes("subscript")
 						? baseline + fontSize * 0.22
 						: baseline;
-			const title =
-				segment.abbreviation && (!segment.destination || segment.abbreviationIndicator)
-					? `<title>${escapeXml(segment.abbreviation)}</title>`
-					: segment.linkTitle
-						? `<title>${escapeXml(segment.linkTitle)}</title>`
-						: "";
+			const title = segmentTitle(segment);
 			const segmentScaleY = renderScaleY;
 			const segmentCenterX = x + segmentWidth / 2;
 			const paintTransform =
@@ -381,30 +392,203 @@ function renderText(node: LayoutNode, prefix: string): string {
 	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}">${backgrounds.join("")}${text.join("")}</g>`;
 }
 
-function renderCardFrame(node: LayoutNode, card: CardTheme, prefix: string): string {
-	const token = cardTokenPrefix(node);
-	const attributes = `class="roadmap__frame" fill="${cssToken(`${token}-background`)}" stroke="${cssToken(`${token}-border`)}" stroke-width="${cssToken(`${token}-border-width`)}"${card.shadow ? ` filter="url(#${prefix}-shadow)"` : ""}`;
-	const height = node.kind === "chapter" ? node.height - 1 : node.height;
-	const rectangle = node.kind === "note" ? noteBlobGeometry(node).frame : { ...node, height };
-	if (card.shape === "chamfered") {
-		return `<path ${attributes} d="${chamferedRectanglePath(rectangle, card.radius)}"/>`;
-	}
-	if (card.shape === "capsule") {
-		return `<rect ${attributes} x="${rectangle.x}" y="${rectangle.y}" width="${rectangle.width}" height="${rectangle.height}" rx="${rectangle.height / 2}"/>`;
-	}
-	if (card.shape !== "organic" || node.kind !== "note") {
-		return `<rect ${attributes} x="${node.x}" y="${node.y}" width="${node.width}" height="${height}" rx="${cssToken(`${token}-corner-radius`)}"/>`;
+function renderFlowingText(node: LayoutNode): string {
+	const scale = node.text.renderScale;
+	const renderScaleX = node.text.renderScaleX ?? 1;
+	const renderScaleY = node.text.renderScaleY ?? 1;
+	const fontSize = node.text.fontSize * scale;
+	const paintedLines = paintedTextLines(node);
+	const backgrounds: string[] = [];
+	const text: string[] = [];
+
+	for (const [lineIndex, line] of node.text.lines.entries()) {
+		const paintedLine = paintedLines[lineIndex];
+		if (!paintedLine) continue;
+		const lineCenterY = paintedLine.y + paintedLine.height / 2;
+		const baseline = lineCenterY + fontSize * 0.35;
+		let backgroundX = paintedLine.x;
+		for (const segment of line.segments) {
+			const segmentWidth = segment.width * scale * renderScaleX;
+			backgrounds.push(
+				segmentBackground(segment, node, backgroundX, baseline, fontSize, segmentWidth),
+			);
+			backgroundX += segmentWidth;
+		}
+
+		const centerX = node.x + node.width / 2;
+		const transform =
+			renderScaleX === 1 && renderScaleY === 1
+				? ""
+				: ` transform="matrix(${renderScaleX} 0 0 ${renderScaleY} ${centerX * (1 - renderScaleX)} ${baseline * (1 - renderScaleY)})"`;
+		const segments = line.segments
+			.map((segment) => {
+				const segmentFontSize = segment.abbreviationIndicator
+					? node.text.abbreviationIndicatorSize * scale
+					: fontSize;
+				const baselineShift = segmentBaselineShift(segment, fontSize);
+				const shift = baselineShift === 0 ? "" : ` baseline-shift="${baselineShift}"`;
+				const tspan = `<tspan${shift} ${markAttributes(segment, node, segmentFontSize)}>${segmentTitle(segment)}${escapeXml(segment.text)}</tspan>`;
+				const destination = segment.destination
+					? safeLinkDestination(segment.destination)
+					: undefined;
+				return destination
+					? `<a class="roadmap__link" href="${escapeXml(destination)}" target="_blank" rel="noopener noreferrer">${tspan}</a>`
+					: tspan;
+			})
+			.join("");
+		const fittedLength = ` textLength="${line.width * scale}" lengthAdjust="spacingAndGlyphs"`;
+		text.push(
+			`<text class="roadmap__flow-line" x="${centerX}" y="${baseline}" text-anchor="middle"${fittedLength} xml:space="preserve"${transform}>${segments}</text>`,
+		);
 	}
 
-	const geometry = noteBlobGeometry(node);
-	const path = organicBlobPath(
-		geometry.frame,
-		geometry.lowerInset,
-		geometry.upperInset,
-		geometry.upperShoulderInset,
-		geometry.upperShoulderRatio,
-	);
-	return `<path ${attributes} d="${path}"/>`;
+	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}">${backgrounds.join("")}${text.join("")}</g>`;
+}
+
+function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+	if (theme.name !== "sci-fi") return renderPositionedText(node, prefix);
+	const hasCustomEmoji = (line: TextLine): boolean =>
+		line.segments.some(
+			(segment) => segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined,
+		);
+	if (!node.text.lines.some(hasCustomEmoji)) return renderFlowingText(node);
+
+	const paintedLines = paintedTextLines(node);
+	return node.text.lines
+		.map((line, index) => {
+			const paintedLine = paintedLines[index];
+			if (!paintedLine) return "";
+			const lineNode: LayoutNode = {
+				...node,
+				y: paintedLine.y,
+				height: paintedLine.height,
+				text: { ...node.text, lines: [line] },
+			};
+			return hasCustomEmoji(line)
+				? renderPositionedText(lineNode, prefix)
+				: renderFlowingText(lineNode);
+		})
+		.join("");
+}
+
+function pointInCapsule(
+	rectangle: Rect,
+	point: { readonly x: number; readonly y: number },
+): boolean {
+	const radius = rectangle.height / 2;
+	const centerY = rectangle.y + radius;
+	const leftCenterX = rectangle.x + radius;
+	const rightCenterX = rectangle.x + rectangle.width - radius;
+	if (point.y < rectangle.y || point.y > rectangle.y + rectangle.height) return false;
+	if (point.x >= leftCenterX && point.x <= rightCenterX) return true;
+	const capCenterX = point.x < leftCenterX ? leftCenterX : rightCenterX;
+	return Math.hypot(point.x - capCenterX, point.y - centerY) <= radius;
+}
+
+function fittedCapsuleFrame(node: LayoutNode): Rect {
+	const lines = paintedTextLines(node);
+	if (lines.length === 0) return node;
+	const fontSize = node.text.fontSize * node.text.renderScale;
+	const padding = Math.max(4, fontSize * 0.3);
+	const verticalSafety = 1;
+	const fontFallbackWidthTolerance = 0.03;
+	const curveClearance = Math.max(2, fontSize * 0.18);
+	const top = Math.min(...lines.map((line) => line.y)) - padding;
+	const bottom = Math.max(...lines.map((line) => line.y + line.height)) + padding;
+	const centerX = node.x + node.width / 2;
+	const centerY = (top + bottom) / 2;
+	const height = bottom - top;
+	let width = Math.max(...lines.map((line) => line.width)) + padding * 2;
+	const points = lines.flatMap((line) => {
+		const horizontalSafety = Math.max(2, line.width * fontFallbackWidthTolerance);
+		return [
+			{ x: line.x - horizontalSafety, y: line.y - verticalSafety },
+			{ x: line.x + line.width + horizontalSafety, y: line.y - verticalSafety },
+			{
+				x: line.x + line.width + horizontalSafety,
+				y: line.y + line.height + verticalSafety,
+			},
+			{ x: line.x - horizontalSafety, y: line.y + line.height + verticalSafety },
+		];
+	});
+
+	for (let iteration = 0; iteration < 256; iteration += 1) {
+		const rectangle = {
+			x: centerX - width / 2,
+			y: centerY - height / 2,
+			width,
+			height,
+		};
+		const interior = {
+			x: rectangle.x + curveClearance,
+			y: rectangle.y + curveClearance,
+			width: rectangle.width - curveClearance * 2,
+			height: rectangle.height - curveClearance * 2,
+		};
+		if (points.every((point) => pointInCapsule(interior, point))) return rectangle;
+		width += 2;
+	}
+
+	return { x: centerX - width / 2, y: centerY - height / 2, width, height };
+}
+
+function renderCardFrame(node: LayoutNode, card: CardTheme): string {
+	const token = cardTokenPrefix(node);
+	const attributes = `class="roadmap__frame" data-roadmap-shape="${card.shape}" fill="${cssToken(`${token}-background`)}" stroke="${cssToken(`${token}-border`)}" stroke-width="${cssToken(`${token}-border-width`)}"`;
+	const shadowAttributes = `class="roadmap__frame-shadow" fill="${cssToken("shadow-color")}" fill-opacity="${cssToken("shadow-opacity")}" stroke="none"`;
+	const height = node.kind === "chapter" ? node.height - 1 : node.height;
+	const rectangle =
+		node.kind === "note" && (card.shape === "organic" || card.shape === "petal")
+			? noteBlobGeometry(node).frame
+			: { ...node, height };
+	const renderShape = (paint: string): string => {
+		if (card.shape === "chamfered") {
+			return `<path ${paint} d="${chamferedRectanglePath(rectangle, card.radius)}"/>`;
+		}
+		if (card.shape === "ribbon") {
+			return `<path ${paint} d="${ribbonCardPath(rectangle)}"/>`;
+		}
+		if (card.shape === "petal") {
+			return `<path ${paint} d="${petalCardPath(rectangle)}"/>`;
+		}
+		if (card.shape === "capsule") {
+			const capsule = node.kind === "note" ? fittedCapsuleFrame(node) : rectangle;
+			return `<rect ${paint} x="${capsule.x}" y="${capsule.y}" width="${capsule.width}" height="${capsule.height}" rx="${capsule.height / 2}"/>`;
+		}
+		if (card.shape !== "organic" || node.kind !== "note") {
+			return `<rect ${paint} x="${node.x}" y="${node.y}" width="${node.width}" height="${height}" rx="${cssToken(`${token}-corner-radius`)}"/>`;
+		}
+
+		const geometry = noteBlobGeometry(node);
+		const path = organicBlobPath(
+			geometry.frame,
+			geometry.lowerInset,
+			geometry.upperInset,
+			geometry.upperShoulderInset,
+			geometry.upperShoulderRatio,
+		);
+		return `<path ${paint} d="${path}"/>`;
+	};
+
+	return `${card.shadow ? renderShape(shadowAttributes) : ""}${renderShape(attributes)}`;
+}
+
+function ribbonCardPath(rectangle: Rect): string {
+	const { x, y, width, height } = rectangle;
+	const right = x + width;
+	const bottom = y + height;
+	const centerY = y + height / 2;
+	const tail = Math.min(height * 0.28, width * 0.09);
+	return `M ${x + tail} ${y} H ${right - tail} L ${right} ${y + tail} L ${right - tail * 0.72} ${centerY} L ${right} ${bottom - tail} L ${right - tail} ${bottom} H ${x + tail} L ${x} ${bottom - tail} L ${x + tail * 0.72} ${centerY} L ${x} ${y + tail} Z`;
+}
+
+function petalCardPath(rectangle: Rect): string {
+	const { x, y, width, height } = rectangle;
+	const right = x + width;
+	const bottom = y + height;
+	const centerY = y + height / 2;
+	const shoulder = Math.min(height * 0.34, width * 0.12);
+	return `M ${x + shoulder} ${y} H ${right - shoulder} Q ${right} ${y} ${right} ${y + shoulder} C ${right - 2} ${centerY - shoulder * 0.45} ${right - 2} ${centerY + shoulder * 0.45} ${right} ${bottom - shoulder} Q ${right} ${bottom} ${right - shoulder} ${bottom} H ${x + shoulder} Q ${x} ${bottom} ${x} ${bottom - shoulder} C ${x + 2} ${centerY + shoulder * 0.45} ${x + 2} ${centerY - shoulder * 0.45} ${x} ${y + shoulder} Q ${x} ${y} ${x + shoulder} ${y} Z`;
 }
 
 function chamferedRectanglePath(rectangle: Rect, requestedCut: number): string {
@@ -413,6 +597,29 @@ function chamferedRectanglePath(rectangle: Rect, requestedCut: number): string {
 	const bottom = y + height;
 	const cut = Math.max(2, Math.min(requestedCut, width / 4, height / 3));
 	return `M ${x + cut} ${y} H ${right - cut} L ${right} ${y + cut} V ${bottom - cut} L ${right - cut} ${bottom} H ${x + cut} L ${x} ${bottom - cut} V ${y + cut} Z`;
+}
+
+function scallopedRectanglePath(rectangle: Rect, requestedInset: number): string {
+	const { x, y, width, height } = rectangle;
+	const right = x + width;
+	const bottom = y + height;
+	const inset = Math.max(3, Math.min(requestedInset * 0.35, height / 8, width / 16));
+	const corner = Math.max(8, Math.min(requestedInset, height / 3, width / 8));
+	const quarter = width / 4;
+	return [
+		`M ${x + corner} ${y + inset}`,
+		`Q ${x + quarter} ${y - inset} ${x + quarter * 2} ${y + inset}`,
+		`Q ${x + quarter * 3} ${y - inset} ${right - corner} ${y + inset}`,
+		`Q ${right} ${y + inset} ${right} ${y + corner}`,
+		`Q ${right - inset} ${y + height * 0.5} ${right} ${bottom - corner}`,
+		`Q ${right} ${bottom - inset} ${right - corner} ${bottom - inset}`,
+		`Q ${x + quarter * 3} ${bottom + inset} ${x + quarter * 2} ${bottom - inset}`,
+		`Q ${x + quarter} ${bottom + inset} ${x + corner} ${bottom - inset}`,
+		`Q ${x} ${bottom - inset} ${x} ${bottom - corner}`,
+		`Q ${x + inset} ${y + height * 0.5} ${x} ${y + corner}`,
+		`Q ${x} ${y + inset} ${x + corner} ${y + inset}`,
+		"Z",
+	].join(" ");
 }
 
 function enclosingRectangle(rectangles: readonly Rect[], padding: number): Rect {
@@ -430,12 +637,12 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
 		: "";
 	const card = cardTheme(node, theme);
-	const frame = card ? renderCardFrame(node, card, prefix) : "";
+	const frame = card ? renderCardFrame(node, card) : "";
 	const headingBackdrop =
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
-	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}>${frame}${headingBackdrop}${renderText(node, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
+	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}>${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {
@@ -455,15 +662,15 @@ function renderGroup(
 	const nested = group.layout === "nested";
 	const board = nested ? theme.boards.nested : theme.boards.topic;
 	const members = memberNodes(group, elements);
+	const enclosure = enclosingRectangle(members.length > 0 ? members : [group], board.padding);
 	const path =
 		board.shape === "chamfered"
-			? chamferedRectanglePath(
-					enclosingRectangle(members.length > 0 ? members : [group], board.padding),
-					Math.max(8, board.padding),
-				)
-			: members.length > 0
-				? blobPath(members, board.padding)
-				: blobPath([group], 0);
+			? chamferedRectanglePath(enclosure, Math.max(8, board.padding))
+			: board.shape === "scalloped"
+				? scallopedRectanglePath(enclosure, board.padding)
+				: members.length > 0
+					? blobPath(members, board.padding)
+					: blobPath([group], 0);
 	const pattern = nested ? `${prefix}-nested-hatch` : `${prefix}-topic-hatch`;
 	const bottom = Math.max(...members.map(rectBottom));
 	const bottomMembers = members.filter((member) => bottom - rectBottom(member) < 1);
@@ -498,7 +705,7 @@ function renderGroup(
 				? ""
 				: ` transform="matrix(${scaleX} 0 0 ${scaleY} ${translateX} ${translateY})"`;
 	const role = nested ? "nested" : "topic";
-	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"/>`;
+	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"/>`;
 }
 
 export function orthogonalConnectorPath(connector: LayoutConnector, laneOffset = 0): string {
@@ -577,7 +784,12 @@ function renderConnector(
 				: connector.kind === "topicToChildren"
 					? bundledCurvePath(connector.from, connector.to)
 					: verticalBumpPath(connector.from, connector.to);
-	return `<path id="${prefix}-${safeId(connector.id)}" class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"/>`;
+	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"`;
+	if (connectorTheme.routing !== "braided") {
+		return `<path id="${prefix}-${safeId(connector.id)}" ${attributes}/>`;
+	}
+	const offset = Math.max(1.5, connectorTheme.laneSpacing / 2);
+	return `<g id="${prefix}-${safeId(connector.id)}" class="roadmap__connector-braid" data-roadmap-routing="braided"><path ${attributes} transform="translate(${-offset} 0)"/><path ${attributes} transform="translate(${offset} 0)"/></g>`;
 }
 
 function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string): string {
@@ -607,7 +819,9 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	const path =
 		board.shape === "chamfered"
 			? chamferedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
-			: blobPath(rowRectangles, board.padding);
+			: board.shape === "scalloped"
+				? scallopedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
+				: blobPath(rowRectangles, board.padding);
 	const rows = legend.items
 		.map((item, row) => {
 			const tagStyle = badgeStyleForTag(item.tag, theme);
@@ -653,6 +867,8 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 		decoration = `<path d="M 0 0 H 12 M 0 0 V 12" fill="none" ${paint}/>`;
 	} else if (board.pattern === "dots") {
 		decoration = `<circle cx="6" cy="6" r="1.25" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
+	} else if (board.pattern === "lace") {
+		decoration = `<path d="M -4 7 Q 0 1 4 7 T 12 7 T 20 7" fill="none" ${paint}/><circle cx="4" cy="7" r="1.15" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
 	}
 	return `<pattern id="${id}" data-roadmap-pattern="${board.pattern}" patternUnits="userSpaceOnUse" width="12" height="12">${background}${decoration}</pattern>`;
 }
@@ -668,7 +884,6 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic)}
 		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested)}
 		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend)}
-		<filter id="${prefix}-shadow" x="-30%" y="-30%" width="180%" height="180%"><feOffset in="SourceAlpha" dx="${cssToken("shadow-offset-x")}" dy="${cssToken("shadow-offset-y")}" result="shadow-offset"/><feComponentTransfer in="shadow-offset" result="shadow-alpha"><feFuncA type="linear" slope="${cssToken("shadow-opacity")}"/></feComponentTransfer><feFlood flood-color="${cssToken("shadow-color")}" result="shadow-color"/><feComposite in="shadow-color" in2="shadow-alpha" operator="in" result="shadow"/><feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 		<filter id="${prefix}-soft-shadow" x="-30%" y="-30%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="${cssToken("soft-shadow-blur")}" result="soft-offset"/><feOffset in="soft-offset" dx="${cssToken("soft-shadow-offset-x")}" dy="${cssToken("soft-shadow-offset-y")}" result="soft-offset"/><feColorMatrix type="saturate" in="soft-offset" values="${cssToken("soft-shadow-saturation")}"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 		${symbol("check", "0 0 512 512", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM369 209 241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>')}
 		${symbol("heart", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M50 31c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 45.7 50 31.6V31z" opacity=".2"/><path fill="currentColor" d="M50 29c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 43.7 50 29.6V29z"/>')}
@@ -693,6 +908,7 @@ function baseStyles(): string {
 	.roadmap__background-artifacts{pointer-events:none}
 	.roadmap__background-artifact{opacity:var(--roadmap-background-artifact-opacity,1)}
 	.roadmap__background-artifact *{vector-effect:non-scaling-stroke}
+	.roadmap__frame-shadow{transform:translate(var(--roadmap-shadow-offset-x),var(--roadmap-shadow-offset-y));pointer-events:none}
 	.roadmap__text text{dominant-baseline:auto}
 	.roadmap__link{text-decoration:none}
 	.roadmap__inline--abbreviation{text-decoration-style:dotted}

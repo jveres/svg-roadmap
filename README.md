@@ -15,7 +15,8 @@ tools.
 - Generates SVG strings without a DOM, canvas, or layout framework.
 - Implements rectangle overlap checks, collision resolution, convex hulls, and
   Bézier connectors in the core.
-- Includes `Fun` and utopian `Sci-fi` roadmap themes with light and dark modes.
+- Includes `Fun`, utopian `Sci-fi`, and feminine `Rose` roadmap themes with
+  light and dark modes.
 - Supports optional, seeded background decoration owned by each theme.
 - Exposes typed design tokens, CSS classes, and `data-roadmap-element` hooks.
 - Preserves headings, comments, links, emphasis, highlights, inserts, tags,
@@ -172,12 +173,15 @@ scheme without rewriting its source.
 
 ## Themes and restyling
 
-`Fun` and `Sci-fi` are built-in roadmap theme presets. Each preset supplies a
-complete appearance, light and dark palettes, and its own optional background
-artifacts. `Sci-fi` uses clean translucent surfaces, cyan and violet accents,
-geometric orbital and signal motifs, chamfered cards and boards, capsule notes,
-technical grid and dot patterns, a straight architectural spine, and
-orthogonal circuit-like branches for an optimistic near-future look.
+`Fun`, `Sci-fi`, and `Rose` are built-in roadmap theme presets. Each preset
+supplies a complete appearance, light and dark palettes, and its own optional
+background artifacts. `Sci-fi` uses clean translucent surfaces, cyan and violet
+accents, geometric orbital and signal motifs, chamfered cards and boards,
+capsule notes, technical grid and dot patterns, a straight architectural spine,
+and orthogonal circuit-like branches for an optimistic near-future look.
+`Rose` uses blush, berry, and lavender colors with fishtail ribbon labels,
+petal-edged cards and notes, scalloped lace boards, curved branches, a
+double-strand spine, and soft petal, pearl, bow, and sparkle motifs.
 
 The `lightTheme` and `darkTheme` exports remain convenient Fun resolved-mode
 values for the lower-level API. Typography and spacing properties affect
@@ -283,8 +287,8 @@ with different line counts remains inside its bubble with consistent padding.
 A theme preset supplies complete light and dark `RoadmapTheme` values. Optional
 features are capabilities on that theme, not switches in core. In particular,
 `backgroundArtifacts` owns its CSS variables and a generator that returns
-generic SVG primitives. Core layout and rendering do not know Fun or Sci-fi
-motif names.
+generic SVG primitives. Core layout and rendering do not know Fun, Sci-fi, or
+Rose motif names.
 
 Pass additional presets through the `themes` catalog. This allows front matter
 to select an application theme without global registration or changes to the

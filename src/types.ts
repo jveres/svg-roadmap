@@ -346,7 +346,7 @@ export interface LegendTheme extends TypographyTheme {
 }
 
 export interface CardTheme {
-	readonly shape: "rounded" | "chamfered" | "capsule" | "organic";
+	readonly shape: "rounded" | "chamfered" | "capsule" | "organic" | "ribbon" | "petal";
 	readonly fill: string;
 	readonly stroke: string;
 	readonly strokeWidth: number;
@@ -360,8 +360,8 @@ export interface CardTheme {
 }
 
 export interface BoardTheme {
-	readonly shape: "organic" | "chamfered";
-	readonly pattern: "crosshatch" | "grid" | "dots" | "none";
+	readonly shape: "organic" | "chamfered" | "scalloped";
+	readonly pattern: "crosshatch" | "grid" | "dots" | "lace" | "none";
 	readonly background: string;
 	readonly hatch: string;
 	readonly hatchOpacity: number;
@@ -369,7 +369,7 @@ export interface BoardTheme {
 }
 
 export interface ConnectorTheme {
-	readonly routing: "curved" | "orthogonal" | "straight";
+	readonly routing: "curved" | "orthogonal" | "straight" | "braided";
 	readonly laneSpacing: number;
 	readonly color: string;
 	readonly width: number;
