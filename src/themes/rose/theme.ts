@@ -21,6 +21,9 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 	{
 		name: "rose",
 		mode: "light",
+		// Display serifs need natural shaping and tracking, so lines paint as
+		// one flowing run wherever no decoration forces exact positioning.
+		textPainting: "flowing",
 		cssVariables: {
 			"chapter-gradient-start": "#fdf9f0",
 			"chapter-gradient-end": "#f5e7dc",

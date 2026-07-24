@@ -437,9 +437,21 @@ export interface BackgroundArtifactTheme {
 	readonly generate: (context: BackgroundArtifactContext) => readonly LayoutBackgroundArtifact[];
 }
 
+/**
+ * How a card's text is painted. `positioned` gives every segment its own
+ * `<text>` at a measured origin — exact, and the only way painted decorations
+ * line up with glyphs. `flowing` emits one centered `<text>` per line, which
+ * keeps tracking and shaping natural for display faces but leaves WebKit free
+ * to distribute `textLength` its own way; lines that carry decorations,
+ * emoji artwork, or code spans fall back to `positioned` individually.
+ */
+export type TextPainting = "positioned" | "flowing";
+
 export interface RoadmapTheme {
 	readonly name: string;
 	readonly mode: RoadmapColorMode;
+	/** Defaults to `positioned`. */
+	readonly textPainting?: TextPainting;
 	readonly cssVariables: Readonly<Record<string, string | number>>;
 	readonly canvas: {
 		readonly background: string;

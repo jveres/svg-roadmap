@@ -347,6 +347,14 @@ omitted badge values from the configured unknown-tag fallback.
 Notes and chapter comments use content-fitted painted frames by default, so text
 with different line counts remains inside its bubble with consistent padding.
 
+A theme's `textPainting` selects how card text reaches the SVG. The default,
+`positioned`, gives every segment its own `<text>` at a measured origin, which
+is what keeps painted decorations aligned with their glyphs. Setting it to
+`flowing` emits one centered `<text>` per line so display faces keep natural
+shaping and tracking; lines carrying highlights, inserts, code spans, defined
+terms, or vendored emoji artwork still paint positioned individually. The Rose
+and Sci-fi presets opt into `flowing`.
+
 ### Isolated theme packages
 
 A theme preset supplies complete light and dark `RoadmapTheme` values. Optional

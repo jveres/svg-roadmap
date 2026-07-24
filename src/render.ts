@@ -250,8 +250,27 @@ function defaultIdPrefix(
 	title: string,
 	description: string,
 ): string {
-	const identity = JSON.stringify({ layout, theme, title, description });
-	return `roadmap-${hashString(identity)}`;
+	// Folded chunk-by-chunk rather than serializing the whole layout: element
+	// ids already encode their content (they are slugged from it), so id and
+	// box are enough to separate two roadmaps sharing a page. The theme is
+	// small and fixed-size, so it still goes through JSON.
+	let digest = hashNumber(
+		`${title} ${description} ${layout.width} ${layout.height} ${layout.maxDepth}`,
+	);
+	digest = hashNumber(JSON.stringify(theme), digest);
+	for (const element of layout.elements) {
+		digest = hashNumber(
+			`${element.kind} ${element.id} ${element.x} ${element.y} ${element.width} ${element.height}`,
+			digest,
+		);
+	}
+	for (const connector of layout.connectors) {
+		digest = hashNumber(
+			`${connector.id} ${connector.from.x} ${connector.from.y} ${connector.to.x} ${connector.to.y}`,
+			digest,
+		);
+	}
+	return `roadmap-${digest.toString(36)}`;
 }
 
 function cardTheme(node: LayoutNode, theme: RoadmapTheme): CardTheme | undefined {
@@ -595,7 +614,9 @@ function renderFlowingText(node: LayoutNode): string {
 }
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
-	if (theme.name !== "rose" && theme.name !== "sci-fi") return renderPositionedText(node, prefix);
+	if ((theme.textPainting ?? "positioned") === "positioned") {
+		return renderPositionedText(node, prefix);
+	}
 	// Painted decoration rects must line up with glyphs exactly. WebKit
 	// distributes textLength across a flowing line differently from other
 	// engines, so lines with painted decorations render positioned instead.
@@ -809,6 +830,24 @@ function enclosingRectangle(rectangles: readonly Rect[], padding: number): Rect 
 	return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
+/**
+ * The outline of a board around `rectangles`. Ruled shapes trace the enclosing
+ * rectangle; organic boards hug the individual rectangles instead. The chamfer
+ * cut and blob padding differ per caller, so both stay parameters.
+ */
+function boardPath(
+	board: BoardTheme,
+	rectangles: readonly Rect[],
+	chamferCut: number,
+	blobPadding: number,
+): string {
+	if (board.shape === "organic") return blobPath(rectangles, blobPadding);
+	const enclosure = enclosingRectangle(rectangles, board.padding);
+	if (board.shape === "chamfered") return chamferedRectanglePath(enclosure, chamferCut);
+	if (board.shape === "rounded") return roundedRectanglePath(enclosure, roundedBoardRadius(board));
+	return scallopedRectanglePath(enclosure, board.padding);
+}
+
 function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	const role = elementRole(node);
 	const tags = node.tags.join(",");
@@ -841,23 +880,22 @@ function renderGroup(
 	const nested = group.layout === "nested";
 	const board = nested ? theme.boards.nested : theme.boards.topic;
 	const members = memberNodes(group, elements);
-	const enclosure = enclosingRectangle(members.length > 0 ? members : [group], board.padding);
-	const path =
-		board.shape === "chamfered"
-			? chamferedRectanglePath(enclosure, Math.max(8, board.padding))
-			: board.shape === "rounded"
-				? roundedRectanglePath(enclosure, roundedBoardRadius(board))
-				: board.shape === "scalloped"
-					? scallopedRectanglePath(enclosure, board.padding)
-					: members.length > 0
-						? blobPath(members, board.padding)
-						: blobPath([group], 0);
+	// A group with no laid-out members falls back to its own box, which the
+	// blob then traces unpadded.
+	const outlined = members.length > 0 ? members : [group];
+	const path = boardPath(
+		board,
+		outlined,
+		Math.max(8, board.padding),
+		members.length > 0 ? board.padding : 0,
+	);
 	const pattern = nested ? `${prefix}-nested-hatch` : `${prefix}-topic-hatch`;
-	const bottom = Math.max(...members.map(rectBottom));
-	const bottomMembers = members.filter((member) => bottom - rectBottom(member) < 1);
+	const bottom = Math.max(...outlined.map(rectBottom));
+	const bottomMembers = outlined.filter((member) => bottom - rectBottom(member) < 1);
+	// `outlined` is never empty, so the member achieving `bottom` always
+	// survives the filter and the divisor is at least one.
 	const bottomCenter =
-		bottomMembers.reduce((sum, member) => sum + rectCenter(member).x, 0) /
-		Math.max(1, bottomMembers.length);
+		bottomMembers.reduce((sum, member) => sum + rectCenter(member).x, 0) / bottomMembers.length;
 	const isGrid = group.layout === "grid";
 	const isAsymmetricGrid = isGrid && bottomCenter > group.x + group.width * 0.65;
 	const isSymmetricTopicGrid = isGrid && !isAsymmetricGrid;
@@ -1042,17 +1080,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 			},
 		];
 	});
-	const path =
-		board.shape === "chamfered"
-			? chamferedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
-			: board.shape === "rounded"
-				? roundedRectanglePath(
-						enclosingRectangle(rowRectangles, board.padding),
-						roundedBoardRadius(board),
-					)
-				: board.shape === "scalloped"
-					? scallopedRectanglePath(enclosingRectangle(rowRectangles, board.padding), board.padding)
-					: blobPath(rowRectangles, board.padding);
+	const path = boardPath(board, rowRectangles, board.padding, board.padding);
 	const rows = legend.items
 		.map((item, row) => {
 			const tagStyle = badgeStyleForTag(item.tag, theme);

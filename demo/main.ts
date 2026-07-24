@@ -1,4 +1,5 @@
 import {
+	builtInThemes,
 	createRoadmapGenerator,
 	installDomMeasurement,
 	type RoadmapColorMode,
@@ -28,6 +29,22 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 	},
 };
 
+const fallbackPreset = "fun";
+
+/** Preset labels for the picker; anything unlisted falls back to its id. */
+const presetLabels: Readonly<Record<string, string>> = {
+	fun: "Fun",
+	"sci-fi": "Sci-fi",
+	rose: "Rose",
+	print: "Print",
+	pro: "Pro",
+	retro: "Retro",
+	arcade: "Arcade",
+	ascii: "ASCII",
+};
+
+const presetIds = Object.keys(builtInThemes);
+
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("The demo root element is missing.");
 
@@ -47,14 +64,12 @@ app.innerHTML = `
 			</label>
 			<label class="theme-picker">Theme
 				<select id="theme-preset">
-					<option value="fun" selected>Fun</option>
-					<option value="sci-fi">Sci-fi</option>
-					<option value="rose">Rose</option>
-					<option value="print">Print</option>
-					<option value="pro">Pro</option>
-					<option value="retro">Retro</option>
-					<option value="arcade">Arcade</option>
-					<option value="ascii">ASCII</option>
+					${presetIds
+						.map(
+							(id) =>
+								`<option value="${id}"${id === fallbackPreset ? " selected" : ""}>${presetLabels[id] ?? id}</option>`,
+						)
+						.join("")}
 				</select>
 			</label>
 			<label class="theme-picker">Mode
@@ -164,16 +179,7 @@ function selectedMode(): RoadmapColorMode {
 function selectedTheme(): RoadmapThemeSelection {
 	const preset = themePresetSelect.value;
 	return {
-		preset:
-			preset === "sci-fi" ||
-			preset === "rose" ||
-			preset === "print" ||
-			preset === "pro" ||
-			preset === "retro" ||
-			preset === "arcade" ||
-			preset === "ascii"
-				? preset
-				: "fun",
+		preset: presetIds.includes(preset) ? preset : fallbackPreset,
 		mode: selectedMode(),
 	};
 }

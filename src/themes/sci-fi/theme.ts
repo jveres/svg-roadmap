@@ -8,6 +8,9 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 	{
 		name: "sci-fi",
 		mode: "light",
+		// Wide-tracked display type shapes better as one flowing run; lines
+		// carrying decorations still fall back to positioned painting.
+		textPainting: "flowing",
 		cssVariables: {
 			"chapter-gradient-start": "#d8fbff",
 			"chapter-gradient-end": "#dcd8ff",

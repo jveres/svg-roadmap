@@ -604,6 +604,7 @@ export function createTheme(
 			}
 		: baseArtifacts;
 	const shadowPattern = override.shadow?.pattern ?? base.shadow.pattern;
+	const textPainting = override.textPainting ?? base.textPainting;
 	const unknown = mergeTag(base.badges.unknown, override.badges?.unknown);
 	const tagNames = new Set([
 		...Object.keys(base.badges.tags),
@@ -617,6 +618,7 @@ export function createTheme(
 	return {
 		name: override.name ?? base.name,
 		mode: override.mode ?? base.mode,
+		...(textPainting !== undefined ? { textPainting } : {}),
 		cssVariables: mergeCssVariables(base.cssVariables, override.cssVariables),
 		canvas: { background: override.canvas?.background ?? base.canvas.background },
 		heading: {
