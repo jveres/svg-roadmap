@@ -554,6 +554,7 @@ function mergeConnector(
 	override: DeepPartial<ConnectorTheme> | undefined,
 ): ConnectorTheme {
 	const endShape = override?.endShape ?? base.endShape;
+	const endShapeJoin = override?.endShapeJoin ?? base.endShapeJoin;
 	return {
 		routing: override?.routing ?? base.routing,
 		laneSpacing: override?.laneSpacing ?? base.laneSpacing,
@@ -562,6 +563,7 @@ function mergeConnector(
 		dash: override?.dash ?? base.dash,
 		opacity: override?.opacity ?? base.opacity,
 		...(endShape !== undefined ? { endShape } : {}),
+		...(endShapeJoin !== undefined ? { endShapeJoin } : {}),
 	};
 }
 

@@ -16,6 +16,7 @@ import type {
 	BadgeStyle,
 	BoardTheme,
 	CardTheme,
+	ConnectorTheme,
 	LayoutBackgroundArtifact,
 	LayoutConnector,
 	LayoutElement,
@@ -47,6 +48,63 @@ function cssToken(name: string): string {
 
 function kebabToken(value: string): string {
 	return value.replaceAll(/([a-z])([A-Z])/gu, "$1-$2").toLowerCase();
+}
+
+/** End-shape markers size in user units so hairline connectors stay legible. */
+function connectorMarkerSize(strokeWidth: number): number {
+	return Math.min(18, Math.max(7, strokeWidth * 4.5));
+}
+
+/**
+ * Marker anchoring per shape and join mode, in tenths of the marker size.
+ * With `overlap` the stroke runs under the marker and only the leading edge
+ * is compensated; with `detached` the reference point sits at the shape's
+ * rear edge and the trim moves the whole marker ahead of the stroke, with
+ * its front landing on the original endpoint.
+ */
+function markerAnchor(
+	endShape: NonNullable<ConnectorTheme["endShape"]>,
+	join: NonNullable<ConnectorTheme["endShapeJoin"]>,
+): { readonly refX: number; readonly trimFactor: number } {
+	if (join === "detached") {
+		if (endShape === "arrow") return { refX: 0, trimFactor: 0.8 };
+		if (endShape === "circle") return { refX: 0.6, trimFactor: 0.88 };
+		if (endShape === "diamond") return { refX: 1, trimFactor: 0.8 };
+		return { refX: 1, trimFactor: 0.78 };
+	}
+	if (endShape === "arrow") return { refX: 5, trimFactor: 0.3 };
+	if (endShape === "diamond") return { refX: 9, trimFactor: 0.25 };
+	return { refX: 8.7, trimFactor: 0.25 };
+}
+
+/**
+ * Shortens a connector so its stroke ends under the arrow body: the arrow tip
+ * overshoots its reference point by three tenths of the marker size, which
+ * puts the tip back on the original endpoint while the line's round cap stays
+ * hidden behind the arrow. Orthogonal routes trim along their final segment's
+ * axis; other routes trim toward the source.
+ */
+function trimConnectorEnd(
+	connector: LayoutConnector,
+	trim: number,
+	routing: ConnectorTheme["routing"],
+): LayoutConnector {
+	const { from, to } = connector;
+	if (routing === "orthogonal") {
+		if (connector.kind === "topicToChildren") {
+			const sign = Math.sign(to.x - from.x) || 1;
+			return { ...connector, to: { x: to.x - sign * trim, y: to.y } };
+		}
+		const sign = Math.sign(to.y - from.y) || 1;
+		return { ...connector, to: { x: to.x, y: to.y - sign * trim } };
+	}
+	const deltaX = to.x - from.x;
+	const deltaY = to.y - from.y;
+	const length = Math.hypot(deltaX, deltaY) || 1;
+	return {
+		...connector,
+		to: { x: to.x - (deltaX / length) * trim, y: to.y - (deltaY / length) * trim },
+	};
 }
 
 function boardOutline(board: BoardTheme): string {
@@ -912,15 +970,18 @@ export function orthogonalLaneOffsets(
 ): ReadonlyMap<string, number> {
 	const offsets = new Map<string, number>();
 	if (laneSpacing <= 0) return offsets;
-	// Lanes must not run along vertical rules such as outlined board edges.
-	const laneClearance = 3.5;
+	// Lanes must not run along vertical rules such as outlined board edges:
+	// clearing iterates because a nudge can land within clearance of another
+	// forbidden line.
+	const laneClearance = 6;
 	const clearedLane = (lane: number): number => {
-		for (const forbidden of avoidX) {
-			if (Math.abs(lane - forbidden) < laneClearance) {
-				return forbidden + (lane >= forbidden ? laneClearance : -laneClearance);
-			}
+		let value = lane;
+		for (let pass = 0; pass < 4; pass += 1) {
+			const hit = avoidX.find((forbidden) => Math.abs(value - forbidden) < laneClearance);
+			if (hit === undefined) break;
+			value = hit + (value >= hit ? laneClearance : -laneClearance);
 		}
-		return lane;
+		return value;
 	};
 	const sides = new Map<number, LayoutConnector[]>();
 	for (const connector of connectors) {
@@ -958,8 +1019,18 @@ export function orthogonalLaneOffsets(
 			const effectiveSpacing = Math.min(laneSpacing, gap / (cluster.length + 1));
 			const laneSpan = effectiveSpacing * Math.max(0, cluster.length - 1);
 			const firstLane = low + (gap - laneSpan) / 2;
+			// Clearing can squeeze neighbouring lanes together, so restore a
+			// minimum lane-to-lane gap before assigning offsets.
+			const minLaneGap = Math.min(4, Math.max(1, effectiveSpacing));
+			const lanes = cluster.map((_, index) => clearedLane(firstLane + index * effectiveSpacing));
+			for (let index = 1; index < lanes.length; index += 1) {
+				const previous = lanes[index - 1] ?? 0;
+				if ((lanes[index] ?? 0) - previous < minLaneGap) {
+					lanes[index] = clearedLane(previous + minLaneGap);
+				}
+			}
 			for (const [index, connector] of cluster.entries()) {
-				const laneX = clearedLane(firstLane + index * effectiveSpacing);
+				const laneX = lanes[index] ?? (connector.from.x + connector.to.x) / 2;
 				const naturalMiddleX = (connector.from.x + connector.to.x) / 2;
 				offsets.set(connector.id, laneX - naturalMiddleX);
 			}
@@ -976,15 +1047,26 @@ function renderConnector(
 ): string {
 	const token = kebabToken(connector.kind);
 	const connectorTheme = theme.connectors[connector.kind];
+	const endShape = connectorTheme.endShape ?? "none";
+	const trim =
+		endShape !== "none" && connectorTheme.routing !== "braided"
+			? connectorMarkerSize(connectorTheme.width) *
+				markerAnchor(endShape, connectorTheme.endShapeJoin ?? "overlap").trimFactor
+			: 0;
+	const routed =
+		trim > 0 ? trimConnectorEnd(connector, trim, connectorTheme.routing) : connector;
+	// Lane offsets are solved against the untrimmed midpoint; re-anchor them
+	// to the trimmed geometry so the lane stays exactly where clearing put it.
+	const laneAnchorShift =
+		(connector.from.x + connector.to.x) / 2 - (routed.from.x + routed.to.x) / 2;
 	const path =
 		connectorTheme.routing === "orthogonal"
-			? orthogonalConnectorPath(connector, laneOffset)
+			? orthogonalConnectorPath(routed, laneOffset + laneAnchorShift)
 			: connectorTheme.routing === "straight"
-				? `M ${connector.from.x} ${connector.from.y} L ${connector.to.x} ${connector.to.y}`
-				: connector.kind === "topicToChildren"
-					? bundledCurvePath(connector.from, connector.to)
-					: verticalBumpPath(connector.from, connector.to);
-	const endShape = connectorTheme.endShape ?? "none";
+				? `M ${routed.from.x} ${routed.from.y} L ${routed.to.x} ${routed.to.y}`
+				: routed.kind === "topicToChildren"
+					? bundledCurvePath(routed.from, routed.to)
+					: verticalBumpPath(routed.from, routed.to);
 	const marker =
 		endShape !== "none" && connectorTheme.routing !== "braided"
 			? ` marker-end="url(#${prefix}-marker-${token}-${endShape})"`
@@ -1136,7 +1218,7 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 				const outline = `fill="${cssToken("canvas-background")}" stroke="${cssToken(`connector-${token}-color`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-width="1.6"`;
 				const content =
 					endShape === "arrow"
-						? `<path d="M 0 1 L 8 5 L 0 9 Z" ${paint}/>`
+						? `<path d="M 0 0 L 8 5 L 0 10 Z" ${paint}/>`
 						: endShape === "diamond"
 							? `<path d="M 5 1 L 9 5 L 5 9 L 1 5 Z" ${paint}/>`
 							: endShape === "circle"
@@ -1147,10 +1229,11 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 				// sits at the leading edge of each shape so markers rest against
 				// the target instead of straddling its edge, where boards and
 				// badges would occlude half of them.
-				const size = Math.min(18, Math.max(7, connector.width * 4.5));
-				// The arrow's reference point sits one unit behind its tip so the
-				// tail always overlaps the stroke and stays visually attached.
-				const refX = endShape === "arrow" ? 7 : endShape === "diamond" ? 9 : 8.7;
+				const size = connectorMarkerSize(connector.width);
+				// Anchoring depends on the join mode: overlapped markers cover
+				// the stroke's round cap with their body, detached markers sit
+				// wholly ahead of the trimmed stroke.
+				const { refX } = markerAnchor(endShape, connector.endShapeJoin ?? "overlap");
 				return `<marker id="${prefix}-marker-${token}-${endShape}" viewBox="0 0 10 10" refX="${refX}" refY="5" markerWidth="${size}" markerHeight="${size}" markerUnits="userSpaceOnUse" orient="auto-start-reverse">${content}</marker>`;
 			})
 			.filter(Boolean)
@@ -1268,7 +1351,9 @@ function renderBackgroundArtifact(
 ): string {
 	const shapes = artifact.shapes
 		.map((shape) => {
-			const paint = `${shape.fill ? ` fill="${escapeXml(shape.fill)}"` : ""}${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth === undefined ? "" : ` stroke-width="${shape.strokeWidth}"`}`;
+			const blink =
+				animated && shape.animation === "blink" ? ` class="roadmap__artifact-blink"` : "";
+			const paint = `${blink}${shape.fill ? ` fill="${escapeXml(shape.fill)}"` : ""}${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth === undefined ? "" : ` stroke-width="${shape.strokeWidth}"`}`;
 			return shape.kind === "circle"
 				? `<circle cx="${shape.cx}" cy="${shape.cy}" r="${shape.radius}"${paint}/>`
 				: `<path d="${escapeXml(shape.d)}"${paint}/>`;
@@ -1334,8 +1419,10 @@ export function renderRoadmapSvg(
 		.join("");
 	const animationStyles = animatedBackground
 		? `\n\t.roadmap__background-artifact-motion{animation-timing-function:linear;animation-iteration-count:infinite}
+	.roadmap__artifact-blink{animation:roadmap-artifact-blink 1.1s linear infinite}
 	${artifactMotionKeyframes(intensity)}
-	@media (prefers-reduced-motion:reduce){.roadmap__background-artifact-motion{animation:none}}`
+	@keyframes roadmap-artifact-blink{0%,49%{opacity:1}50%,99%{opacity:0}100%{opacity:1}}
+	@media (prefers-reduced-motion:reduce){.roadmap__background-artifact-motion,.roadmap__artifact-blink{animation:none}}`
 		: "";
 	const groups = layout.elements
 		.filter((element): element is LayoutGroup => element.kind === "group")

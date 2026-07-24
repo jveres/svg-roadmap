@@ -302,6 +302,8 @@ export type LayoutBackgroundArtifactShape =
 			readonly fill?: string;
 			readonly stroke?: string;
 			readonly strokeWidth?: string | number;
+			/** Optional animation applied when the background is animated. */
+			readonly animation?: "blink";
 	  }
 	| {
 			readonly kind: "path";
@@ -309,6 +311,8 @@ export type LayoutBackgroundArtifactShape =
 			readonly fill?: string;
 			readonly stroke?: string;
 			readonly strokeWidth?: string | number;
+			/** Optional animation applied when the background is animated. */
+			readonly animation?: "blink";
 	  };
 
 export interface RoadmapLayout {
@@ -410,6 +414,12 @@ export interface ConnectorTheme {
 	readonly opacity: number;
 	/** Marker drawn at the target end of the connector; braided spines ignore it. */
 	readonly endShape?: "none" | "arrow" | "dot" | "circle" | "diamond";
+	/**
+	 * How the stroke meets the end shape: `overlap` runs the stroke under the
+	 * marker (right for opaque markers); `detached` ends the stroke at the
+	 * marker's rear edge so translucent markers never composite over the line.
+	 */
+	readonly endShapeJoin?: "overlap" | "detached";
 }
 
 export interface BackgroundArtifactContext {

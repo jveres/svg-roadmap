@@ -1,5 +1,6 @@
 import { artifactFreeLightTheme, createTheme } from "../../theme.ts";
 import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
+import { generateArcadeBackgroundArtifacts } from "./background-artifacts.ts";
 
 const displayFontFamily = 'Impact, "Arial Black", "Franklin Gothic Bold", sans-serif';
 const monoFontFamily = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
@@ -174,6 +175,7 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 				dash: "0.1 8",
 				opacity: 0.85,
 				endShape: "dot",
+				endShapeJoin: "detached",
 			},
 		},
 		inline: {
@@ -192,6 +194,17 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 			softOffsetX: 1,
 			softOffsetY: 2,
 			softSaturation: 1,
+		},
+		backgroundArtifacts: {
+			cssVariables: {
+				"arcade-artifact-yellow": "#dfae12",
+				"arcade-artifact-pink": "#e0187e",
+				"arcade-artifact-cyan": "#0f9fba",
+				"arcade-artifact-purple": "#7b2ff7",
+				"arcade-artifact-white": "#ffffff",
+				"background-artifact-opacity": 0.38,
+			},
+			generate: generateArcadeBackgroundArtifacts,
 		},
 		badges: {
 			unknown: { badges: [{ background: "#8579ab", foreground: "#ffffff" }] },
@@ -281,6 +294,17 @@ export const arcadeDarkTheme: RoadmapTheme = createTheme(
 			abbreviation: "#a08cd8",
 		},
 		shadow: { color: "#ff2d78", opacity: 0.3 },
+		backgroundArtifacts: {
+			cssVariables: {
+				"arcade-artifact-yellow": "#ffd23f",
+				"arcade-artifact-pink": "#ff4d94",
+				"arcade-artifact-cyan": "#29d3ef",
+				"arcade-artifact-purple": "#9d6bff",
+				"arcade-artifact-white": "#ffffff",
+				"background-artifact-opacity": 0.45,
+			},
+			generate: generateArcadeBackgroundArtifacts,
+		},
 		badges: {
 			unknown: { badges: [{ background: "#8579ab", foreground: "#ffffff" }] },
 			tags: {

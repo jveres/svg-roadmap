@@ -93,6 +93,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				background: "#effaff",
 				hatch: "#66cce0",
 				hatchOpacity: 0.18,
+				stroke: "#7fd4e5",
+				strokeWidth: 0.75,
 			},
 			nested: {
 				shape: "chamfered",
@@ -100,6 +102,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				background: "#f4f1ff",
 				hatch: "#9e91e4",
 				hatchOpacity: 0.18,
+				stroke: "#ab9fe8",
+				strokeWidth: 0.75,
 			},
 			legend: {
 				shape: "chamfered",
@@ -107,6 +111,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				background: "#f1fbff",
 				hatch: "#66cce0",
 				hatchOpacity: 0.18,
+				stroke: "#7fd4e5",
+				strokeWidth: 0.75,
 			},
 		},
 		connectors: {
@@ -196,9 +202,9 @@ export const sciFiDarkTheme: RoadmapTheme = createTheme(
 		nestedTopic: { fill: "#111d35", stroke: "#625aaa", typography: { color: "#e5faff" } },
 		topicHeader: { stroke: "#786dde", typography: { color: "#f0eeff" } },
 		boards: {
-			topic: { background: "#091827", hatch: "#35b8d1", hatchOpacity: 0.22 },
-			nested: { background: "#11162c", hatch: "#786dde", hatchOpacity: 0.22 },
-			legend: { background: "#091827", hatch: "#35b8d1", hatchOpacity: 0.22 },
+			topic: { background: "#091827", hatch: "#35b8d1", hatchOpacity: 0.22, stroke: "#2b7f95" },
+			nested: { background: "#11162c", hatch: "#786dde", hatchOpacity: 0.22, stroke: "#544d9e" },
+			legend: { background: "#091827", hatch: "#35b8d1", hatchOpacity: 0.22, stroke: "#2b7f95" },
 		},
 		connectors: {
 			spine: { color: "#3c7485", opacity: 0.72 },

@@ -151,6 +151,29 @@ describe("SVG rendering boundaries", () => {
 		expect(path).toBe("M 100 40 L 60 40 L 60 60 L 20 60");
 	});
 
+	it("keeps lanes clear of forbidden vertical rules while preserving lane gaps", () => {
+		const connector = (id: string, sourceY: number): LayoutConnector => ({
+			id,
+			kind: "topicToChildren",
+			from: { x: 100, y: sourceY },
+			to: { x: 200, y: sourceY + 20 },
+			depth: 2,
+		});
+		const connectors = [connector("first", 40), connector("second", 80)];
+
+		// Natural lanes would sit at 144 and 156; a rule at 145 forces the
+		// first lane away without collapsing the gap to the second.
+		const offsets = orthogonalLaneOffsets(connectors, 12, [145]);
+		const lanes = connectors.map(
+			(entry) => (entry.from.x + entry.to.x) / 2 + (offsets.get(entry.id) ?? 0),
+		);
+
+		for (const lane of lanes) {
+			expect(Math.abs(lane - 145)).toBeGreaterThanOrEqual(6);
+		}
+		expect((lanes[1] ?? 0) - (lanes[0] ?? 0)).toBeGreaterThanOrEqual(4);
+	});
+
 	it("distributes nearby subtopic connectors across separate lanes", () => {
 		const connector = (id: string, sourceY: number): LayoutConnector => ({
 			id,

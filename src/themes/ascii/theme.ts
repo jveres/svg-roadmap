@@ -1,5 +1,6 @@
 import { artifactFreeLightTheme, createTheme } from "../../theme.ts";
 import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
+import { generateAsciiBackgroundArtifacts } from "./background-artifacts.ts";
 
 const monoFontFamily =
 	'"Berkeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace';
@@ -171,6 +172,7 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				dash: "",
 				opacity: 0.95,
 				endShape: "arrow",
+				endShapeJoin: "detached",
 			},
 			topicToChildren: {
 				routing: "orthogonal",
@@ -180,6 +182,7 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				dash: "",
 				opacity: 0.95,
 				endShape: "arrow",
+				endShapeJoin: "detached",
 			},
 		},
 		inline: {
@@ -199,6 +202,15 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 			softOffsetX: 1,
 			softOffsetY: 1,
 			softSaturation: 0,
+		},
+		backgroundArtifacts: {
+			cssVariables: {
+				"ascii-artifact-ink": "#6b6559",
+				"ascii-artifact-faint": "#a39c8b",
+				"ascii-artifact-stroke-width": 1.4,
+				"background-artifact-opacity": 0.5,
+			},
+			generate: generateAsciiBackgroundArtifacts,
 		},
 		badges: {
 			unknown: { badges: [{ background: "#a39c8b", foreground: "#fbf8f1" }] },
@@ -285,6 +297,15 @@ export const asciiDarkTheme: RoadmapTheme = createTheme(
 			abbreviation: "#8d93a1",
 		},
 		shadow: { color: "#aeb4c2", opacity: 0.5 },
+		backgroundArtifacts: {
+			cssVariables: {
+				"ascii-artifact-ink": "#8d93a1",
+				"ascii-artifact-faint": "#5d6371",
+				"ascii-artifact-stroke-width": 1.4,
+				"background-artifact-opacity": 0.5,
+			},
+			generate: generateAsciiBackgroundArtifacts,
+		},
 		badges: {
 			unknown: { badges: [{ background: "#5d6371", foreground: midnight }] },
 			tags: {

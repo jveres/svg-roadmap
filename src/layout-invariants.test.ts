@@ -195,7 +195,7 @@ function indexLayout(layout: RoadmapLayout): LayoutIndex {
 	};
 }
 
-function collectViolations(layout: RoadmapLayout): string[] {
+function collectViolations(layout: RoadmapLayout, svg?: string): string[] {
 	const violations: string[] = [];
 	const { nodes, groups, legends } = indexLayout(layout);
 	const overlapTolerance = 1.5;
@@ -281,7 +281,30 @@ function collectViolations(layout: RoadmapLayout): string[] {
 	};
 	for (const connector of layout.connectors) checkConnector(connector);
 
-	// 6. Everything stays inside the canvas.
+	// 6. Rendered orthogonal lanes never run along a board's vertical edge:
+	// a lane within a board's vertical span must keep a visible gap from its
+	// left and right rules.
+	if (svg !== undefined) {
+		const lanePattern =
+			/topicToChildren[^"]*"[^>]*\bd="M [^"]*?L (-?[\d.]+) (-?[\d.]+) L \1 (-?[\d.]+)/gu;
+		for (const match of svg.matchAll(lanePattern)) {
+			const laneX = Number(match[1]);
+			const yStart = Math.min(Number(match[2]), Number(match[3]));
+			const yEnd = Math.max(Number(match[2]), Number(match[3]));
+			for (const group of groups) {
+				if (yEnd < group.y || yStart > group.y + group.height) continue;
+				for (const edge of [group.x, group.x + group.width]) {
+					if (Math.abs(laneX - edge) < 2.5) {
+						violations.push(
+							`connector lane hugs board edge: x=${laneX} near ${group.id} edge ${Math.round(edge)}`,
+						);
+					}
+				}
+			}
+		}
+	}
+
+	// 7. Everything stays inside the canvas.
 	for (const element of layout.elements) {
 		const rect = element.kind === "note" ? noteLayoutRectangle(element as LayoutNode) : element;
 		if (
@@ -300,6 +323,6 @@ function collectViolations(layout: RoadmapLayout): string[] {
 describe.each(presets)("layout invariants (%s theme)", (preset) => {
 	test.each(Object.entries(documents))("%s", (_label, source) => {
 		const generated = generateRoadmap(source, { theme: { preset, mode: "light" } });
-		expect(collectViolations(generated.layout)).toEqual([]);
+		expect(collectViolations(generated.layout, generated.svg)).toEqual([]);
 	});
 });

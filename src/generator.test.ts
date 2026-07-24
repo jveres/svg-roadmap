@@ -9,6 +9,8 @@ import {
 	generateRoadmapSvgSync,
 } from "./index.ts";
 import { createTheme, darkTheme, lightTheme } from "./theme.ts";
+import { generateArcadeBackgroundArtifacts } from "./themes/arcade/background-artifacts.ts";
+import { generateAsciiBackgroundArtifacts } from "./themes/ascii/background-artifacts.ts";
 import { generateFunBackgroundArtifacts } from "./themes/fun/background-artifacts.ts";
 import { generateRetroBackgroundArtifacts } from "./themes/retro/background-artifacts.ts";
 import { generateRoseBackgroundArtifacts } from "./themes/rose/background-artifacts.ts";
@@ -388,6 +390,52 @@ An intentionally restrained introduction.
 		expect(changed).not.toEqual(first);
 		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
 		expect(first.every((artifact) => artifact.id.startsWith("rose-background-"))).toBe(true);
+	});
+
+	test("keeps Arcade artifact geometry deterministic and outside content", () => {
+		const content = { x: 260, y: 0, width: 380, height: 600 };
+		const context = {
+			width: 900,
+			height: 600,
+			avoid: [content],
+			settings: { enabled: true, seed: "high-score", density: 1, size: 1 },
+		} as const;
+
+		const first = generateArcadeBackgroundArtifacts(context);
+		const repeated = generateArcadeBackgroundArtifacts(context);
+		const changed = generateArcadeBackgroundArtifacts({
+			...context,
+			settings: { ...context.settings, seed: "game-over" },
+		});
+
+		expect(first.length).toBeGreaterThan(0);
+		expect(repeated).toEqual(first);
+		expect(changed).not.toEqual(first);
+		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
+		expect(first.every((artifact) => artifact.id.startsWith("arcade-background-"))).toBe(true);
+	});
+
+	test("keeps ASCII artifact geometry deterministic and outside content", () => {
+		const content = { x: 260, y: 0, width: 380, height: 600 };
+		const context = {
+			width: 900,
+			height: 600,
+			avoid: [content],
+			settings: { enabled: true, seed: "blinking-cursor", density: 1, size: 1 },
+		} as const;
+
+		const first = generateAsciiBackgroundArtifacts(context);
+		const repeated = generateAsciiBackgroundArtifacts(context);
+		const changed = generateAsciiBackgroundArtifacts({
+			...context,
+			settings: { ...context.settings, seed: "steady-cursor" },
+		});
+
+		expect(first.length).toBeGreaterThan(0);
+		expect(repeated).toEqual(first);
+		expect(changed).not.toEqual(first);
+		expect(first.every((artifact) => !rectanglesOverlap(artifact.bounds, content))).toBe(true);
+		expect(first.every((artifact) => artifact.id.startsWith("ascii-background-"))).toBe(true);
 	});
 
 	test("keeps Retro artifact geometry deterministic and outside content", () => {

@@ -97,6 +97,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				background: "#fff3f8",
 				hatch: "#e6a4c0",
 				hatchOpacity: 0.22,
+				stroke: "#eab6cd",
+				strokeWidth: 0.8,
 				padding: 17,
 			},
 			nested: {
@@ -105,6 +107,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				background: "#faf2ff",
 				hatch: "#bc9bda",
 				hatchOpacity: 0.24,
+				stroke: "#cbb1e3",
+				strokeWidth: 0.8,
 				padding: 12,
 			},
 			legend: {
@@ -113,6 +117,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				background: "#fff5f9",
 				hatch: "#d993b4",
 				hatchOpacity: 0.22,
+				stroke: "#e3a8c2",
+				strokeWidth: 0.8,
 				padding: 7,
 			},
 		},
@@ -130,6 +136,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				width: 3,
 				dash: "8 8",
 				opacity: 0.62,
+				endShape: "dot",
+				endShapeJoin: "detached",
 			},
 			topicToChildren: {
 				routing: "curved",
@@ -137,6 +145,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				width: 2.5,
 				dash: "6 7",
 				opacity: 0.62,
+				endShape: "dot",
+				endShapeJoin: "detached",
 			},
 		},
 		inline: {
@@ -223,9 +233,9 @@ export const roseDarkTheme: RoadmapTheme = createTheme(
 		},
 		topicHeader: { stroke: "#b8769a", typography: { color: "#fff0f7" } },
 		boards: {
-			topic: { background: "#241721", hatch: "#a95e7e", hatchOpacity: 0.28 },
-			nested: { background: "#241b2d", hatch: "#8366a2", hatchOpacity: 0.3 },
-			legend: { background: "#261820", hatch: "#a95e7e", hatchOpacity: 0.26 },
+			topic: { background: "#241721", hatch: "#a95e7e", hatchOpacity: 0.28, stroke: "#7c4560" },
+			nested: { background: "#241b2d", hatch: "#8366a2", hatchOpacity: 0.3, stroke: "#655080" },
+			legend: { background: "#261820", hatch: "#a95e7e", hatchOpacity: 0.26, stroke: "#7c4560" },
 		},
 		connectors: {
 			spine: { color: "#80566b", opacity: 0.72 },

@@ -120,6 +120,8 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				background: "#eef1f5",
 				hatch: "#c3ccd6",
 				hatchOpacity: 0.35,
+				stroke: "#d3dae2",
+				strokeWidth: 1,
 				padding: 14,
 			},
 			nested: {
@@ -128,6 +130,8 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				background: "#e8ecf1",
 				hatch: "#b9c3cf",
 				hatchOpacity: 0.4,
+				stroke: "#c8d1db",
+				strokeWidth: 1,
 				padding: 10,
 			},
 			legend: {
@@ -136,6 +140,8 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				background: "#eef1f5",
 				hatch: "#c3ccd6",
 				hatchOpacity: 0.3,
+				stroke: "#d3dae2",
+				strokeWidth: 1,
 				padding: 7,
 			},
 		},
@@ -154,6 +160,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				dash: "",
 				opacity: 0.7,
 				endShape: "arrow",
+				endShapeJoin: "detached",
 			},
 			topicToChildren: {
 				routing: "orthogonal",
@@ -163,6 +170,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				dash: "",
 				opacity: 0.75,
 				endShape: "arrow",
+				endShapeJoin: "detached",
 			},
 		},
 		inline: {
@@ -246,9 +254,9 @@ export const proDarkTheme: RoadmapTheme = createTheme(
 		},
 		topicHeader: { stroke: "#4a5a6e", typography: { color: "#dfe7ef" } },
 		boards: {
-			topic: { background: "#141a22", hatch: "#2e3a49", hatchOpacity: 0.45 },
-			nested: { background: "#171e28", hatch: "#37455a", hatchOpacity: 0.5 },
-			legend: { background: "#141a22", hatch: "#2e3a49", hatchOpacity: 0.4 },
+			topic: { background: "#141a22", hatch: "#2e3a49", hatchOpacity: 0.45, stroke: "#2a3547" },
+			nested: { background: "#171e28", hatch: "#37455a", hatchOpacity: 0.5, stroke: "#33415a" },
+			legend: { background: "#141a22", hatch: "#2e3a49", hatchOpacity: 0.4, stroke: "#33415a" },
 		},
 		connectors: {
 			spine: { color: "#5d6b7d", opacity: 0.75 },

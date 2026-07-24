@@ -201,10 +201,14 @@ chunky rounded display type, capsule chapters with hard offset shadows,
 polka-dot boards, and thick curved connectors, over warm espresso surfaces in
 dark mode. `Arcade` is an eighties cabinet: marquee display type, neon pink
 and cyan on deep violet, chamfered bezels with inner keylines, synthwave grid
-boards, and dotted pellet-trail branch connectors. `ASCII` reads like a hand-set
+boards, dotted pellet-trail branch connectors, and background sprites straight
+from the cabinet floor — a chomping puck, ghosts, pixel invaders, cherries,
+power pellets, tetrominoes, and one-life hearts. `ASCII` reads like a hand-set
 monospace diagram zine on warm paper: unfilled hairline boxes, a double-ruled
-chapter frame, tracked uppercase labels, warm-grayscale badges, and dashed
-right-angle connectors with arrowheads, printed in negative for dark mode.
+chapter frame, tracked uppercase labels, warm-grayscale badges, arrowed
+right-angle rules, and marginalia doodles — block cursors, crop marks, frame
+corners, shading swatches, and tiny diagram stubs — printed in negative for
+dark mode.
 
 The `lightTheme` and `darkTheme` exports remain convenient Fun resolved-mode
 values for the lower-level API. Typography and spacing properties affect

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { wrapInline } from "./core/inline.ts";
 import { generateRoadmap } from "./index.ts";
+import { generateAsciiBackgroundArtifacts } from "./themes/ascii/background-artifacts.ts";
 import { lightTheme } from "./theme.ts";
 import type { TypographyTheme } from "./types.ts";
 
@@ -62,6 +63,30 @@ describe("theme customization options", () => {
 		expect(upper[0]?.width ?? 0).toBeGreaterThan(plain[0]?.width ?? 0);
 	});
 
+	test("detached end shapes keep the stroke clear of translucent markers", () => {
+		const overlap = generateRoadmap(source, {
+			theme: { connectors: { topicToChildren: { endShape: "dot" } } },
+			render: { idPrefix: "join-overlap" },
+		});
+		const detached = generateRoadmap(source, {
+			theme: {
+				connectors: { topicToChildren: { endShape: "dot", endShapeJoin: "detached" } },
+			},
+			render: { idPrefix: "join-detached" },
+		});
+		const refX = (svg: string): string =>
+			svg.match(/-marker-topic-to-children-dot"[^>]*\brefX="([^"]+)"/u)?.[1] ?? "";
+		expect(refX(overlap.svg)).toBe("8.7");
+		expect(refX(detached.svg)).toBe("1");
+		const pathEndX = (svg: string): number =>
+			Number(
+				svg.match(/topicToChildren[^"]*"[^>]* d="[^"]* (-?[\d.]+) -?[\d.]+"/u)?.[1] ?? Number.NaN,
+			);
+		// The detached stroke ends further from the endpoint than the
+		// overlapped one, leaving the marker fully ahead of the line.
+		expect(pathEndX(detached.svg)).not.toBe(pathEndX(overlap.svg));
+	});
+
 	test("connector end shapes render as color-inheriting markers", () => {
 		const generated = generateRoadmap(source, {
 			theme: { connectors: { topicToChildren: { endShape: "arrow" } } },
@@ -99,9 +124,31 @@ roadmap:
 		expect(animated.svg).toBe(generateRoadmap(animatedSource).svg);
 		expect(animated.svg).not.toContain("<script");
 
+		// The ASCII cursor block declares a blink, active only when animated.
+		const asciiAnimated = generateRoadmap(animatedSource, {
+			theme: { preset: "ascii", mode: "light" },
+		});
+		expect(asciiAnimated.svg).toContain("@keyframes roadmap-artifact-blink");
+		const asciiArtifacts = generateAsciiBackgroundArtifacts({
+			width: 1600,
+			height: 1200,
+			avoid: [],
+			settings: { enabled: true, seed: "motion", density: 1, size: 1 },
+		});
+		expect(
+			asciiArtifacts.some((artifact) =>
+				artifact.shapes.some((shape) => shape.animation === "blink"),
+			),
+		).toBe(true);
+
 		const still = generateRoadmap(animatedSource.replace("    animated: true\n", ""));
 		expect(still.svg).not.toContain("@keyframes roadmap-artifact-drift");
 		expect(still.svg).not.toContain("roadmap__background-artifact-motion");
+		const asciiStill = generateRoadmap(
+			animatedSource.replace("    animated: true\n", ""),
+			{ theme: { preset: "ascii", mode: "light" } },
+		);
+		expect(asciiStill.svg).not.toContain("roadmap__artifact-blink");
 
 		// Four shared wandering variants; intensity rescales their amplitudes.
 		expect(animated.svg.match(/@keyframes roadmap-artifact-drift-\d/gu)).toHaveLength(4);

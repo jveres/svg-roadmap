@@ -29,7 +29,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 				stroke: violet,
 				...outline,
 			},
-			{ kind: "circle", cx: 23, cy: -4, radius: 2.5, fill: mint },
+			{ kind: "circle", cx: 23, cy: -4, radius: 2.5, fill: mint, animation: "blink" },
 		];
 	}
 	if (motif === 1) {
@@ -59,7 +59,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 				...outline,
 			},
 			{ kind: "circle", cx: -24, cy: -14, radius: 2.4, fill: violet },
-			{ kind: "circle", cx: -8, cy: 0, radius: 2.4, fill: mint },
+			{ kind: "circle", cx: -8, cy: 0, radius: 2.4, fill: mint, animation: "blink" },
 			{ kind: "circle", cx: 24, cy: 15, radius: 2.4, fill: violet },
 		];
 	}
@@ -73,7 +73,7 @@ function motifShapes(motif: number, variant: number): readonly LayoutBackgroundA
 				fill: "none",
 			},
 			{ kind: "circle", cx: -22, cy: 10, radius: 3, fill: cyan },
-			{ kind: "circle", cx: -9, cy: -13, radius: 2, fill: mint },
+			{ kind: "circle", cx: -9, cy: -13, radius: 2, fill: mint, animation: "blink" },
 			{ kind: "circle", cx: 4, cy: 4, radius: 2.5, fill: cyan },
 			{ kind: "circle", cx: 21, cy: -12, radius: 3.2, fill: violet },
 		];
