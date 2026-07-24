@@ -30,6 +30,15 @@ const documents: Record<string, string> = {
 		"utf8",
 	),
 	"demo ai architect": readFileSync(new URL("../demo/ai-architect.md", import.meta.url), "utf8"),
+	// A tall tree-chapter description forces the chapter connectors' mid-runs
+	// to clear it — the run must not graze the note border after marker trim.
+	"demo software hygiene tall description": readFileSync(
+		new URL("../demo/software-hygiene.md", import.meta.url),
+		"utf8",
+	).replace(
+		/\*:beginner: \[Software Engineers\][^\n]*\*/u,
+		`*:beginner: [Software Engineers](https://en.wikipedia.org/wiki/Software_engineering) strive for better **quality** and favour things ${filler} like [Software Craftsmanship](https://manifesto.softwarecraftsmanship.org/) and [12factors](https://12factor.net/). Engineering decisions drive ==_how_== to create.*`,
+	),
 	minimal: "# Tiny\n\n* Chapter\n  * Topic\n",
 	"deep nesting": `# Deep
 
@@ -57,12 +66,18 @@ ${["Alpha", "Beta", "Gamma", "Delta"]
 	"tall tree description": `# Tall
 
 * Chapter one
-  * Alpha
-    * Nested
-  * Beta
+${["Alpha", "Beta", "Gamma", "Delta"]
+	.map(
+		(header) =>
+			`  + ${header} wide heading\n${Array.from(
+				{ length: 4 },
+				(_, index) => `    * ${header} grid item ${index}`,
+			).join("\n")}`,
+	)
+	.join("\n")}
 
 * Chapter two
-*A very long chapter description ${filler} that wraps onto many lines before the topics start.*
+*A very long chapter description ${filler} ${filler} ${filler} ${filler} that wraps onto many many lines before the topics start.*
   * Gamma
     * Nested one
     * Nested two
@@ -186,9 +201,7 @@ function indexLayout(layout: RoadmapLayout): LayoutIndex {
 		nodes: layout.elements.filter((element): element is LayoutNode =>
 			["heading", "note", "chapter", "topic"].includes(element.kind),
 		),
-		groups: layout.elements.filter(
-			(element): element is LayoutGroup => element.kind === "group",
-		),
+		groups: layout.elements.filter((element): element is LayoutGroup => element.kind === "group"),
 		legends: layout.elements.filter(
 			(element): element is LayoutLegend => element.kind === "legend",
 		),
@@ -255,9 +268,19 @@ function collectViolations(layout: RoadmapLayout, svg?: string): string[] {
 	// crosses boards. Elements that contain a connector endpoint are related
 	// (the line starts or ends there by design), and notes legitimately mask
 	// the spine that passes behind them.
-	const insideAnyBoard = (rect: Rect): boolean =>
-		groups.some((group) => contains(group, rect, 2));
+	const insideAnyBoard = (rect: Rect): boolean => groups.some((group) => contains(group, rect, 2));
+	// Kinds rendered as pure polylines get the exact path check below instead
+	// of the chord approximation.
+	const polylineKinds = new Set<string>();
+	if (svg !== undefined) {
+		for (const match of svg.matchAll(
+			/class="roadmap__connector roadmap__connector--(chapterToTopics|topicToChildren)"[^>]*\bd="([^"]+)"/gu,
+		)) {
+			if (!/[CQAS]/u.test(match[2] ?? "")) polylineKinds.add(match[1] ?? "");
+		}
+	}
 	const checkConnector = (connector: LayoutConnector): void => {
+		if (connector.kind !== "spine" && polylineKinds.has(connector.kind)) return;
 		for (const node of nodes) {
 			const rect = nodePaintRect(node);
 			if (pointInRect(connector.from, rect) || pointInRect(connector.to, rect)) continue;
@@ -281,7 +304,50 @@ function collectViolations(layout: RoadmapLayout, svg?: string): string[] {
 	};
 	for (const connector of layout.connectors) checkConnector(connector);
 
-	// 6. Rendered orthogonal lanes never run along a board's vertical edge:
+	// 6. Rendered polyline connectors (straight and orthogonal routing) never
+	// cross cards; this exact check replaces the chord approximation for
+	// those kinds. Curved paths keep the chord check above. Note frames get a
+	// 2px halo so a run grazing along a note border also counts as covered.
+	if (svg !== undefined) {
+		const cardRects = nodes.map((node) => {
+			const rect = nodePaintRect(node);
+			if (node.kind !== "note") return { id: node.id, rect, anchorable: true };
+			return {
+				id: node.id,
+				rect: {
+					x: rect.x - 2,
+					y: rect.y - 2,
+					width: rect.width + 4,
+					height: rect.height + 4,
+				},
+				// Connectors never attach to notes, so no endpoint exemption.
+				anchorable: false,
+			};
+		});
+		const pathPattern =
+			/class="roadmap__connector roadmap__connector--(chapterToTopics|topicToChildren)"[^>]*\bd="([^"]+)"/gu;
+		for (const match of svg.matchAll(pathPattern)) {
+			const kind = match[1] ?? "";
+			const d = match[2] ?? "";
+			if (/[CQAS]/u.test(d)) continue;
+			const points = [...d.matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/gu)].map((point) => ({
+				x: Number(point[1]),
+				y: Number(point[2]),
+			}));
+			for (let index = 1; index < points.length; index += 1) {
+				const from = points[index - 1] as Point;
+				const to = points[index] as Point;
+				for (const { id, rect, anchorable } of cardRects) {
+					if (anchorable && (pointInRect(from, rect, 2) || pointInRect(to, rect, 2))) continue;
+					if (segmentIntersectsRect(from, to, rect)) {
+						violations.push(`${kind} path crosses card: ${id}`);
+					}
+				}
+			}
+		}
+	}
+
+	// 7. Rendered orthogonal lanes never run along a board's vertical edge:
 	// a lane within a board's vertical span must keep a visible gap from its
 	// left and right rules.
 	if (svg !== undefined) {

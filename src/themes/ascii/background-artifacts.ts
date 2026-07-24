@@ -19,19 +19,20 @@ const strokeWidth = "var(--roadmap-ascii-artifact-stroke-width)";
 
 /**
  * A terminal prompt with a blinking block cursor, set on monospace cell
- * metrics: a 12-unit character advance and a 9x16 glyph box on a shared
- * baseline. The chevron is a mid-height glyph; the cursor fills its cell.
+ * metrics: a 12x20 glyph box on a shared baseline, sized so the two glyphs
+ * carry the same visual weight as the wider marginalia motifs. The chevron
+ * is a mid-height glyph; the cursor fills its cell.
  */
 function cursorPrompt(): readonly LayoutBackgroundArtifactShape[] {
 	return [
 		{
 			kind: "path",
-			d: "M -9 -5 L -3 0 L -9 5",
+			d: "M -13 -6.5 L -5 0 L -13 6.5",
 			stroke: ink,
 			strokeWidth,
 			fill: "none",
 		},
-		{ kind: "path", d: "M 1.5 -8 h 9 v 16 h -9 Z", fill: ink, animation: "blink" },
+		{ kind: "path", d: "M 1 -10 h 12 v 20 h -12 Z", fill: ink, animation: "blink" },
 	];
 }
 

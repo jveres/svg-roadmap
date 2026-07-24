@@ -778,6 +778,37 @@ function treeConnectorClearance(from: Point, to: Point, obstacle: Rect): number 
 	return Number.isFinite(clearedY) ? Math.max(0, clearedY - to.y) : 0;
 }
 
+function rangesOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
+	return Math.min(startA, endA) <= endB && Math.max(startA, endA) >= startB;
+}
+
+/**
+ * Orthogonal chapter connectors run two verticals joined by a horizontal at
+ * mid-height, so the straight-chord test does not describe them. Lowering the
+ * target moves the horizontal run below the obstacle, after which both
+ * verticals descend past it on their own columns.
+ */
+function orthogonalConnectorClearance(from: Point, to: Point, obstacle: Rect): number {
+	const middleY = (from.y + to.y) / 2;
+	const bottom = rectBottom(obstacle);
+	const right = rectRight(obstacle);
+	const verticalHit = (x: number, yStart: number, yEnd: number): boolean =>
+		x >= obstacle.x && x <= right && rangesOverlap(yStart, yEnd, obstacle.y, bottom);
+	const horizontalHit =
+		middleY >= obstacle.y && middleY <= bottom && rangesOverlap(from.x, to.x, obstacle.x, right);
+	const intersects =
+		horizontalHit || verticalHit(from.x, from.y, middleY) || verticalHit(to.x, middleY, to.y);
+	if (!intersects) return 0;
+	// The source vertical is fixed at the chapter's column; if the obstacle
+	// spans that column, lowering the target cannot clear it.
+	if (from.x >= obstacle.x && from.x <= right) return 0;
+	// Push the target until the horizontal run clears the obstacle's bottom.
+	// The margin also covers the renderer's marker trim, which shortens the
+	// target vertical and thereby lifts the mid-run back up by half the trim
+	// (at most half of an 18px marker).
+	return Math.max(0, 2 * (bottom + 10) - from.y - to.y);
+}
+
 function layoutTreeGroups(
 	chapter: RoadmapChapter,
 	groups: readonly RoadmapTopicGroup[],
@@ -934,7 +965,10 @@ function layoutTreeGroups(
 			const rootConnector = context.connectors[compound.rootConnectorIndex];
 			if (rootConnector) {
 				const to = { x: rootConnector.to.x, y: rootConnector.to.y + dy };
-				dy += treeConnectorClearance(rootConnector.from, to, descriptionObstacle);
+				dy +=
+					context.theme.connectors.chapterToTopics.routing === "orthogonal"
+						? orthogonalConnectorClearance(rootConnector.from, to, descriptionObstacle)
+						: treeConnectorClearance(rootConnector.from, to, descriptionObstacle);
 			}
 			translatePlacedCompound(compound, 0, dy, context);
 			carriedShift.set(compound.side, dy);
@@ -1064,6 +1098,95 @@ function moveAll(
 	}
 }
 
+/**
+ * Places a tree chapter's side description beside its chapter. Stays centered
+ * on the chapter whenever that spot is open; when earlier content blocks it,
+ * takes the collision-free vertical position closest to centered that still
+ * keeps the description beside the chapter, and steps outward horizontally
+ * only when no such position exists. Falls back to the band below the chapter
+ * top, which the step cursor guarantees open.
+ */
+function placeTreeDescription(
+	descriptionNode: LayoutNode,
+	chapterNode: LayoutNode,
+	chapterSide: -1 | 1,
+	occupied: readonly Rect[],
+	options: RequiredLayoutOptions,
+): void {
+	const baseX =
+		chapterSide < 0
+			? chapterNode.x - options.treeDescriptionGap - descriptionNode.width
+			: rectRight(chapterNode) + options.treeDescriptionGap;
+	const centeredY = chapterNode.y + (chapterNode.height - descriptionNode.height) / 2;
+	const frameAt = (x: number, y: number): Rect => {
+		descriptionNode.x = x;
+		descriptionNode.y = y;
+		return noteLayoutRectangle(descriptionNode);
+	};
+	// A vertical placement must keep the description beside its chapter: the
+	// painted frame has to overlap the chapter's vertical span by at least this.
+	const minOverlap = Math.min(chapterNode.height, 24);
+	const clearance = options.overlapPadding + 1;
+
+	const columnBlockers = (frame: Rect): Rect[] =>
+		overlapping(
+			{
+				x: frame.x,
+				y: chapterNode.y + minOverlap - frame.height,
+				width: frame.width,
+				height: chapterNode.height + 2 * (frame.height - minOverlap),
+			},
+			occupied,
+			options.overlapPadding,
+		);
+
+	const verticalFit = (x: number): number | undefined => {
+		const frame = frameAt(x, centeredY);
+		const offsetY = frame.y - centeredY;
+		const candidates = [centeredY];
+		for (const blocker of columnBlockers(frame)) {
+			candidates.push(rectBottom(blocker) + clearance - offsetY);
+			candidates.push(blocker.y - clearance - frame.height - offsetY);
+		}
+		let best: number | undefined;
+		for (const y of candidates) {
+			const top = y + offsetY;
+			if (top + frame.height < chapterNode.y + minOverlap) continue;
+			if (top > rectBottom(chapterNode) - minOverlap) continue;
+			if (overlapping(frameAt(x, y), occupied, options.overlapPadding).length > 0) continue;
+			if (best === undefined || Math.abs(y - centeredY) < Math.abs(best - centeredY)) best = y;
+		}
+		return best;
+	};
+
+	let x = baseX;
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const fit = verticalFit(x);
+		if (fit !== undefined) {
+			descriptionNode.x = x;
+			descriptionNode.y = fit;
+			return;
+		}
+		// The whole column is blocked; step outward past everything the swept
+		// band touches and try the next column.
+		const frame = frameAt(x, centeredY);
+		const blockers = columnBlockers(frame);
+		if (blockers.length === 0) break;
+		const margin = options.overlapPadding * 2;
+		x +=
+			chapterSide < 0
+				? Math.min(...blockers.map((rect) => rect.x)) - margin - rectRight(frame)
+				: Math.max(...blockers.map((rect) => rectRight(rect))) + margin - frame.x;
+		if (x < options.padding || x + descriptionNode.width > options.width - options.padding) break;
+	}
+
+	// Guaranteed-open fallback: the step cursor keeps everything from earlier
+	// steps above chapterNode.y, so a description starting there is clear; the
+	// caller pushes the chapter's content below it.
+	descriptionNode.x = baseX;
+	descriptionNode.y = Math.max(centeredY, chapterNode.y);
+}
+
 export function layoutRoadmap(
 	document: RoadmapDocument,
 	theme: RoadmapTheme = lightTheme,
@@ -1165,11 +1288,7 @@ export function layoutRoadmap(
 				theme.inline.abbreviationIndicatorSize,
 			);
 			if (treeGroups.length > 0 && gridGroups.length === 0) {
-				descriptionNode.x =
-					chapterSide < 0
-						? chapterNode.x - options.treeDescriptionGap - descriptionNode.width
-						: rectRight(chapterNode) + options.treeDescriptionGap;
-				descriptionNode.y = chapterNode.y + (chapterNode.height - descriptionNode.height) / 2;
+				placeTreeDescription(descriptionNode, chapterNode, chapterSide, occupied, options);
 			} else {
 				descriptionNode.x = centerX - descriptionNode.width / 2;
 				descriptionNode.y = rectBottom(chapterNode) + options.chapterDescriptionGap;
@@ -1190,9 +1309,17 @@ export function layoutRoadmap(
 			rectBottom(chapterNode),
 			descriptionNode ? rectBottom(noteLayoutRectangle(descriptionNode)) : 0,
 		);
+		// Tree content starts below both the chapter and its side description,
+		// so a tall description can neither overlap the clusters nor leave the
+		// chapter connectors' horizontal runs crossing it.
 		let contentY =
 			treeGroups.length > 0
-				? rectBottom(chapterNode) + options.chapterContentGap
+				? Math.max(
+						rectBottom(chapterNode),
+						descriptionNode && descriptionNode.placement === "tree-description"
+							? rectBottom(noteLayoutRectangle(descriptionNode))
+							: 0,
+					) + options.chapterContentGap
 				: (descriptionNode
 						? rectBottom(noteLayoutRectangle(descriptionNode))
 						: rectBottom(chapterNode)) + options.commentGap;
