@@ -11,6 +11,8 @@ import type {
 } from "./types.ts";
 
 export type { ComrakOptions, InitInput, SyncInitInput } from "comrak-wasm";
+export type { EmojiArtwork } from "./core/emoji-artwork.ts";
+export { registerEmojiArtwork } from "./core/emoji-artwork.ts";
 export * from "./core/geometry.ts";
 export { layoutRoadmap } from "./layout.ts";
 export {
@@ -28,12 +30,12 @@ export {
 	funTheme,
 	lightTheme,
 } from "./theme.ts";
+export { arcadeDarkTheme, arcadeLightTheme, arcadeTheme } from "./themes/arcade/theme.ts";
+export { asciiDarkTheme, asciiLightTheme, asciiTheme } from "./themes/ascii/theme.ts";
 export { builtInThemes, resolveTheme } from "./themes/catalog.ts";
 export { printDarkTheme, printLightTheme, printTheme } from "./themes/print/theme.ts";
 export { proDarkTheme, proLightTheme, proTheme } from "./themes/pro/theme.ts";
 export { retroDarkTheme, retroLightTheme, retroTheme } from "./themes/retro/theme.ts";
-export { arcadeDarkTheme, arcadeLightTheme, arcadeTheme } from "./themes/arcade/theme.ts";
-export { asciiDarkTheme, asciiLightTheme, asciiTheme } from "./themes/ascii/theme.ts";
 export { roseDarkTheme, roseLightTheme, roseTheme } from "./themes/rose/theme.ts";
 export { sciFiDarkTheme, sciFiLightTheme, sciFiTheme } from "./themes/sci-fi/theme.ts";
 export type * from "./types.ts";

@@ -1,5 +1,5 @@
 import { createSeededRandom } from "./core/background-artifacts.ts";
-import { twemojiArtwork } from "./core/emoji-artwork.ts";
+import { canonicalShortcode, emojiArtwork } from "./core/emoji-artwork.ts";
 import { fittedCapsuleFrame, noteBlobGeometry, paintedTextLines } from "./core/frames.ts";
 import {
 	blobPath,
@@ -439,6 +439,12 @@ const shortcodeEmojiGeometry: Readonly<Record<string, ShortcodeEmojiGeometry>> =
 	rocket: { widthEm: 1.1, heightEm: 1.1, baselineInset: 2.2 },
 };
 
+const defaultEmojiGeometry: ShortcodeEmojiGeometry = {
+	widthEm: 1.1,
+	heightEm: 1.1,
+	baselineInset: 2.2,
+};
+
 function renderShortcodeEmoji(
 	segment: TextLineSegment,
 	x: number,
@@ -447,14 +453,14 @@ function renderShortcodeEmoji(
 	fontSize: number,
 	prefix: string,
 ): string | undefined {
-	if (!segment.shortcode) return undefined;
-	const geometry = shortcodeEmojiGeometry[segment.shortcode];
-	if (!geometry) return undefined;
+	if (!segment.shortcode || !emojiArtwork(segment.shortcode)) return undefined;
+	const canonical = canonicalShortcode(segment.shortcode);
+	const geometry = shortcodeEmojiGeometry[canonical] ?? defaultEmojiGeometry;
 	const width = fontSize * geometry.widthEm;
 	const height = fontSize * geometry.heightEm;
 	const emojiX = x + (segmentWidth - width) / 2 + fontSize * (geometry.xOffsetEm ?? 0);
 	const emojiY = baseline - height + geometry.baselineInset;
-	return `<g class="roadmap__emoji roadmap__emoji--${safeId(segment.shortcode)}" data-shortcode="${escapeXml(segment.shortcode)}" role="img" aria-label="${escapeXml(segment.text)}"><use href="#${prefix}-emoji-${safeId(segment.shortcode)}" x="${emojiX}" y="${emojiY}" width="${width}" height="${height}"/></g>`;
+	return `<g class="roadmap__emoji roadmap__emoji--${safeId(segment.shortcode)}" data-shortcode="${escapeXml(segment.shortcode)}" role="img" aria-label="${escapeXml(segment.text)}"><use href="#${prefix}-emoji-${safeId(canonical)}" x="${emojiX}" y="${emojiY}" width="${width}" height="${height}"/></g>`;
 }
 
 function segmentBaselineShift(segment: TextLineSegment, fontSize: number): number {
@@ -609,7 +615,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
-				(segment.shortcode && shortcodeEmojiGeometry[segment.shortcode] !== undefined) ||
+				(segment.shortcode !== undefined && emojiArtwork(segment.shortcode) !== undefined) ||
 				segment.marks.includes("code") ||
 				(segment.abbreviation !== undefined &&
 					!segment.destination &&
@@ -1117,7 +1123,25 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 	return `<pattern id="${id}" data-roadmap-pattern="${board.pattern}" patternUnits="userSpaceOnUse" width="12" height="12">${background}${decoration}</pattern>`;
 }
 
-function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
+/** Canonical shortcodes used anywhere in the layout, for defs emission. */
+function usedEmojiShortcodes(layout: RoadmapLayout): ReadonlySet<string> {
+	const used = new Set<string>();
+	for (const element of layout.elements) {
+		if (!("text" in element)) continue;
+		for (const line of element.text.lines) {
+			for (const segment of line.segments) {
+				if (segment.shortcode) used.add(canonicalShortcode(segment.shortcode));
+			}
+		}
+	}
+	return used;
+}
+
+function renderDefinitions(
+	prefix: string,
+	theme: RoadmapTheme,
+	usedEmoji: ReadonlySet<string>,
+): string {
 	const symbol = (id: string, viewBox: string, content: string): string =>
 		`<symbol id="${prefix}-icon-${id}" viewBox="${viewBox}">${content}</symbol>`;
 	const emojiSymbol = (id: string, viewBox: string, content: string): string =>
@@ -1186,16 +1210,12 @@ function renderDefinitions(prefix: string, theme: RoadmapTheme): string {
 		${symbol("question", "0 0 416.979 416.979", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M356.004 61.156C274.634-20.314 142.627-20.395 61.156 60.974c-81.47 81.371-81.552 213.379-.181 294.85 81.369 81.47 213.378 81.551 294.849.181 81.469-81.369 81.551-213.379.18-294.849zM208.554 334.794c-11.028 0-19.968-8.939-19.968-19.968s8.939-19.969 19.968-19.969 19.968 8.939 19.968 19.969c-.001 11.028-8.94 19.968-19.968 19.968zm32.464-120.228c-11.406 6.668-12.381 14.871-12.43 38.508l-.017 4.726c-.071 11.172-9.147 20.18-20.304 20.18h-.131c-11.215-.071-20.248-9.22-20.178-20.436l.016-4.552c.05-24.293.111-54.524 32.547-73.484 26.026-15.214 29.306-25.208 26.254-38.322-3.586-15.404-17.653-19.396-28.63-18.141-3.686.423-22.069 3.456-22.069 21.642 0 11.213-9.092 20.306-20.307 20.306s-20.306-9.093-20.306-20.306c0-32.574 23.87-58.065 58.048-61.989 35.2-4.038 65.125 16.226 72.816 49.282 11.497 49.381-29.772 73.505-45.309 82.586z"/>')}
 		${symbol("cloud", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" opacity=".2" d="M48 32c0-8.8-7.2-16-16-16-7.5 0-13.8 5.2-15.5 12.1C11.7 28.9 8 33 8 38c0 5.5 4.5 10 10 10h30c4.4 0 8-3.6 8-8s-3.6-8-8-8z"/><path fill="currentColor" d="M48 30c0-8.8-7.2-16-16-16-7.5 0-13.8 5.2-15.5 12.1C11.7 26.9 8 31 8 36c0 5.5 4.5 10 10 10h30c4.4 0 8-3.6 8-8s-3.6-8-8-8z"/>')}
 		${symbol("warning", "0 0 24 24", '<path d="M12 2.25 22 20.75H2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M12 7v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1" fill="currentColor"/>')}
-		${emojiSymbol("soap", "0 0 24 24", '<path fill="#ea5a6e" d="M4.5 7.8A3.8 3.8 0 0 1 8.3 4h7.4a3.8 3.8 0 0 1 3.8 3.8v9.5c0 1.1-.5 2.1-1.4 2.7l-3 2.2c-.6.5-1.4.7-2.2.7H8.3a3.8 3.8 0 0 1-3.8-3.8Z"/><path fill="#f4abba" d="M4.5 15.4c0 2.7 2.2 4.9 4.9 4.9h3.5c.8 0 1.6-.3 2.2-.7l4.4-3.2v1c0 1.1-.5 2-1.4 2.6l-3 2.2c-.6.5-1.4.7-2.2.7H8.3a3.8 3.8 0 0 1-3.8-3.8Z"/><path fill="#ffccd6" d="M5.2 7.7a3 3 0 0 1 3-3h7.5a3 3 0 0 1 3 3v7.5c0 1-.5 1.9-1.3 2.5l-2.8 2c-.5.4-1.2.6-1.9.6H9a3.8 3.8 0 0 1-3.8-3.8Z"/><g fill="#f5f8fa" stroke="#dae2e6" stroke-width=".55"><circle cx="3.5" cy="4.7" r="1.7"/><circle cx="6.7" cy="3.2" r="2"/><circle cx="9.3" cy="5.1" r="2.2"/><circle cx="6" cy="8.1" r="2.1"/><circle cx="19.4" cy="16.5" r="1.8"/><circle cx="21.1" cy="19.2" r="1.7"/><circle cx="18.2" cy="21.1" r="1.5"/></g>')}
-		${emojiSymbol("boom", "0 0 14 14", '<path fill="#e09ba1" d="M6.2 0 8 3.2l2.5-2 .1 3.4 3.4-.2-2.7 2.4 2.6 2-3.6.1.8 4.8-3-3.2L7 14l-1.3-3.6-2.4 2 .7-3.5-4 .3 3.2-2.4L.1 5l4.2.2-1.2-4L6 4.1Z"/><path fill="#bb1934" d="m6 2 1.2 3 2-2-.3 2.9 3-.2-2.1 1.6 2.1 1.5-3 .1.5 3-2.1-2L6 12l-1-2.7-2 1.5.7-2.7-3 .3L3.3 7 1.5 5.8l3 .1L4 3.2l2 2Z"/><path fill="#fcab40" d="m4.2 5.2 2.7-.8 2.8 1.1 1 2.8-1.8 2.3H5.6L3.7 8.5Z"/><path fill="#fff" d="M6.4 5.5h1.5v3.8H6.4z"/>')}
-		${emojiSymbol("beginner", "0 0 11 14", '<path fill="#cfd1dd" d="M0 1.2 1.5 0l4 3.4L9.5 0 11 1.2v8.4L5.5 14 0 9.6Z"/><path fill="#63898f" d="M1 1 5.5 4.8 10 1v8.1l-4.5 3.8L1 9.1Z"/><path fill="#fffe87" d="M1.8 2.1 5 4.9v6.4L1.8 8.6Z"/><path fill="#48ded4" d="m9.2 2.1-3.2 2.8v6.4l3.2-2.7Z"/>')}
-		${emojiSymbol("one", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M8 4 5.7 5.5v2.1l2-1.2V14h2.4V4Z"/>')}
-		${emojiSymbol("two", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M5.2 7.1c.1-2 1.4-3.2 3.5-3.2s3.5 1.2 3.5 3c0 1.3-.7 2.3-2.5 3.6l-1.9 1.4h4.6V14H5.1v-1.8l3.3-2.5c1.2-.9 1.6-1.5 1.6-2.3 0-.9-.5-1.5-1.4-1.5s-1.4.6-1.5 1.5Z"/>')}
-		${emojiSymbol("three", "0 0 18 18", '<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M7 7.9h1.4c1 0 1.6-.4 1.6-1.1s-.6-1.1-1.5-1.1S7 6.2 7 7H5c.1-1.9 1.5-3.1 3.6-3.1 2.2 0 3.5 1.1 3.5 2.8 0 1-.6 1.8-1.6 2.1 1.2.3 1.9 1.2 1.9 2.4 0 1.9-1.5 3.1-3.8 3.1S5 13.1 4.9 11.1H7c.1.9.7 1.4 1.7 1.4s1.6-.5 1.6-1.3-.7-1.3-1.8-1.3H7Z"/>')}
-		${emojiSymbol("recycle", "0 0 24 24", '<g fill="none" stroke="#4f8a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/><path d="M8.293 13.596 7.196 9.5 3.1 10.598"/><path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/><path d="m13.378 9.633 4.096 1.098 1.097-4.096"/></g>')}
-		${emojiSymbol("telescope", "0 0 12 12", '<path fill="#e7eaed" d="M4.2 5.1h2.9v2.1H4.2z"/><path fill="#9aaab4" d="M4.7 6.3h1.8l-.2 1.6 3.1 3H7.5L5.6 9.4 4.1 12H2.3l2.4-4Z"/><path fill="#282f33" d="m.1 1.2 2.7 1.4-1.2 2.2L0 4Z"/><path fill="#da2f47" d="m2.2 2 1.1-2 8.3 4.7-1.1 2Z"/><path fill="#e5707b" d="m2.7 1.1.6-1.1 8.3 4.7-.5.9Z"/><path fill="#9d0d26" d="m10.1 3.9 1.5.8-1.1 2-1.5-.8Z"/>')}
-		${Object.entries(twemojiArtwork)
-			.map(([id, artwork]) => emojiSymbol(id, artwork.viewBox, artwork.content))
+		${[...usedEmoji]
+			.map((id) => {
+				const artwork = emojiArtwork(id);
+				return artwork ? emojiSymbol(safeId(id), artwork.viewBox, artwork.content) : "";
+			})
+			.filter(Boolean)
 			.join("\n\t\t")}
 	</defs>`;
 }
@@ -1384,7 +1404,7 @@ export function renderRoadmapSvg(
 	<title id="${titleId}">${escapeXml(title)}</title>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
 	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>
-	${renderDefinitions(prefix, theme)}
+	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout))}
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>
 	<g class="roadmap__connectors">${underlayConnectors}</g>

@@ -1,8 +1,8 @@
 import { createTheme, darkTheme, funTheme, lightTheme } from "../theme.ts";
 import type { RoadmapTheme, RoadmapThemeCatalog, ThemeInput } from "../types.ts";
-import { printTheme } from "./print/theme.ts";
 import { arcadeTheme } from "./arcade/theme.ts";
 import { asciiTheme } from "./ascii/theme.ts";
+import { printTheme } from "./print/theme.ts";
 import { proTheme } from "./pro/theme.ts";
 import { retroTheme } from "./retro/theme.ts";
 import { roseTheme } from "./rose/theme.ts";

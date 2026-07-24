@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { wrapInline } from "./core/inline.ts";
 import { generateRoadmap } from "./index.ts";
-import { generateAsciiBackgroundArtifacts } from "./themes/ascii/background-artifacts.ts";
 import { lightTheme } from "./theme.ts";
+import { generateAsciiBackgroundArtifacts } from "./themes/ascii/background-artifacts.ts";
 import type { TypographyTheme } from "./types.ts";
 
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
@@ -92,13 +92,9 @@ describe("theme customization options", () => {
 			theme: { connectors: { topicToChildren: { endShape: "arrow" } } },
 			render: { idPrefix: "marker-end" },
 		});
-		expect(generated.svg).toContain(
-			'<marker id="marker-end-marker-topic-to-children-arrow"',
-		);
+		expect(generated.svg).toContain('<marker id="marker-end-marker-topic-to-children-arrow"');
 		expect(generated.svg).toContain('marker-end="url(#marker-end-marker-topic-to-children-arrow)"');
-		expect(generated.svg).toContain(
-			'fill="var(--roadmap-connector-topic-to-children-color)"',
-		);
+		expect(generated.svg).toContain('fill="var(--roadmap-connector-topic-to-children-color)"');
 	});
 
 	test("animated backgrounds emit a deterministic drift loop on request", () => {
@@ -144,10 +140,9 @@ roadmap:
 		const still = generateRoadmap(animatedSource.replace("    animated: true\n", ""));
 		expect(still.svg).not.toContain("@keyframes roadmap-artifact-drift");
 		expect(still.svg).not.toContain("roadmap__background-artifact-motion");
-		const asciiStill = generateRoadmap(
-			animatedSource.replace("    animated: true\n", ""),
-			{ theme: { preset: "ascii", mode: "light" } },
-		);
+		const asciiStill = generateRoadmap(animatedSource.replace("    animated: true\n", ""), {
+			theme: { preset: "ascii", mode: "light" },
+		});
 		expect(asciiStill.svg).not.toContain("roadmap__artifact-blink");
 
 		// Four shared wandering variants; intensity rescales their amplitudes.
@@ -159,8 +154,9 @@ roadmap:
 		const keyframesOf = (svg: string): string =>
 			svg.match(/@keyframes roadmap-artifact-drift-0\{[^}]*\}/u)?.[0] ?? "";
 		expect(keyframesOf(intense.svg)).not.toBe(keyframesOf(animated.svg));
-		expect(generateRoadmap(animatedSource.replace("    animated: true\n", "    animated: 0\n")).svg)
-			.not.toContain("@keyframes roadmap-artifact-drift");
+		expect(
+			generateRoadmap(animatedSource.replace("    animated: true\n", "    animated: 0\n")).svg,
+		).not.toContain("@keyframes roadmap-artifact-drift");
 	});
 
 	test("legend uppercase and letter spacing carry into layout and markup", () => {

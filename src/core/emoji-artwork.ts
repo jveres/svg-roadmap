@@ -1,12 +1,56 @@
 // Emoji artwork vendored from Twemoji (https://github.com/jdecked/twemoji),
-// graphics licensed CC-BY 4.0; see LICENSES/TWEMOJI.txt.
+// graphics licensed CC-BY 4.0; see LICENSES/TWEMOJI.txt. Hand-tuned symbols
+// below override the generated packs.
+
+import { coreEmojiArtwork } from "./emoji/artwork-core.ts";
+import { gemojiCanonical } from "./emoji/gemoji-data.ts";
 
 export interface EmojiArtwork {
 	readonly viewBox: string;
 	readonly content: string;
 }
 
-export const twemojiArtwork: Readonly<Record<string, EmojiArtwork>> = {
+const handcraftedArtwork: Readonly<Record<string, EmojiArtwork>> = {
+	soap: {
+		viewBox: "0 0 24 24",
+		content:
+			'<path fill="#ea5a6e" d="M4.5 7.8A3.8 3.8 0 0 1 8.3 4h7.4a3.8 3.8 0 0 1 3.8 3.8v9.5c0 1.1-.5 2.1-1.4 2.7l-3 2.2c-.6.5-1.4.7-2.2.7H8.3a3.8 3.8 0 0 1-3.8-3.8Z"/><path fill="#f4abba" d="M4.5 15.4c0 2.7 2.2 4.9 4.9 4.9h3.5c.8 0 1.6-.3 2.2-.7l4.4-3.2v1c0 1.1-.5 2-1.4 2.6l-3 2.2c-.6.5-1.4.7-2.2.7H8.3a3.8 3.8 0 0 1-3.8-3.8Z"/><path fill="#ffccd6" d="M5.2 7.7a3 3 0 0 1 3-3h7.5a3 3 0 0 1 3 3v7.5c0 1-.5 1.9-1.3 2.5l-2.8 2c-.5.4-1.2.6-1.9.6H9a3.8 3.8 0 0 1-3.8-3.8Z"/><g fill="#f5f8fa" stroke="#dae2e6" stroke-width=".55"><circle cx="3.5" cy="4.7" r="1.7"/><circle cx="6.7" cy="3.2" r="2"/><circle cx="9.3" cy="5.1" r="2.2"/><circle cx="6" cy="8.1" r="2.1"/><circle cx="19.4" cy="16.5" r="1.8"/><circle cx="21.1" cy="19.2" r="1.7"/><circle cx="18.2" cy="21.1" r="1.5"/></g>',
+	},
+	boom: {
+		viewBox: "0 0 14 14",
+		content:
+			'<path fill="#e09ba1" d="M6.2 0 8 3.2l2.5-2 .1 3.4 3.4-.2-2.7 2.4 2.6 2-3.6.1.8 4.8-3-3.2L7 14l-1.3-3.6-2.4 2 .7-3.5-4 .3 3.2-2.4L.1 5l4.2.2-1.2-4L6 4.1Z"/><path fill="#bb1934" d="m6 2 1.2 3 2-2-.3 2.9 3-.2-2.1 1.6 2.1 1.5-3 .1.5 3-2.1-2L6 12l-1-2.7-2 1.5.7-2.7-3 .3L3.3 7 1.5 5.8l3 .1L4 3.2l2 2Z"/><path fill="#fcab40" d="m4.2 5.2 2.7-.8 2.8 1.1 1 2.8-1.8 2.3H5.6L3.7 8.5Z"/><path fill="#fff" d="M6.4 5.5h1.5v3.8H6.4z"/>',
+	},
+	beginner: {
+		viewBox: "0 0 11 14",
+		content:
+			'<path fill="#cfd1dd" d="M0 1.2 1.5 0l4 3.4L9.5 0 11 1.2v8.4L5.5 14 0 9.6Z"/><path fill="#63898f" d="M1 1 5.5 4.8 10 1v8.1l-4.5 3.8L1 9.1Z"/><path fill="#fffe87" d="M1.8 2.1 5 4.9v6.4L1.8 8.6Z"/><path fill="#48ded4" d="m9.2 2.1-3.2 2.8v6.4l3.2-2.7Z"/>',
+	},
+	one: {
+		viewBox: "0 0 18 18",
+		content:
+			'<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M8 4 5.7 5.5v2.1l2-1.2V14h2.4V4Z"/>',
+	},
+	two: {
+		viewBox: "0 0 18 18",
+		content:
+			'<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M5.2 7.1c.1-2 1.4-3.2 3.5-3.2s3.5 1.2 3.5 3c0 1.3-.7 2.3-2.5 3.6l-1.9 1.4h4.6V14H5.1v-1.8l3.3-2.5c1.2-.9 1.6-1.5 1.6-2.3 0-.9-.5-1.5-1.4-1.5s-1.4.6-1.5 1.5Z"/>',
+	},
+	three: {
+		viewBox: "0 0 18 18",
+		content:
+			'<rect x=".5" y=".5" width="17" height="17" rx="2.2" fill="#3a88c3" stroke="#adc8dd"/><path fill="#fff" d="M7 7.9h1.4c1 0 1.6-.4 1.6-1.1s-.6-1.1-1.5-1.1S7 6.2 7 7H5c.1-1.9 1.5-3.1 3.6-3.1 2.2 0 3.5 1.1 3.5 2.8 0 1-.6 1.8-1.6 2.1 1.2.3 1.9 1.2 1.9 2.4 0 1.9-1.5 3.1-3.8 3.1S5 13.1 4.9 11.1H7c.1.9.7 1.4 1.7 1.4s1.6-.5 1.6-1.3-.7-1.3-1.8-1.3H7Z"/>',
+	},
+	recycle: {
+		viewBox: "0 0 24 24",
+		content:
+			'<g fill="none" stroke="#4f8a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/><path d="M8.293 13.596 7.196 9.5 3.1 10.598"/><path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/><path d="m13.378 9.633 4.096 1.098 1.097-4.096"/></g>',
+	},
+	telescope: {
+		viewBox: "0 0 12 12",
+		content:
+			'<path fill="#e7eaed" d="M4.2 5.1h2.9v2.1H4.2z"/><path fill="#9aaab4" d="M4.7 6.3h1.8l-.2 1.6 3.1 3H7.5L5.6 9.4 4.1 12H2.3l2.4-4Z"/><path fill="#282f33" d="m.1 1.2 2.7 1.4-1.2 2.2L0 4Z"/><path fill="#da2f47" d="m2.2 2 1.1-2 8.3 4.7-1.1 2Z"/><path fill="#e5707b" d="m2.7 1.1.6-1.1 8.3 4.7-.5.9Z"/><path fill="#9d0d26" d="m10.1 3.9 1.5.8-1.1 2-1.5-.8Z"/>',
+	},
 	four: {
 		viewBox: "0 0 36 36",
 		content:
@@ -83,3 +127,20 @@ export const twemojiArtwork: Readonly<Record<string, EmojiArtwork>> = {
 			'<path fill="#BB1A34" d="M1.728 21c-.617 0-.953-.256-1.127-.471-.171-.211-.348-.585-.225-1.165L3.104 6.658l-1.714.097h-.013c-.517 0-.892-.168-1.127-.459-.22-.272-.299-.621-.221-.98.15-.702.883-1.286 1.667-1.329l4.008-.227c.078-.005.15-.008.217-.008.147 0 .536 0 .783.306.252.312.167.709.139.839L3.719 19.454c-.187.884-.919 1.489-1.866 1.542L1.728 21zm10.743-2c-1.439 0-2.635-.539-3.459-1.559-1.163-1.439-1.467-3.651-.878-6.397 1.032-4.812 4.208-8.186 7.902-8.395 1.59-.089 2.906.452 3.793 1.549 1.163 1.439 1.467 3.651.878 6.397-1.032 4.81-4.208 8.184-7.904 8.394-.112.008-.223.011-.332.011zm3.414-13.746l-.137.004c-1.94.111-3.555 2.304-4.32 5.866-.478 2.228-.381 3.899.272 4.707.297.368.717.555 1.249.555l.14-.004c1.94-.109 3.554-2.301 4.318-5.864.478-2.228.382-3.9-.27-4.708-.296-.369-.718-.556-1.252-.556zm11.591 12.107c-1.439 0-2.637-.539-3.462-1.56-1.163-1.439-1.467-3.651-.878-6.397 1.033-4.813 4.209-8.186 7.903-8.394 1.603-.09 2.903.453 3.79 1.549 1.163 1.439 1.467 3.651.878 6.396-1.031 4.809-4.206 8.183-7.902 8.396-.112.008-.221.01-.329.01zm3.411-13.747l-.136.004c-1.941.111-3.556 2.304-4.32 5.865-.478 2.229-.381 3.901.272 4.708.297.368.719.555 1.251.555l.14-.004c1.939-.109 3.554-2.302 4.318-5.864.479-2.227.383-3.899-.27-4.707-.298-.37-.72-.557-1.255-.557zM11 35.001c-.81 0-1.572-.496-1.873-1.299-.388-1.034.136-2.187 1.17-2.575.337-.126 8.399-3.108 20.536-4.12 1.101-.096 2.067.727 2.159 1.827.092 1.101-.727 2.067-1.827 2.159-11.59.966-19.386 3.851-19.464 3.88-.23.086-.468.128-.701.128zM2.001 29c-.804 0-1.563-.488-1.868-1.283-.396-1.031.118-2.188 1.149-2.583.542-.209 13.516-5.126 32.612-6.131 1.113-.069 2.045.789 2.103 1.892.059 1.103-.789 2.045-1.892 2.103-18.423.97-31.261 5.821-31.389 5.87-.235.089-.477.132-.715.132z"/>',
 	},
 };
+
+const registry: Record<string, EmojiArtwork> = { ...coreEmojiArtwork, ...handcraftedArtwork };
+
+/** Resolves a gemoji alias to its canonical (first) name. */
+export function canonicalShortcode(shortcode: string): string {
+	return gemojiCanonical[shortcode] ?? shortcode;
+}
+
+/** Registers additional artwork (for example the opt-in GitHub pack). */
+export function registerEmojiArtwork(pack: Readonly<Record<string, EmojiArtwork>>): void {
+	Object.assign(registry, pack);
+}
+
+/** Looks up artwork for a shortcode, resolving aliases to canonical names. */
+export function emojiArtwork(shortcode: string): EmojiArtwork | undefined {
+	return registry[canonicalShortcode(shortcode)];
+}

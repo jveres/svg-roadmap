@@ -240,7 +240,8 @@ export function generateRetroBackgroundArtifacts({
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
-			const motif = motifs[(Math.floor(random() * motifs.length) + column + row * 2) % motifs.length];
+			const motif =
+				motifs[(Math.floor(random() * motifs.length) + column + row * 2) % motifs.length];
 			if (!motif) continue;
 			// Seventies motifs stay mostly upright; only a gentle tilt.
 			const tilt = roundArtifactCoordinate((random() - 0.5) * 30);

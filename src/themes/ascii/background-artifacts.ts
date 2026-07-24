@@ -186,7 +186,8 @@ export function generateAsciiBackgroundArtifacts({
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
-			const motif = motifs[(Math.floor(random() * motifs.length) + column * 2 + row) % motifs.length];
+			const motif =
+				motifs[(Math.floor(random() * motifs.length) + column * 2 + row) % motifs.length];
 			if (!motif) continue;
 			// Zine marginalia sit almost square with the page.
 			const tilt = roundArtifactCoordinate((random() - 0.5) * 10);

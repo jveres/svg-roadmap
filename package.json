@@ -32,6 +32,10 @@
 		"./node": {
 			"types": "./dist/node.d.ts",
 			"import": "./dist/node.js"
+		},
+		"./emoji-github": {
+			"types": "./dist/emoji-github.d.ts",
+			"import": "./dist/emoji-github.js"
 		}
 	},
 	"files": [
@@ -50,6 +54,7 @@
 		"check:fix": "biome check --write .",
 		"dev": "vite --config vite.demo.config.ts",
 		"format": "biome format --write .",
+		"generate:emoji": "node scripts/generate-emoji.mjs",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit",

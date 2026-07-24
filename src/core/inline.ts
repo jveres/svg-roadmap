@@ -6,6 +6,7 @@ import type {
 	TextLineSegment,
 	TypographyTheme,
 } from "../types.ts";
+import { gemojiEmoji } from "./emoji/gemoji-data.ts";
 
 export interface InlineRun {
 	readonly text: string;
@@ -17,34 +18,8 @@ export interface InlineRun {
 	readonly shortcode?: string;
 }
 
-const shortcodeEmoji: Readonly<Record<string, string>> = {
-	"100": "💯",
-	beginner: "🔰",
-	boom: "💥",
-	cloud: "☁️",
-	eight: "8️⃣",
-	five: "5️⃣",
-	four: "4️⃣",
-	keycap_ten: "🔟",
-	nine: "9️⃣",
-	one: "1️⃣",
-	poop: "💩",
-	recycle: "♻️",
-	robot: "🤖",
-	rocket: "🚀",
-	seven: "7️⃣",
-	six: "6️⃣",
-	soap: "🧼",
-	sparkles: "✨",
-	star: "⭐",
-	tada: "🎉",
-	telescope: "🔭",
-	three: "3️⃣",
-	two: "2️⃣",
-};
-
 export function shortcodeToEmoji(id: string): string {
-	return shortcodeEmoji[id] ?? `:${id}:`;
+	return gemojiEmoji[id] ?? `:${id}:`;
 }
 
 export function inlineToPlainText(nodes: readonly InlineNode[]): string {
@@ -335,8 +310,7 @@ export function wrapInline(
 		letterSpacing * Array.from(text).length;
 
 	for (const run of runs) {
-		const runText =
-			typography.textTransform === "uppercase" ? run.text.toUpperCase() : run.text;
+		const runText = typography.textTransform === "uppercase" ? run.text.toUpperCase() : run.text;
 		const tokens = runText.split(/(\n|\s+)/u).filter(Boolean);
 		for (const token of tokens) {
 			if (token === "\n") {

@@ -170,7 +170,8 @@ export function generateArcadeBackgroundArtifacts({
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
-			const motif = motifs[(Math.floor(random() * motifs.length) + column + row * 3) % motifs.length];
+			const motif =
+				motifs[(Math.floor(random() * motifs.length) + column + row * 3) % motifs.length];
 			if (!motif) continue;
 			// Sprites stay upright like they are marching across a screen.
 			const tilt = roundArtifactCoordinate((random() - 0.5) * 16);
