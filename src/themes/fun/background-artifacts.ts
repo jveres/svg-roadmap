@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -215,14 +215,14 @@ export function generateFunBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.72) continue;
-			const size = roundArtifactCoordinate((24 + random() * 28) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((24 + random() * 28) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 18 + random() * (tileSize - 36)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 18 + random() * (tileSize - 36)),
@@ -239,12 +239,12 @@ export function generateFunBackgroundArtifacts({
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
 			const motif = Math.floor(random() * 11);
-			const rotation = roundArtifactCoordinate(random() * 360);
+			const rotation = roundCoordinate(random() * 360);
 			const variant = Math.floor(random() * 3);
 			artifacts.push({
 				id: `fun-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${rotation}) scale(${roundArtifactCoordinate(size / 48)})`,
+				transform: `translate(${x} ${y}) rotate(${rotation}) scale(${roundCoordinate(size / 48)})`,
 				shapes: motifShapes(motif, variant),
 			});
 		}

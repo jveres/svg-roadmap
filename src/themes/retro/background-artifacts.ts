@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -22,8 +22,8 @@ const strokeWidth = "var(--roadmap-retro-artifact-stroke-width)";
 
 function ringPoint(radius: number, angle: number): { x: number; y: number } {
 	return {
-		x: roundArtifactCoordinate(Math.cos(angle) * radius),
-		y: roundArtifactCoordinate(Math.sin(angle) * radius),
+		x: roundCoordinate(Math.cos(angle) * radius),
+		y: roundCoordinate(Math.sin(angle) * radius),
 	};
 }
 
@@ -217,14 +217,14 @@ export function generateRetroBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`retro:${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.62) continue;
-			const size = roundArtifactCoordinate((26 + random() * 30) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((26 + random() * 30) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 22 + random() * (tileSize - 44)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 22 + random() * (tileSize - 44)),
@@ -244,11 +244,11 @@ export function generateRetroBackgroundArtifacts({
 				motifs[(Math.floor(random() * motifs.length) + column + row * 2) % motifs.length];
 			if (!motif) continue;
 			// Seventies motifs stay mostly upright; only a gentle tilt.
-			const tilt = roundArtifactCoordinate((random() - 0.5) * 30);
+			const tilt = roundCoordinate((random() - 0.5) * 30);
 			artifacts.push({
 				id: `retro-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundArtifactCoordinate(size / 50)})`,
+				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundCoordinate(size / 50)})`,
 				shapes: motif(),
 			});
 		}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { noteLayoutRectangle, paintedNodeFrameRectangle } from "./core/frames.ts";
+import { paintedNodeFrameRectangle } from "./core/frames.ts";
 import { rectanglesOverlap } from "./core/geometry.ts";
 import {
 	builtInThemes,
@@ -357,9 +357,9 @@ An intentionally restrained introduction.
 		for (const connector of generated.layout.connectors) {
 			if (connector.kind !== "chapterToTopics") continue;
 			for (const description of descriptions) {
-				expect(hitsRectangle(connector.from, connector.to, noteLayoutRectangle(description))).toBe(
-					false,
-				);
+				expect(
+					hitsRectangle(connector.from, connector.to, paintedNodeFrameRectangle(description)),
+				).toBe(false);
 			}
 		}
 	});
@@ -885,7 +885,7 @@ Standalone note.
 
 		expect(note).toBeDefined();
 		if (!note) throw new Error("Description fixture was not generated");
-		const reserved = noteLayoutRectangle(note);
+		const reserved = paintedNodeFrameRectangle(note);
 		expect(reserved).toEqual(paintedNodeFrameRectangle(note));
 	});
 });

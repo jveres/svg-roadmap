@@ -197,7 +197,3 @@ export function noteBlobGeometry(node: LayoutNode): NoteBlobGeometry {
 		...noteBlobMetrics(node),
 	};
 }
-
-export function noteLayoutRectangle(node: LayoutNode): Rect {
-	return paintedNodeFrameRectangle(node);
-}

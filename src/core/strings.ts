@@ -20,13 +20,18 @@ export function safeId(value: string): string {
 	return id || "roadmap";
 }
 
-export function hashString(value: string): string {
+/** FNV-1a over UTF-16 code units, as an unsigned 32-bit integer. */
+export function hashNumber(value: string): number {
 	let hash = 0x811c9dc5;
 	for (let index = 0; index < value.length; index += 1) {
 		hash ^= value.charCodeAt(index);
 		hash = Math.imul(hash, 0x01000193);
 	}
-	return (hash >>> 0).toString(36);
+	return hash >>> 0;
+}
+
+export function hashString(value: string): string {
+	return hashNumber(value).toString(36);
 }
 
 export function safeLinkDestination(value: string): string | undefined {

@@ -1,17 +1,9 @@
 import type { Rect } from "../types.ts";
 import { rectanglesOverlap } from "./geometry.ts";
-
-function hashSeed(value: string): number {
-	let hash = 0x811c9dc5;
-	for (let index = 0; index < value.length; index += 1) {
-		hash ^= value.charCodeAt(index);
-		hash = Math.imul(hash, 0x01000193);
-	}
-	return hash >>> 0;
-}
+import { hashNumber } from "./strings.ts";
 
 export function createSeededRandom(seed: string): () => number {
-	let state = hashSeed(seed) || 0x6d2b79f5;
+	let state = hashNumber(seed) || 0x6d2b79f5;
 	return () => {
 		state += 0x6d2b79f5;
 		let value = state;
@@ -19,10 +11,6 @@ export function createSeededRandom(seed: string): () => number {
 		value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
 		return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
 	};
-}
-
-export function roundArtifactCoordinate(value: number): number {
-	return Math.round(value * 100) / 100;
 }
 
 export function isInOuterVoid(

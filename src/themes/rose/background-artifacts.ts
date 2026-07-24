@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -21,8 +21,6 @@ const moss = "var(--roadmap-rose-artifact-moss)";
 const cream = "var(--roadmap-rose-artifact-cream)";
 const strokeWidth = "var(--roadmap-rose-artifact-stroke-width)";
 
-const r2 = (value: number): number => Math.round(value * 100) / 100;
-
 /** A five-petal wild rose drawn as an engraving: petal outlines and stamens. */
 function wildRose(variant: number): readonly LayoutBackgroundArtifactShape[] {
 	const shapes: LayoutBackgroundArtifactShape[] = [];
@@ -38,7 +36,7 @@ function wildRose(variant: number): readonly LayoutBackgroundArtifactShape[] {
 		const controlRight = { x: Math.cos(right) * 15, y: Math.sin(right) * 15 };
 		shapes.push({
 			kind: "path",
-			d: `M ${r2(baseLeft.x)} ${r2(baseLeft.y)} C ${r2(controlLeft.x)} ${r2(controlLeft.y)} ${r2(tip.x * 1.05)} ${r2(tip.y * 1.05)} ${r2(tip.x)} ${r2(tip.y)} C ${r2(tip.x * 1.05)} ${r2(tip.y * 1.05)} ${r2(controlRight.x)} ${r2(controlRight.y)} ${r2(baseRight.x)} ${r2(baseRight.y)}`,
+			d: `M ${roundCoordinate(baseLeft.x)} ${roundCoordinate(baseLeft.y)} C ${roundCoordinate(controlLeft.x)} ${roundCoordinate(controlLeft.y)} ${roundCoordinate(tip.x * 1.05)} ${roundCoordinate(tip.y * 1.05)} ${roundCoordinate(tip.x)} ${roundCoordinate(tip.y)} C ${roundCoordinate(tip.x * 1.05)} ${roundCoordinate(tip.y * 1.05)} ${roundCoordinate(controlRight.x)} ${roundCoordinate(controlRight.y)} ${roundCoordinate(baseRight.x)} ${roundCoordinate(baseRight.y)}`,
 			stroke: madder,
 			strokeWidth,
 			fill: "none",
@@ -57,8 +55,8 @@ function wildRose(variant: number): readonly LayoutBackgroundArtifactShape[] {
 		const angle = (index * 2 * Math.PI) / 5 - Math.PI / 2 + 0.63 + variant * 0.1;
 		shapes.push({
 			kind: "circle",
-			cx: r2(Math.cos(angle) * 5.5),
-			cy: r2(Math.sin(angle) * 5.5),
+			cx: roundCoordinate(Math.cos(angle) * 5.5),
+			cy: roundCoordinate(Math.sin(angle) * 5.5),
 			radius: 0.9,
 			fill: ink,
 		});
@@ -164,10 +162,10 @@ function fernFrond(): readonly LayoutBackgroundArtifactShape[] {
 	];
 	for (let index = 0; index < 6; index += 1) {
 		const t = index / 6;
-		const x = r2(-3 + 5.4 * t + 1.6 * t * t);
-		const y = r2(22 - 38 * t);
-		const reach = r2(9 * (1 - t * 0.75));
-		const lift = r2(4 * (1 - t * 0.6));
+		const x = roundCoordinate(-3 + 5.4 * t + 1.6 * t * t);
+		const y = roundCoordinate(22 - 38 * t);
+		const reach = roundCoordinate(9 * (1 - t * 0.75));
+		const lift = roundCoordinate(4 * (1 - t * 0.6));
 		shapes.push(
 			{
 				kind: "path",
@@ -195,9 +193,15 @@ function engravedRose(): readonly LayoutBackgroundArtifactShape[] {
 		const from = (index * 2 * Math.PI) / 6 - Math.PI / 2;
 		const to = ((index + 1) * 2 * Math.PI) / 6 - Math.PI / 2;
 		const mid = (from + to) / 2;
-		const start = { x: r2(Math.cos(from) * 14), y: r2(Math.sin(from) * 14) };
-		const control = { x: r2(Math.cos(mid) * 21), y: r2(Math.sin(mid) * 21) };
-		const end = { x: r2(Math.cos(to) * 14), y: r2(Math.sin(to) * 14) };
+		const start = {
+			x: roundCoordinate(Math.cos(from) * 14),
+			y: roundCoordinate(Math.sin(from) * 14),
+		};
+		const control = {
+			x: roundCoordinate(Math.cos(mid) * 21),
+			y: roundCoordinate(Math.sin(mid) * 21),
+		};
+		const end = { x: roundCoordinate(Math.cos(to) * 14), y: roundCoordinate(Math.sin(to) * 14) };
 		scallops.push(
 			`${index === 0 ? `M ${start.x} ${start.y}` : ""} Q ${control.x} ${control.y} ${end.x} ${end.y}`,
 		);
@@ -273,14 +277,14 @@ export function generateRoseBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`rose:${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.62) continue;
-			const size = roundArtifactCoordinate((25 + random() * 27) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((25 + random() * 27) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 20 + random() * (tileSize - 40)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 20 + random() * (tileSize - 40)),
@@ -301,11 +305,11 @@ export function generateRoseBackgroundArtifacts({
 			if (!motif) continue;
 			// Botanical cuttings lie loosely on the page but keep their "up":
 			// a gentle tilt, never a full spin.
-			const tilt = roundArtifactCoordinate((random() - 0.5) * 56);
+			const tilt = roundCoordinate((random() - 0.5) * 56);
 			artifacts.push({
 				id: `rose-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundArtifactCoordinate(size / 50)})`,
+				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundCoordinate(size / 50)})`,
 				shapes: motif(Math.floor(random() * 3)),
 			});
 		}

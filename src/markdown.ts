@@ -9,13 +9,7 @@ import initComrak, {
 } from "comrak-wasm";
 import { parseRoadmapFrontmatter, RoadmapFrontmatterError } from "./core/frontmatter.ts";
 import { applyAbbreviations, inlineToPlainText, shortcodeToEmoji } from "./core/inline.ts";
-import {
-	childElements,
-	decodeXml,
-	firstChildElement,
-	type XmlElementNode,
-	xmlText,
-} from "./core/xml.ts";
+import { childElements, decodeXml, type XmlElementNode, xmlText } from "./core/xml.ts";
 import type {
 	FootnoteDefinition,
 	InlineNode,
@@ -574,8 +568,4 @@ export class RoadmapParser implements Disposable {
 	[Symbol.dispose](): void {
 		this.dispose();
 	}
-}
-
-export function firstParagraph(node: XmlElementNode): XmlElementNode | undefined {
-	return firstChildElement(node, "paragraph");
 }

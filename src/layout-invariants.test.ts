@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { noteLayoutRectangle } from "./core/frames.ts";
+import { paintedNodeFrameRectangle } from "./core/frames.ts";
 import { setMeasurementProvider } from "./core/inline.ts";
 import { generateRoadmap } from "./index.ts";
 import type {
@@ -136,7 +136,7 @@ Another floating note after the section heading.
 };
 
 function nodePaintRect(node: LayoutNode): Rect {
-	return node.kind === "note" ? noteLayoutRectangle(node) : node;
+	return node.kind === "note" ? paintedNodeFrameRectangle(node) : node;
 }
 
 function overlapArea(a: Rect, b: Rect): number {
@@ -373,7 +373,8 @@ function collectViolations(layout: RoadmapLayout, svg?: string): string[] {
 
 	// 7. Everything stays inside the canvas.
 	for (const element of layout.elements) {
-		const rect = element.kind === "note" ? noteLayoutRectangle(element as LayoutNode) : element;
+		const rect =
+			element.kind === "note" ? paintedNodeFrameRectangle(element as LayoutNode) : element;
 		if (
 			rect.x < -0.5 ||
 			rect.y < -0.5 ||

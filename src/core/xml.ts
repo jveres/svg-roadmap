@@ -235,12 +235,6 @@ export function childElements(node: XmlElementNode, name?: string): XmlElementNo
 	);
 }
 
-export function firstChildElement(node: XmlElementNode, name: string): XmlElementNode | undefined {
-	return node.children.find(
-		(child): child is XmlElementNode => child.type === "element" && child.name === name,
-	);
-}
-
 export function xmlText(node: XmlElementNode): string {
 	let value = "";
 	const pending: XmlNode[] = [...node.children].reverse();

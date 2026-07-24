@@ -182,7 +182,8 @@ export function convexHull(points: readonly Point[]): Point[] {
 	return [...lower, ...upper];
 }
 
-function round(value: number): number {
+/** Rounds a coordinate to two decimals, the precision paths are emitted with. */
+export function roundCoordinate(value: number): number {
 	return Math.round(value * 100) / 100;
 }
 
@@ -190,16 +191,16 @@ export function smoothClosedPath(points: readonly Point[], tension = 1): string 
 	if (points.length === 0) return "";
 	if (points.length === 1) {
 		const point = points[0] as Point;
-		return `M ${round(point.x)} ${round(point.y)} Z`;
+		return `M ${roundCoordinate(point.x)} ${roundCoordinate(point.y)} Z`;
 	}
 	if (points.length === 2) {
 		const [left, right] = points as readonly [Point, Point];
-		return `M ${round(left.x)} ${round(left.y)} L ${round(right.x)} ${round(right.y)} Z`;
+		return `M ${roundCoordinate(left.x)} ${roundCoordinate(left.y)} L ${roundCoordinate(right.x)} ${roundCoordinate(right.y)} Z`;
 	}
 
 	const size = points.length;
 	const pointAt = (index: number): Point => points[(index + size) % size] as Point;
-	let path = `M ${round(pointAt(0).x)} ${round(pointAt(0).y)}`;
+	let path = `M ${roundCoordinate(pointAt(0).x)} ${roundCoordinate(pointAt(0).y)}`;
 	for (let index = 0; index < size; index += 1) {
 		const previous = pointAt(index - 1);
 		const current = pointAt(index);
@@ -213,7 +214,7 @@ export function smoothClosedPath(points: readonly Point[], tension = 1): string 
 			x: next.x - ((after.x - current.x) / 6) * tension,
 			y: next.y - ((after.y - current.y) / 6) * tension,
 		};
-		path += ` C ${round(firstControl.x)} ${round(firstControl.y)} ${round(secondControl.x)} ${round(secondControl.y)} ${round(next.x)} ${round(next.y)}`;
+		path += ` C ${roundCoordinate(firstControl.x)} ${roundCoordinate(firstControl.y)} ${roundCoordinate(secondControl.x)} ${roundCoordinate(secondControl.y)} ${roundCoordinate(next.x)} ${roundCoordinate(next.y)}`;
 	}
 	return `${path} Z`;
 }
@@ -268,7 +269,7 @@ export function boundedBlobPath(rectangles: readonly Rect[], padding: number): s
 		y: (left.y + centerWeight * center.y + right.y) / (centerWeight + 2),
 	});
 	const first = weighted(pointAt(-1), 4, pointAt(0), pointAt(1));
-	let path = `M ${round(first.x)} ${round(first.y)}`;
+	let path = `M ${roundCoordinate(first.x)} ${roundCoordinate(first.y)}`;
 	for (let index = 0; index < size; index += 1) {
 		const current = pointAt(index);
 		const next = pointAt(index + 1);
@@ -282,7 +283,7 @@ export function boundedBlobPath(rectangles: readonly Rect[], padding: number): s
 			y: (current.y + 2 * next.y) / 3,
 		};
 		const end = weighted(current, 4, next, after);
-		path += ` C ${round(firstControl.x)} ${round(firstControl.y)} ${round(secondControl.x)} ${round(secondControl.y)} ${round(end.x)} ${round(end.y)}`;
+		path += ` C ${roundCoordinate(firstControl.x)} ${roundCoordinate(firstControl.y)} ${roundCoordinate(secondControl.x)} ${roundCoordinate(secondControl.y)} ${roundCoordinate(end.x)} ${roundCoordinate(end.y)}`;
 	}
 	return `${path} Z`;
 }
@@ -304,10 +305,10 @@ export function organicBlobPath(
 	const first = curves[0];
 	if (!first) return "";
 	return [
-		`M ${round(first.start.x)} ${round(first.start.y)}`,
+		`M ${roundCoordinate(first.start.x)} ${roundCoordinate(first.start.y)}`,
 		...curves.map(
 			(curve) =>
-				`C ${round(curve.control1.x)} ${round(curve.control1.y)} ${round(curve.control2.x)} ${round(curve.control2.y)} ${round(curve.end.x)} ${round(curve.end.y)}`,
+				`C ${roundCoordinate(curve.control1.x)} ${roundCoordinate(curve.control1.y)} ${roundCoordinate(curve.control2.x)} ${roundCoordinate(curve.control2.y)} ${roundCoordinate(curve.end.x)} ${roundCoordinate(curve.end.y)}`,
 		),
 		"Z",
 	].join(" ");
@@ -433,19 +434,19 @@ export function pointInPolygon(polygon: readonly Point[], point: Point): boolean
 
 export function verticalBumpPath(from: Point, to: Point): string {
 	const middle = (from.y + to.y) / 2;
-	return `M ${round(from.x)} ${round(from.y)} C ${round(from.x)} ${round(middle)} ${round(to.x)} ${round(middle)} ${round(to.x)} ${round(to.y)}`;
+	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(from.x)} ${roundCoordinate(middle)} ${roundCoordinate(to.x)} ${roundCoordinate(middle)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
 }
 
 export function horizontalBumpPath(from: Point, to: Point): string {
 	const middle = (from.x + to.x) / 2;
-	return `M ${round(from.x)} ${round(from.y)} C ${round(middle)} ${round(from.y)} ${round(middle)} ${round(to.y)} ${round(to.x)} ${round(to.y)}`;
+	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(middle)} ${roundCoordinate(from.y)} ${roundCoordinate(middle)} ${roundCoordinate(to.y)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
 }
 
 export function bundledCurvePath(from: Point, to: Point, curveDistance = 0.15): string {
 	const dx = to.x - from.x;
 	const dy = to.y - from.y;
 	const length = Math.hypot(dx, dy);
-	if (length === 0) return `M ${round(from.x)} ${round(from.y)}`;
+	if (length === 0) return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)}`;
 	const angle = Math.atan2(dy, dx);
 	const middle = {
 		x: from.x + length * 0.75 * Math.cos(angle),
@@ -487,10 +488,10 @@ export function bundledCurvePath(from: Point, to: Point, curveDistance = 0.15): 
 		y: (control.y + 5 * to.y) / 6,
 	};
 	return [
-		`M ${round(from.x)} ${round(from.y)}`,
-		`L ${round(entry.x)} ${round(entry.y)}`,
-		`C ${round(firstControl.x)} ${round(firstControl.y)} ${round(secondControl.x)} ${round(secondControl.y)} ${round(centre.x)} ${round(centre.y)}`,
-		`C ${round(thirdControl.x)} ${round(thirdControl.y)} ${round(fourthControl.x)} ${round(fourthControl.y)} ${round(exit.x)} ${round(exit.y)}`,
-		`L ${round(to.x)} ${round(to.y)}`,
+		`M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)}`,
+		`L ${roundCoordinate(entry.x)} ${roundCoordinate(entry.y)}`,
+		`C ${roundCoordinate(firstControl.x)} ${roundCoordinate(firstControl.y)} ${roundCoordinate(secondControl.x)} ${roundCoordinate(secondControl.y)} ${roundCoordinate(centre.x)} ${roundCoordinate(centre.y)}`,
+		`C ${roundCoordinate(thirdControl.x)} ${roundCoordinate(thirdControl.y)} ${roundCoordinate(fourthControl.x)} ${roundCoordinate(fourthControl.y)} ${roundCoordinate(exit.x)} ${roundCoordinate(exit.y)}`,
+		`L ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`,
 	].join(" ");
 }

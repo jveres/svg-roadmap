@@ -1,5 +1,4 @@
 import type {
-	AbbreviationInline,
 	InlineMark,
 	InlineNode,
 	TextLine,
@@ -351,6 +350,24 @@ export function measureText(
 	return measured;
 }
 
+/**
+ * Advance width of a plain label including its tracking. Layout and rendering
+ * must size legend labels identically, so both go through this helper: the
+ * tracked advance counts graphemes, not UTF-16 units.
+ */
+export function measureTrackedText(
+	text: string,
+	fontSize: number,
+	fontWeight: number,
+	fontFamily: string,
+	letterSpacing: number,
+): number {
+	return (
+		measureText(text, fontSize, [], fontWeight, fontFamily) +
+		letterSpacing * Array.from(text).length
+	);
+}
+
 function sameRunStyle(left: TextLineSegment | undefined, right: TextLineSegment): boolean {
 	return (
 		left !== undefined &&
@@ -477,8 +494,4 @@ export function wrapInline(
 
 	const nonEmpty = lines.filter((line, index) => line.segments.length > 0 || index === 0);
 	return nonEmpty.map((line) => ({ width: line.width, segments: line.segments }));
-}
-
-export function abbreviationNode(title: string, value: string): AbbreviationInline {
-	return { type: "abbreviation", title, children: [{ type: "text", value }] };
 }

@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -28,8 +28,8 @@ function pixelPath(rows: readonly string[], pixel: number): string {
 	for (const [rowIndex, row] of rows.entries()) {
 		for (let column = 0; column < row.length; column += 1) {
 			if (row[column] !== "X") continue;
-			const x = roundArtifactCoordinate(offsetX + column * pixel);
-			const y = roundArtifactCoordinate(offsetY + rowIndex * pixel);
+			const x = roundCoordinate(offsetX + column * pixel);
+			const y = roundCoordinate(offsetY + rowIndex * pixel);
 			cells.push(`M ${x} ${y} h ${pixel} v ${pixel} h ${-pixel} Z`);
 		}
 	}
@@ -147,14 +147,14 @@ export function generateArcadeBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`arcade:${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.62) continue;
-			const size = roundArtifactCoordinate((26 + random() * 28) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((26 + random() * 28) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 22 + random() * (tileSize - 44)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 22 + random() * (tileSize - 44)),
@@ -174,11 +174,11 @@ export function generateArcadeBackgroundArtifacts({
 				motifs[(Math.floor(random() * motifs.length) + column + row * 3) % motifs.length];
 			if (!motif) continue;
 			// Sprites stay upright like they are marching across a screen.
-			const tilt = roundArtifactCoordinate((random() - 0.5) * 16);
+			const tilt = roundCoordinate((random() - 0.5) * 16);
 			artifacts.push({
 				id: `arcade-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundArtifactCoordinate(size / 50)})`,
+				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundCoordinate(size / 50)})`,
 				shapes: motif(),
 			});
 		}

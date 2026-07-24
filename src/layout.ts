@@ -1,4 +1,4 @@
-import { noteLayoutRectangle } from "./core/frames.ts";
+import { paintedNodeFrameRectangle } from "./core/frames.ts";
 import {
 	inflateRectangle,
 	rectanglesOverlap,
@@ -7,7 +7,7 @@ import {
 	rectRight,
 	unionRectangles,
 } from "./core/geometry.ts";
-import { inlineToPlainText, measureText, wrapInline } from "./core/inline.ts";
+import { inlineToPlainText, measureTrackedText, wrapInline } from "./core/inline.ts";
 import { lightTheme } from "./theme.ts";
 import type {
 	CardTheme,
@@ -18,6 +18,7 @@ import type {
 	LayoutLegend,
 	LayoutLegendMetrics,
 	LayoutNode,
+	LayoutText,
 	Point,
 	Rect,
 	RoadmapChapter,
@@ -29,6 +30,7 @@ import type {
 	RoadmapTopicGroup,
 	SourceRange,
 	TagStyle,
+	TextLine,
 	TypographyTheme,
 } from "./types.ts";
 
@@ -106,6 +108,33 @@ function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
 	return resolved;
 }
 
+/** The side opposite `side`; keeps alternation off unchecked arithmetic. */
+function oppositeSide(side: -1 | 1): -1 | 1 {
+	return side < 0 ? 1 : -1;
+}
+
+function layoutText(
+	lines: readonly TextLine[],
+	typography: TypographyTheme,
+	abbreviationIndicatorSize: number,
+): LayoutText {
+	return {
+		lines,
+		fontSize: typography.fontSize,
+		lineHeight: typography.fontSize * typography.lineHeight,
+		fontFamily: typography.fontFamily,
+		fontWeight: typography.fontWeight,
+		fontStyle: typography.fontStyle,
+		color: typography.color,
+		renderScale: typography.renderScale ?? 1,
+		renderScaleX: typography.renderScaleX ?? 1,
+		renderScaleY: typography.renderScaleY ?? 1,
+		baselineRatio: typography.baselineRatio ?? 0.9,
+		abbreviationIndicatorSize,
+		...(typography.letterSpacing !== undefined ? { letterSpacing: typography.letterSpacing } : {}),
+	};
+}
+
 function contentWithDescription(topic: RoadmapTopic): InlineNode[] {
 	if (topic.description.length === 0) return [...topic.content];
 	return [
@@ -151,7 +180,7 @@ function createCardNode(
 	);
 	const lines = wrapInline(content, targetWidth, card.typography, abbreviationIndicatorSize);
 	const measuredWidth = Math.max(minContentWidth, ...lines.map((line) => line.width));
-	const lineHeight = card.typography.fontSize * card.typography.lineHeight;
+	const text = layoutText(lines, card.typography, abbreviationIndicatorSize);
 	return {
 		kind,
 		role,
@@ -161,24 +190,8 @@ function createCardNode(
 		x: 0,
 		y: 0,
 		width: Math.ceil(Math.min(maxContentWidth, measuredWidth) + card.paddingX * 2),
-		height: Math.ceil(Math.max(1, lines.length) * lineHeight + card.paddingY * 2),
-		text: {
-			lines,
-			fontSize: card.typography.fontSize,
-			lineHeight,
-			fontFamily: card.typography.fontFamily,
-			fontWeight: card.typography.fontWeight,
-			fontStyle: card.typography.fontStyle,
-			color: card.typography.color,
-			renderScale: card.typography.renderScale ?? 1,
-			renderScaleX: card.typography.renderScaleX ?? 1,
-			renderScaleY: card.typography.renderScaleY ?? 1,
-			baselineRatio: card.typography.baselineRatio ?? 0.9,
-			abbreviationIndicatorSize,
-			...(card.typography.letterSpacing !== undefined
-				? { letterSpacing: card.typography.letterSpacing }
-				: {}),
-		},
+		height: Math.ceil(Math.max(1, lines.length) * text.lineHeight + card.paddingY * 2),
+		text,
 		tags,
 		frameShape: card.shape,
 		...(sourceRange ? { sourceRange } : {}),
@@ -194,7 +207,7 @@ function createHeadingNode(
 	abbreviationIndicatorSize = typography.fontSize * 0.75,
 ): LayoutNode {
 	const lines = wrapInline(content, 500, typography, abbreviationIndicatorSize);
-	const lineHeight = typography.fontSize * typography.lineHeight;
+	const text = layoutText(lines, typography, abbreviationIndicatorSize);
 	return {
 		kind: "heading",
 		role: "heading",
@@ -204,24 +217,8 @@ function createHeadingNode(
 		x: 0,
 		y: 0,
 		width: Math.ceil(Math.max(1, ...lines.map((line) => line.width)) + 8),
-		height: Math.ceil(Math.max(1, lines.length) * lineHeight + 4),
-		text: {
-			lines,
-			fontSize: typography.fontSize,
-			lineHeight,
-			fontFamily: typography.fontFamily,
-			fontWeight: typography.fontWeight,
-			fontStyle: typography.fontStyle,
-			color: typography.color,
-			renderScale: typography.renderScale ?? 1,
-			renderScaleX: typography.renderScaleX ?? 1,
-			renderScaleY: typography.renderScaleY ?? 1,
-			baselineRatio: typography.baselineRatio ?? 0.9,
-			abbreviationIndicatorSize,
-			...(typography.letterSpacing !== undefined
-				? { letterSpacing: typography.letterSpacing }
-				: {}),
-		},
+		height: Math.ceil(Math.max(1, lines.length) * text.lineHeight + 4),
+		text,
 		tags: [],
 		...(sourceRange ? { sourceRange } : {}),
 	};
@@ -391,7 +388,7 @@ function openCandidate(
 	if (isOpen(preferred)) {
 		return { rect: preferred, side: preferredSide, displacement: 0 };
 	}
-	const alternateSide = (preferredSide * -1) as -1 | 1;
+	const alternateSide = oppositeSide(preferredSide);
 	const alternate = create(alternateSide);
 	if (!lockPreferredSide && isOpen(alternate)) {
 		return { rect: alternate, side: alternateSide, displacement: 0 };
@@ -841,7 +838,7 @@ function layoutTreeGroups(
 	]);
 
 	for (const [index, group] of groups.entries()) {
-		const side = (index % 2 === 0 ? initialSide : initialSide * -1) as -1 | 1;
+		const side = index % 2 === 0 ? initialSide : oppositeSide(initialSide);
 		const cluster = packCluster(group.topics, group.id, 1, "tree", context.theme, context.options);
 		const y = sideBottom.get(side) ?? startY;
 		const x =
@@ -1053,16 +1050,14 @@ function createLegend(
 		theme.legend.textTransform === "uppercase" ? label.toUpperCase() : label;
 	const labelWidth =
 		Math.max(
-			...styles.map(
-				([, style]) =>
-					measureText(
-						legendLabel(style.label),
-						paintedFontSize,
-						[],
-						theme.legend.fontWeight,
-						theme.legend.fontFamily,
-					) +
-					metrics.letterSpacing * legendLabel(style.label).length,
+			...styles.map(([, style]) =>
+				measureTrackedText(
+					legendLabel(style.label),
+					paintedFontSize,
+					theme.legend.fontWeight,
+					theme.legend.fontFamily,
+					metrics.letterSpacing,
+				),
 			),
 		) * renderScaleX;
 	const padding = theme.boards.legend.padding;
@@ -1123,7 +1118,7 @@ function placeTreeDescription(
 	const frameAt = (x: number, y: number): Rect => {
 		descriptionNode.x = x;
 		descriptionNode.y = y;
-		return noteLayoutRectangle(descriptionNode);
+		return paintedNodeFrameRectangle(descriptionNode);
 	};
 	// The painted frame can extend past the node rect (capsule ends), so the
 	// chapter gap is kept between the chapter and the frame, not the node.
@@ -1223,7 +1218,7 @@ export function layoutRoadmap(
 	let chapterIndex = 0;
 
 	for (const [stepIndex, step] of document.steps.entries()) {
-		const side = (stepIndex % 2 === 0 ? 1 : -1) as -1 | 1;
+		const side: -1 | 1 = stepIndex % 2 === 0 ? 1 : -1;
 		if (step.type === "heading") {
 			const node = createHeadingNode(
 				step.id,
@@ -1266,7 +1261,7 @@ export function layoutRoadmap(
 		}
 
 		chapterIndex += 1;
-		const chapterSide = (chapterIndex % 2 === 1 ? 1 : -1) as -1 | 1;
+		const chapterSide: -1 | 1 = chapterIndex % 2 === 1 ? 1 : -1;
 		const centerX = baseCenter + (chapterSide > 0 ? 48 : -4);
 		const chapterNode = createCardNode(
 			"chapter",
@@ -1309,7 +1304,9 @@ export function layoutRoadmap(
 				descriptionNode.y = rectBottom(chapterNode) + options.chapterDescriptionGap;
 			}
 			elements.push(descriptionNode);
-			occupied.push(inflateRectangle(noteLayoutRectangle(descriptionNode), options.overlapPadding));
+			occupied.push(
+				inflateRectangle(paintedNodeFrameRectangle(descriptionNode), options.overlapPadding),
+			);
 		}
 
 		const chapterContext: ChapterLayoutContext = {
@@ -1322,7 +1319,7 @@ export function layoutRoadmap(
 		};
 		let bottom = Math.max(
 			rectBottom(chapterNode),
-			descriptionNode ? rectBottom(noteLayoutRectangle(descriptionNode)) : 0,
+			descriptionNode ? rectBottom(paintedNodeFrameRectangle(descriptionNode)) : 0,
 		);
 		// Tree content starts below both the chapter and its side description,
 		// so a tall description can neither overlap the clusters nor leave the
@@ -1332,11 +1329,11 @@ export function layoutRoadmap(
 				? Math.max(
 						rectBottom(chapterNode),
 						descriptionNode && descriptionNode.placement === "tree-description"
-							? rectBottom(noteLayoutRectangle(descriptionNode))
+							? rectBottom(paintedNodeFrameRectangle(descriptionNode))
 							: 0,
 					) + options.chapterContentGap
 				: (descriptionNode
-						? rectBottom(noteLayoutRectangle(descriptionNode))
+						? rectBottom(paintedNodeFrameRectangle(descriptionNode))
 						: rectBottom(chapterNode)) + options.commentGap;
 
 		for (const group of gridGroups) {
@@ -1348,7 +1345,7 @@ export function layoutRoadmap(
 		if (treeGroups.length > 0) {
 			const descriptionObstacle =
 				descriptionNode && descriptionNode.placement === "tree-description"
-					? inflateRectangle(noteLayoutRectangle(descriptionNode), options.overlapPadding)
+					? inflateRectangle(paintedNodeFrameRectangle(descriptionNode), options.overlapPadding)
 					: undefined;
 			bottom = Math.max(
 				bottom,
@@ -1383,13 +1380,17 @@ export function layoutRoadmap(
 	const legend = createLegend(document, theme, options);
 	if (legend) elements.push(legend);
 	const bounds = unionRectangles(
-		elements.map((element) => (element.kind === "note" ? noteLayoutRectangle(element) : element)),
+		elements.map((element) =>
+			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
+		),
 	);
 	const dx = bounds.x < options.padding ? options.padding - bounds.x : 0;
 	const dy = bounds.y < options.padding / 2 ? options.padding / 2 - bounds.y : 0;
 	if (dx || dy) moveAll(elements, connectors, dx, dy);
 	const movedBounds = unionRectangles(
-		elements.map((element) => (element.kind === "note" ? noteLayoutRectangle(element) : element)),
+		elements.map((element) =>
+			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
+		),
 	);
 	const width = Math.ceil(Math.max(options.width, rectRight(movedBounds) + options.endPaddingX));
 	const height = Math.ceil(
@@ -1399,7 +1400,7 @@ export function layoutRoadmap(
 	const title = titleStep ? inlineToPlainText(titleStep.content) : "Roadmap";
 	const artifactAvoidance = [
 		...elements.map((element) =>
-			inflateRectangle(element.kind === "note" ? noteLayoutRectangle(element) : element, 36),
+			inflateRectangle(element.kind === "note" ? paintedNodeFrameRectangle(element) : element, 36),
 		),
 		...connectors.map((connector) => {
 			const x = Math.min(connector.from.x, connector.to.x);

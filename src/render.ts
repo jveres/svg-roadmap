@@ -8,10 +8,11 @@ import {
 	rectBottom,
 	rectCenter,
 	rectRight,
+	roundCoordinate,
 	verticalBumpPath,
 } from "./core/geometry.ts";
-import { measureText } from "./core/inline.ts";
-import { escapeXml, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
+import { measureTrackedText } from "./core/inline.ts";
+import { escapeXml, hashNumber, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
 	BadgeStyle,
 	BoardTheme,
@@ -181,15 +182,7 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 			variables.push([name, value]);
 		}
 	}
-	const cards = [
-		["chapter", theme.chapter],
-		["chapter-description", theme.note],
-		["floating-note", theme.floatingNote],
-		["topic", theme.topic],
-		["nested-topic", theme.nestedTopic],
-		["topic-header", theme.topicHeader],
-	] as const;
-	for (const [name, card] of cards) {
+	for (const [name, card] of themeCards(theme)) {
 		variables.push(
 			[`${name}-background`, scopedPaint(card.fill, prefix)],
 			[`${name}-border`, card.stroke],
@@ -257,7 +250,7 @@ function defaultIdPrefix(
 	title: string,
 	description: string,
 ): string {
-	const identity = JSON.stringify({ layout, theme, title, description }) ?? "";
+	const identity = JSON.stringify({ layout, theme, title, description });
 	return `roadmap-${hashString(identity)}`;
 }
 
@@ -498,13 +491,9 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			const segmentFontSize = segment.abbreviationIndicator
 				? node.text.abbreviationIndicatorSize * scale
 				: fontSize;
-			const y = segment.abbreviationIndicator
-				? baseline - fontSize * 0.37
-				: segment.marks.includes("superscript")
-					? baseline - fontSize * 0.34
-					: segment.marks.includes("subscript")
-						? baseline + fontSize * 0.22
-						: baseline;
+			// Positioned text moves the glyph origin instead of emitting
+			// baseline-shift, so the shared shift applies with the opposite sign.
+			const y = baseline - segmentBaselineShift(segment, fontSize);
 			const title = segmentTitle(segment);
 			const segmentScaleY = renderScaleY;
 			const segmentCenterX = x + segmentWidth / 2;
@@ -1031,8 +1020,13 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	const rowRectangles = legend.items.flatMap((item, row) => {
 		const y = legend.y + board.padding + 2 + row * (metrics.rowHeight + metrics.rowGap);
 		const labelWidth =
-			measureText(item.label, fontSize, [], metrics.fontWeight, metrics.fontFamily) *
-			metrics.renderScaleX;
+			measureTrackedText(
+				item.label,
+				fontSize,
+				metrics.fontWeight,
+				metrics.fontFamily,
+				metrics.letterSpacing,
+			) * metrics.renderScaleX;
 		return [
 			{
 				x: legend.x + board.padding + 7,
@@ -1284,7 +1278,6 @@ function artifactMotionKeyframes(intensity: number): string {
 				harmonic.amplitude * Math.sin(2 * Math.PI * (harmonic.frequency * t + harmonic.phase)),
 			0,
 		);
-	const round = (value: number): number => Math.round(value * 100) / 100;
 	return artifactMotionAxes
 		.map((axes, variant) => {
 			const stops: string[] = [];
@@ -1295,7 +1288,7 @@ function artifactMotionKeyframes(intensity: number): string {
 				const rotate = (sample(axes.rotate, t) * intensity).toFixed(2);
 				const scale = (1 + sample(axes.scale, t) * intensity).toFixed(3);
 				stops.push(
-					`${round(t * 100)}%{transform:translate(${x}px,${y}px) rotate(${rotate}deg) scale(${scale})}`,
+					`${roundCoordinate(t * 100)}%{transform:translate(${x}px,${y}px) rotate(${rotate}deg) scale(${scale})}`,
 				);
 			}
 			return `@keyframes roadmap-artifact-drift-${variant}{${stops.join("")}}`;
@@ -1322,7 +1315,7 @@ function renderBackgroundArtifact(
 	// Motion lives on an inner group so the artifact's placement transform is
 	// untouched; the variant, tempo, and phase derive from the artifact id to
 	// stay deterministic.
-	const seed = Number.parseInt(hashString(artifact.id), 36) >>> 0;
+	const seed = hashNumber(artifact.id);
 	const content = animated
 		? `<g class="roadmap__background-artifact-motion" style="animation-name:roadmap-artifact-drift-${seed % artifactMotionVariants};animation-duration:${(7 + (seed % 50) / 10).toFixed(1)}s;animation-delay:-${((seed >>> 4) % 90) / 10}s">${shapes}</g>`
 		: shapes;

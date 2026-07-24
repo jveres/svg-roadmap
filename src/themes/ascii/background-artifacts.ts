@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -163,14 +163,14 @@ export function generateAsciiBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`ascii:${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.58) continue;
-			const size = roundArtifactCoordinate((24 + random() * 24) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((24 + random() * 24) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 22 + random() * (tileSize - 44)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 22 + random() * (tileSize - 44)),
@@ -190,11 +190,11 @@ export function generateAsciiBackgroundArtifacts({
 				motifs[(Math.floor(random() * motifs.length) + column * 2 + row) % motifs.length];
 			if (!motif) continue;
 			// Zine marginalia sit almost square with the page.
-			const tilt = roundArtifactCoordinate((random() - 0.5) * 10);
+			const tilt = roundCoordinate((random() - 0.5) * 10);
 			artifacts.push({
 				id: `ascii-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundArtifactCoordinate(size / 50)})`,
+				transform: `translate(${x} ${y}) rotate(${tilt}) scale(${roundCoordinate(size / 50)})`,
 				shapes: motif(),
 			});
 		}

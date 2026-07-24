@@ -2,8 +2,8 @@ import {
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
-	roundArtifactCoordinate,
 } from "../../core/background-artifacts.ts";
+import { roundCoordinate } from "../../core/geometry.ts";
 import type {
 	BackgroundArtifactContext,
 	LayoutBackgroundArtifact,
@@ -116,14 +116,14 @@ export function generateSciFiBackgroundArtifacts({
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`sci-fi:${settings.seed}:${column}:${row}`);
 			if (random() >= settings.density * 0.62) continue;
-			const size = roundArtifactCoordinate((28 + random() * 32) * settings.size);
-			const x = roundArtifactCoordinate(
+			const size = roundCoordinate((28 + random() * 32) * settings.size);
+			const x = roundCoordinate(
 				Math.min(
 					width - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, column * tileSize + 22 + random() * (tileSize - 44)),
 				),
 			);
-			const y = roundArtifactCoordinate(
+			const y = roundCoordinate(
 				Math.min(
 					height - edgeInset - size / 2,
 					Math.max(edgeInset + size / 2, row * tileSize + 22 + random() * (tileSize - 44)),
@@ -142,7 +142,7 @@ export function generateSciFiBackgroundArtifacts({
 			artifacts.push({
 				id: `sci-fi-background-${column}-${row}`,
 				bounds,
-				transform: `translate(${x} ${y}) rotate(${roundArtifactCoordinate(random() * 360)}) scale(${roundArtifactCoordinate(size / 52)})`,
+				transform: `translate(${x} ${y}) rotate(${roundCoordinate(random() * 360)}) scale(${roundCoordinate(size / 52)})`,
 				shapes: motifShapes(Math.floor(random() * 6), Math.floor(random() * 3)),
 			});
 		}
