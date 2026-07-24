@@ -242,25 +242,21 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(generated.theme.name).toBe("rose");
 		expect(generated.theme.mode).toBe("dark");
 		expect(generated.theme.chapter.shape).toBe("cameo");
-		expect(generated.theme.note.shape).toBe("petal");
-		expect(generated.theme.topic.shape).toBe("petal");
-		expect(generated.theme.nestedTopic.shape).toBe("petal");
+		expect(generated.theme.note.shape).toBe("rounded");
+		expect(generated.theme.topic.shape).toBe("rounded");
+		expect(generated.theme.nestedTopic.shape).toBe("rounded");
 		expect(generated.theme.topicHeader.shape).toBe("cameo");
-		expect(generated.theme.boards.topic.shape).toBe("scalloped");
-		expect(generated.theme.boards.topic.pattern).toBe("floral-lace");
-		expect(generated.theme.boards.nested.pattern).toBe("pearls");
-		expect(generated.theme.boards.legend.pattern).toBe("bows");
+		expect(generated.theme.boards.topic.shape).toBe("rounded");
+		expect(generated.theme.boards.topic.pattern).toBe("none");
+		expect(generated.theme.floatingNote.pattern).toBe("lace");
 		expect(generated.theme.connectors.spine.routing).toBe("braided");
 		expect(generated.theme.connectors.topicToChildren.routing).toBe("curved");
 		expect(generated.svg).toContain('data-roadmap-theme="rose"');
 		expect(generated.svg).toContain('data-roadmap-shape="cameo"');
-		expect(generated.svg).toContain('data-roadmap-shape="petal"');
-		expect(generated.svg).toContain('data-roadmap-shape="scalloped"');
-		expect(generated.svg).toContain('data-roadmap-pattern="floral-lace"');
-		expect(generated.svg).toContain('data-roadmap-pattern="pearls"');
-		expect(generated.svg).toContain('data-roadmap-pattern="bows"');
+		expect(generated.svg).toContain('data-roadmap-shape="rounded"');
+		expect(generated.svg).toContain('data-roadmap-pattern="lace"');
 		expect(generated.svg).toContain('data-roadmap-routing="braided"');
-		expect(generated.svg).toContain("--roadmap-rose-artifact-blush:#d982aa");
+		expect(generated.svg).toContain("--roadmap-rose-artifact-madder:#b57682");
 		expect(generated.svg).not.toContain("--roadmap-sci-fi-artifact-cyan:");
 		const cameoPath = generated.svg.match(
 			/roadmap__node--chapter[^>]*>.*?<path class="roadmap__frame" data-roadmap-shape="cameo"[^>]* d="([^"]+)"/u,
@@ -269,7 +265,7 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(cameoPath).not.toMatch(/[HL]/u);
 		expect(cameoPath?.split(" C ")).toHaveLength(7);
 		expect(generated.svg).toContain("roadmap__frame-detail--cameo");
-		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.55");
+		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.7");
 		expect(generated.theme.chapter.typography.fontFamily).toContain("Iowan Old Style");
 		// The title line contains a shortcode emoji, so it renders positioned
 		// with the platform-independent SVG symbol instead of a font glyph.
@@ -362,9 +358,9 @@ An intentionally restrained introduction.
 		for (const connector of generated.layout.connectors) {
 			if (connector.kind !== "chapterToTopics") continue;
 			for (const description of descriptions) {
-				expect(
-					hitsRectangle(connector.from, connector.to, noteLayoutRectangle(description)),
-				).toBe(false);
+				expect(hitsRectangle(connector.from, connector.to, noteLayoutRectangle(description))).toBe(
+					false,
+				);
 			}
 		}
 	});
