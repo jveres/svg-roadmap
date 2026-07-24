@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { noteLayoutRectangle } from "./core/frames.ts";
+import { setMeasurementProvider } from "./core/inline.ts";
 import { generateRoadmap } from "./index.ts";
 import type {
 	LayoutConnector,
@@ -390,5 +391,30 @@ describe.each(presets)("layout invariants (%s theme)", (preset) => {
 	test.each(Object.entries(documents))("%s", (_label, source) => {
 		const generated = generateRoadmap(source, { theme: { preset, mode: "light" } });
 		expect(collectViolations(generated.layout, generated.svg)).toEqual([]);
+	});
+});
+
+// The layout algorithm must hold its guarantees for any measurement oracle,
+// not just the built-in Arial tables: a browser-side hidden-DOM provider
+// reports different advances for every font. Flat metrics scaled well past
+// the realistic range stand in for that whole family of oracles.
+describe("layout invariants under provider metrics", () => {
+	const stressDocuments = ["demo software hygiene", "tall tree description", "wide grid"] as const;
+	describe.each([0.8, 1.2] as const)("flat metrics x%s", (scale) => {
+		test.each(
+			presets.flatMap((preset) => stressDocuments.map((label) => [preset, label] as const)),
+		)("%s / %s", (preset, label) => {
+			const source = documents[label];
+			if (!source) throw new Error(`missing fixture: ${label}`);
+			setMeasurementProvider(
+				(text, style) => Array.from(text).length * style.fontSize * 0.62 * scale,
+			);
+			try {
+				const generated = generateRoadmap(source, { theme: { preset, mode: "light" } });
+				expect(collectViolations(generated.layout, generated.svg)).toEqual([]);
+			} finally {
+				setMeasurementProvider(undefined);
+			}
+		});
 	});
 });

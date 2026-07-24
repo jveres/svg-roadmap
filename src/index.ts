@@ -11,9 +11,20 @@ import type {
 } from "./types.ts";
 
 export type { ComrakOptions, InitInput, SyncInitInput } from "comrak-wasm";
+export {
+	createDomMeasurementProvider,
+	type DomMeasurementHandle,
+	type InstallDomMeasurementOptions,
+	installDomMeasurement,
+} from "./core/dom-measurement.ts";
 export type { EmojiArtwork } from "./core/emoji-artwork.ts";
 export { registerEmojiArtwork } from "./core/emoji-artwork.ts";
 export * from "./core/geometry.ts";
+export {
+	type MeasurementProvider,
+	setMeasurementProvider,
+	type TextMeasurementStyle,
+} from "./core/inline.ts";
 export { layoutRoadmap } from "./layout.ts";
 export {
 	createMarkdownOptions,

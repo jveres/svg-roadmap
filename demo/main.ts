@@ -1,5 +1,6 @@
 import {
 	createRoadmapGenerator,
+	installDomMeasurement,
 	type RoadmapColorMode,
 	type RoadmapGenerator,
 	type RoadmapThemeSelection,
@@ -248,6 +249,8 @@ download.addEventListener("click", () => {
 });
 
 try {
+	// Measure with the browser's real fonts; late font loads re-render.
+	await installDomMeasurement({ onFontsChanged: () => render() });
 	generator = await createRoadmapGenerator();
 	render();
 } catch (error) {

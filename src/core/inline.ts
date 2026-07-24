@@ -244,32 +244,102 @@ function characterWidth(
 	return fontSize * 0.556;
 }
 
+/** The style a measurement provider receives for a plain-text span. */
+export interface TextMeasurementStyle {
+	readonly fontSize: number;
+	readonly fontFamily: string;
+	readonly fontWeight: number;
+	readonly fontStyle: "normal" | "italic";
+}
+
+/**
+ * Measures the advance width of a single-line plain-text span in CSS pixels.
+ * Pictographs, code spans, and monospace families never reach a provider —
+ * their fixed advances are part of the rendering contract.
+ */
+export type MeasurementProvider = (text: string, style: TextMeasurementStyle) => number;
+
+let measurementProvider: MeasurementProvider | undefined;
+
+/**
+ * Installs a measurement oracle for ordinary text (for example the hidden-DOM
+ * provider in browsers) or restores the built-in metric tables with
+ * `undefined`. Cached widths are flushed either way, so switching providers
+ * mid-session cannot serve stale metrics.
+ */
+export function setMeasurementProvider(provider: MeasurementProvider | undefined): void {
+	measurementProvider = provider;
+	measurementCache.clear();
+}
+
+function textGraphemes(text: string): readonly string[] {
+	if (graphemeSegmenter) {
+		return [...graphemeSegmenter.segment(text)].map((entry) => entry.segment);
+	}
+	return Array.from(text);
+}
+
+function providerWidth(
+	provider: MeasurementProvider,
+	text: string,
+	style: TextMeasurementStyle,
+): number {
+	// Pictographs keep their fixed advance: vendored emoji symbols and
+	// platform glyphs are both drawn into that box, and delegating them to
+	// the provider would reintroduce per-platform emoji drift.
+	let width = 0;
+	let plain = "";
+	const flush = (): void => {
+		if (plain.length > 0) {
+			width += provider(plain, style);
+			plain = "";
+		}
+	};
+	for (const grapheme of textGraphemes(text)) {
+		if (pictographPattern.test(grapheme)) {
+			flush();
+			width += style.fontSize * 1.05;
+		} else {
+			plain += grapheme;
+		}
+	}
+	flush();
+	return width;
+}
+
 export function measureText(
 	text: string,
 	fontSize: number,
 	marks: readonly InlineMark[] = [],
 	fontWeight = 400,
 	fontFamily = "Arial, Helvetica, sans-serif",
+	fontStyle: "normal" | "italic" = "normal",
 ): number {
 	const bold = fontWeight >= 600 || marks.includes("strong");
 	const code = marks.includes("code");
-	const cacheKey = `${text}\u0000${fontSize}\u0000${bold ? 1 : 0}\u0000${code ? 1 : 0}\u0000${fontFamily}`;
+	const italic = fontStyle === "italic" || marks.includes("emphasis");
+	const cacheKey = `${text}\u0000${fontSize}\u0000${fontWeight}\u0000${bold ? 1 : 0}\u0000${code ? 1 : 0}\u0000${italic ? 1 : 0}\u0000${fontFamily}`;
 	const cached = measurementCache.get(cacheKey);
 	if (cached !== undefined) return cached;
 
 	let width = 0;
+	const category = fontCategory(fontFamily);
 	if (code) {
 		width = Array.from(text).length * fontSize * 0.61;
+	} else if (measurementProvider !== undefined && category !== "monospace") {
+		width = providerWidth(measurementProvider, text, {
+			fontSize,
+			fontFamily,
+			fontWeight: marks.includes("strong") ? Math.max(700, fontWeight) : fontWeight,
+			fontStyle: italic ? "italic" : "normal",
+		});
+	} else if (graphemeSegmenter) {
+		for (const entry of graphemeSegmenter.segment(text)) {
+			width += characterWidth(entry.segment, fontSize, bold, category);
+		}
 	} else {
-		const category = fontCategory(fontFamily);
-		if (graphemeSegmenter) {
-			for (const entry of graphemeSegmenter.segment(text)) {
-				width += characterWidth(entry.segment, fontSize, bold, category);
-			}
-		} else {
-			for (const character of text) {
-				width += characterWidth(character, fontSize, bold, category);
-			}
+		for (const character of text) {
+			width += characterWidth(character, fontSize, bold, category);
 		}
 	}
 	const measured = Math.ceil(width * 100) / 100;
@@ -306,7 +376,14 @@ export function wrapInline(
 	};
 	const letterSpacing = typography.letterSpacing ?? 0;
 	const measureRun = (text: string, fontSize: number, marks: readonly InlineMark[]): number =>
-		measureText(text, fontSize, marks, typography.fontWeight, typography.fontFamily) +
+		measureText(
+			text,
+			fontSize,
+			marks,
+			typography.fontWeight,
+			typography.fontFamily,
+			typography.fontStyle ?? "normal",
+		) +
 		letterSpacing * Array.from(text).length;
 
 	for (const run of runs) {
