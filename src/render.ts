@@ -1,4 +1,6 @@
-import { noteBlobGeometry, paintedTextLines } from "./core/frames.ts";
+import { createSeededRandom } from "./core/background-artifacts.ts";
+import { twemojiArtwork } from "./core/emoji-artwork.ts";
+import { fittedCapsuleFrame, noteBlobGeometry, paintedTextLines } from "./core/frames.ts";
 import {
 	blobPath,
 	bundledCurvePath,
@@ -8,8 +10,6 @@ import {
 	rectRight,
 	verticalBumpPath,
 } from "./core/geometry.ts";
-import { createSeededRandom } from "./core/background-artifacts.ts";
-import { twemojiArtwork } from "./core/emoji-artwork.ts";
 import { measureText } from "./core/inline.ts";
 import { escapeXml, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
@@ -520,7 +520,7 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			const content = emoji
 				? `${title}${emoji}`
 				: segment.marks.includes("emoji")
-					? `${title}<text x="${segmentCenterX}" y="${y}" text-anchor="middle" xml:space="preserve"${emojiGlyphTransform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`
+					? `${title}<text x="${segmentCenterX}" y="${y}" text-anchor="middle" letter-spacing="0" xml:space="preserve"${emojiGlyphTransform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`
 					: `${title}<text x="${x}" y="${y}" textLength="${fittedTextLength}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${transform} ${markAttributes(segment, node, segmentFontSize)}>${escapeXml(segment.text)}</text>`;
 			const destination = segment.destination
 				? safeLinkDestination(segment.destination)
@@ -533,7 +533,17 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			x += segmentWidth;
 		}
 	}
-	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}">${backgrounds.join("")}${text.join("")}</g>`;
+	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}"${letterSpacingAttribute(node)}>${backgrounds.join("")}${text.join("")}</g>`;
+}
+
+/**
+ * Tracking is part of the measured segment widths; declaring it on the text
+ * group keeps the natural advance in step with the measurement so textLength
+ * only corrects rounding instead of stretching glyphs to fill the tracking.
+ */
+function letterSpacingAttribute(node: LayoutNode): string {
+	const spacing = (node.text.letterSpacing ?? 0) * node.text.renderScale;
+	return spacing === 0 ? "" : ` letter-spacing="${Math.round(spacing * 100) / 100}"`;
 }
 
 interface FlowingTextOptions {
@@ -596,7 +606,7 @@ function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): 
 		);
 	}
 
-	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}">${backgrounds.join("")}${text.join("")}</g>`;
+	return `<g class="roadmap__text" font-family="${escapeXml(node.text.fontFamily)}" font-size="${fontSize}" font-weight="${node.text.fontWeight}" font-style="${node.text.fontStyle}"${letterSpacingAttribute(node)}>${backgrounds.join("")}${text.join("")}</g>`;
 }
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
@@ -637,67 +647,6 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 				: renderFlowingText(lineNode, flowingOptions);
 		})
 		.join("");
-}
-
-function pointInCapsule(
-	rectangle: Rect,
-	point: { readonly x: number; readonly y: number },
-): boolean {
-	const radius = rectangle.height / 2;
-	const centerY = rectangle.y + radius;
-	const leftCenterX = rectangle.x + radius;
-	const rightCenterX = rectangle.x + rectangle.width - radius;
-	if (point.y < rectangle.y || point.y > rectangle.y + rectangle.height) return false;
-	if (point.x >= leftCenterX && point.x <= rightCenterX) return true;
-	const capCenterX = point.x < leftCenterX ? leftCenterX : rightCenterX;
-	return Math.hypot(point.x - capCenterX, point.y - centerY) <= radius;
-}
-
-function fittedCapsuleFrame(node: LayoutNode): Rect {
-	const lines = paintedTextLines(node);
-	if (lines.length === 0) return node;
-	const fontSize = node.text.fontSize * node.text.renderScale;
-	const padding = Math.max(4, fontSize * 0.3);
-	const verticalSafety = 1;
-	const fontFallbackWidthTolerance = 0.03;
-	const curveClearance = Math.max(2, fontSize * 0.18);
-	const top = Math.min(...lines.map((line) => line.y)) - padding;
-	const bottom = Math.max(...lines.map((line) => line.y + line.height)) + padding;
-	const centerX = node.x + node.width / 2;
-	const centerY = (top + bottom) / 2;
-	const height = bottom - top;
-	let width = Math.max(...lines.map((line) => line.width)) + padding * 2;
-	const points = lines.flatMap((line) => {
-		const horizontalSafety = Math.max(2, line.width * fontFallbackWidthTolerance);
-		return [
-			{ x: line.x - horizontalSafety, y: line.y - verticalSafety },
-			{ x: line.x + line.width + horizontalSafety, y: line.y - verticalSafety },
-			{
-				x: line.x + line.width + horizontalSafety,
-				y: line.y + line.height + verticalSafety,
-			},
-			{ x: line.x - horizontalSafety, y: line.y + line.height + verticalSafety },
-		];
-	});
-
-	for (let iteration = 0; iteration < 256; iteration += 1) {
-		const rectangle = {
-			x: centerX - width / 2,
-			y: centerY - height / 2,
-			width,
-			height,
-		};
-		const interior = {
-			x: rectangle.x + curveClearance,
-			y: rectangle.y + curveClearance,
-			width: rectangle.width - curveClearance * 2,
-			height: rectangle.height - curveClearance * 2,
-		};
-		if (points.every((point) => pointInCapsule(interior, point))) return rectangle;
-		width += 2;
-	}
-
-	return { x: centerX - width / 2, y: centerY - height / 2, width, height };
 }
 
 function renderCardFrame(
@@ -879,9 +828,7 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
 		: "";
 	const card = cardTheme(node, theme);
-	const frame = card
-		? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
-		: "";
+	const frame = card ? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid") : "";
 	const headingBackdrop =
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
@@ -1053,8 +1000,7 @@ function renderConnector(
 			? connectorMarkerSize(connectorTheme.width) *
 				markerAnchor(endShape, connectorTheme.endShapeJoin ?? "overlap").trimFactor
 			: 0;
-	const routed =
-		trim > 0 ? trimConnectorEnd(connector, trim, connectorTheme.routing) : connector;
+	const routed = trim > 0 ? trimConnectorEnd(connector, trim, connectorTheme.routing) : connector;
 	// Lane offsets are solved against the untrimmed midpoint; re-anchor them
 	// to the trimmed geometry so the lane stays exactly where clearing put it.
 	const laneAnchorShift =
@@ -1140,7 +1086,8 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 				metrics.renderScaleX === 1 && metrics.renderScaleY === 1
 					? ""
 					: ` transform="matrix(${metrics.renderScaleX} 0 0 ${metrics.renderScaleY} ${textX * (1 - metrics.renderScaleX)} ${baseline * (1 - metrics.renderScaleY)})"`;
-			const spacing = metrics.letterSpacing === 0 ? "" : ` letter-spacing="${metrics.letterSpacing}"`;
+			const spacing =
+				metrics.letterSpacing === 0 ? "" : ` letter-spacing="${metrics.letterSpacing}"`;
 			return `${badges}<text class="roadmap__legend-label" x="${textX}" y="${baseline}"${transform}${spacing} font-family="${escapeXml(metrics.fontFamily)}" font-size="${fontSize}" font-weight="${metrics.fontWeight}" font-style="${metrics.fontStyle}" fill="${cssToken("legend-text")}">${escapeXml(item.label)}</text>`;
 		})
 		.join("");
@@ -1322,7 +1269,8 @@ function artifactMotionKeyframes(intensity: number): string {
 	const sample = (harmonics: readonly MotionHarmonic[], t: number): number =>
 		harmonics.reduce(
 			(sum, harmonic) =>
-				sum + harmonic.amplitude * Math.sin(2 * Math.PI * (harmonic.frequency * t + harmonic.phase)),
+				sum +
+				harmonic.amplitude * Math.sin(2 * Math.PI * (harmonic.frequency * t + harmonic.phase)),
 			0,
 		);
 	const round = (value: number): number => Math.round(value * 100) / 100;

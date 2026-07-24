@@ -207,6 +207,7 @@ export interface LayoutText {
 	readonly renderScaleY?: number;
 	readonly baselineRatio: number;
 	readonly abbreviationIndicatorSize: number;
+	readonly letterSpacing?: number;
 }
 
 export type LayoutNodeRole =
@@ -235,6 +236,8 @@ export interface LayoutNode extends Rect {
 	readonly text: LayoutText;
 	readonly tags: readonly string[];
 	readonly sourceRange?: SourceRange;
+	/** The theme card shape this node is painted with; drives frame fitting. */
+	readonly frameShape?: "rounded" | "chamfered" | "capsule" | "organic" | "cameo" | "petal";
 }
 
 export interface LayoutGroup extends Rect {

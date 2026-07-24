@@ -286,8 +286,11 @@ describe("SVG rendering boundaries", () => {
 		const radius = Number(radiusValue);
 
 		expect(x + width / 2).toBe(100);
-		expect(y + height / 2).toBe(31);
-		expect(width).toBeGreaterThanOrEqual(98);
+		// The capsule centers on the cap-height band (cap top to baseline), so
+		// its center sits slightly above the line-box center of 31.
+		expect(y + height / 2).toBeCloseTo(29.55, 2);
+		expect(width).toBeGreaterThanOrEqual(84);
+		expect(width).toBeLessThanOrEqual(100);
 		expect(height).toBeLessThan(42);
 		expect(radius).toBe(height / 2);
 		expect(svg).toContain('textLength="80" lengthAdjust="spacingAndGlyphs"');

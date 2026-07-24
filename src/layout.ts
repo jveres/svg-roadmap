@@ -175,8 +175,12 @@ function createCardNode(
 			renderScaleY: card.typography.renderScaleY ?? 1,
 			baselineRatio: card.typography.baselineRatio ?? 0.9,
 			abbreviationIndicatorSize,
+			...(card.typography.letterSpacing !== undefined
+				? { letterSpacing: card.typography.letterSpacing }
+				: {}),
 		},
 		tags,
+		frameShape: card.shape,
 		...(sourceRange ? { sourceRange } : {}),
 	};
 }
@@ -214,6 +218,9 @@ function createHeadingNode(
 			renderScaleY: typography.renderScaleY ?? 1,
 			baselineRatio: typography.baselineRatio ?? 0.9,
 			abbreviationIndicatorSize,
+			...(typography.letterSpacing !== undefined
+				? { letterSpacing: typography.letterSpacing }
+				: {}),
 		},
 		tags: [],
 		...(sourceRange ? { sourceRange } : {}),
@@ -1113,16 +1120,19 @@ function placeTreeDescription(
 	occupied: readonly Rect[],
 	options: RequiredLayoutOptions,
 ): void {
-	const baseX =
-		chapterSide < 0
-			? chapterNode.x - options.treeDescriptionGap - descriptionNode.width
-			: rectRight(chapterNode) + options.treeDescriptionGap;
-	const centeredY = chapterNode.y + (chapterNode.height - descriptionNode.height) / 2;
 	const frameAt = (x: number, y: number): Rect => {
 		descriptionNode.x = x;
 		descriptionNode.y = y;
 		return noteLayoutRectangle(descriptionNode);
 	};
+	// The painted frame can extend past the node rect (capsule ends), so the
+	// chapter gap is kept between the chapter and the frame, not the node.
+	const probe = frameAt(0, 0);
+	const baseX =
+		chapterSide < 0
+			? chapterNode.x - options.treeDescriptionGap - (probe.x + probe.width)
+			: rectRight(chapterNode) + options.treeDescriptionGap - probe.x;
+	const centeredY = chapterNode.y + (chapterNode.height - descriptionNode.height) / 2;
 	// A vertical placement must keep the description beside its chapter: the
 	// painted frame has to overlap the chapter's vertical span by at least this.
 	const minOverlap = Math.min(chapterNode.height, 24);
@@ -1177,7 +1187,12 @@ function placeTreeDescription(
 			chapterSide < 0
 				? Math.min(...blockers.map((rect) => rect.x)) - margin - rectRight(frame)
 				: Math.max(...blockers.map((rect) => rectRight(rect))) + margin - frame.x;
-		if (x < options.padding || x + descriptionNode.width > options.width - options.padding) break;
+		if (
+			x + probe.x < options.padding ||
+			x + probe.x + probe.width > options.width - options.padding
+		) {
+			break;
+		}
 	}
 
 	// Guaranteed-open fallback: the step cursor keeps everything from earlier

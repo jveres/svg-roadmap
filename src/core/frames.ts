@@ -94,6 +94,74 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 	return { x: centerX - width / 2, y: top, width, height: bottom - top };
 }
 
+function pointInCapsule(
+	rectangle: Rect,
+	point: { readonly x: number; readonly y: number },
+): boolean {
+	const radius = rectangle.height / 2;
+	const centerY = rectangle.y + radius;
+	const leftCenterX = rectangle.x + radius;
+	const rightCenterX = rectangle.x + rectangle.width - radius;
+	if (point.y < rectangle.y || point.y > rectangle.y + rectangle.height) return false;
+	if (point.x >= leftCenterX && point.x <= rightCenterX) return true;
+	const capCenterX = point.x < leftCenterX ? leftCenterX : rightCenterX;
+	return Math.hypot(point.x - capCenterX, point.y - centerY) <= radius;
+}
+
+export function fittedCapsuleFrame(node: LayoutNode): Rect {
+	const lines = paintedTextLines(node);
+	const firstLine = lines[0];
+	const lastLine = lines.at(-1);
+	if (!firstLine || !lastLine) return node;
+	const fontSize = node.text.fontSize * node.text.renderScale;
+	const padding = Math.max(4, fontSize * 0.3);
+	const verticalSafety = 1;
+	const curveClearance = Math.max(1.5, fontSize * 0.12);
+	const top = Math.min(...lines.map((line) => line.y)) - padding;
+	const bottom = Math.max(...lines.map((line) => line.y + line.height)) + padding;
+	const centerX = node.x + node.width / 2;
+	// Optical vertical centering: line boxes reserve a full descender row that
+	// mostly reads as empty space, so center the capsule on the cap-height
+	// band (first cap top to last baseline) instead of on the boxes — growing
+	// the height symmetrically so the shifted capsule still covers every line.
+	const centerY = (firstLine.baseline - fontSize * 0.72 + lastLine.baseline) / 2;
+	const height = 2 * Math.max(centerY - top, bottom - centerY);
+	let width = Math.max(...lines.map((line) => line.width)) + padding * 2;
+	const points = lines.flatMap((line) => {
+		// Line widths are pinned by textLength, so a flat safety margin is
+		// enough — no allowance needed for fallback-font width drift.
+		const horizontalSafety = 2;
+		return [
+			{ x: line.x - horizontalSafety, y: line.y - verticalSafety },
+			{ x: line.x + line.width + horizontalSafety, y: line.y - verticalSafety },
+			{
+				x: line.x + line.width + horizontalSafety,
+				y: line.y + line.height + verticalSafety,
+			},
+			{ x: line.x - horizontalSafety, y: line.y + line.height + verticalSafety },
+		];
+	});
+
+	for (let iteration = 0; iteration < 256; iteration += 1) {
+		const rectangle = {
+			x: centerX - width / 2,
+			y: centerY - height / 2,
+			width,
+			height,
+		};
+		const interior = {
+			x: rectangle.x + curveClearance,
+			y: rectangle.y + curveClearance,
+			width: rectangle.width - curveClearance * 2,
+			height: rectangle.height - curveClearance * 2,
+		};
+		if (points.every((point) => pointInCapsule(interior, point))) return rectangle;
+		width += 2;
+	}
+
+	return { x: centerX - width / 2, y: centerY - height / 2, width, height };
+}
+
 function cachedContentFrame(node: LayoutNode, create: () => Rect): Rect {
 	const cached = contentFrameCache.get(node);
 	if (cached && cached.nodeWidth === node.width && cached.nodeHeight === node.height) {
@@ -118,7 +186,9 @@ function cachedContentFrame(node: LayoutNode, create: () => Rect): Rect {
 
 export function paintedNodeFrameRectangle(node: LayoutNode): Rect {
 	if (node.kind !== "note") return node;
-	return cachedContentFrame(node, () => fittedNoteContentRectangle(node));
+	return cachedContentFrame(node, () =>
+		node.frameShape === "capsule" ? fittedCapsuleFrame(node) : fittedNoteContentRectangle(node),
+	);
 }
 
 export function noteBlobGeometry(node: LayoutNode): NoteBlobGeometry {
