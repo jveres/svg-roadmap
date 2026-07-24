@@ -15,15 +15,16 @@ tools.
 - Generates SVG strings without a DOM, canvas, or layout framework.
 - Implements rectangle overlap checks, collision resolution, convex hulls, and
   Bézier connectors in the core.
-- Includes `Fun`, utopian `Sci-fi`, feminine `Rose`, editorial `Print`,
+- Includes `Fun`, utopian `Sci-fi`, botanical `Rose`, editorial `Print`,
   engineering-grade `Pro`, seventies `Retro`, neon `Arcade`, and terminal
   `ASCII` roadmap themes with light and dark modes.
 - Supports optional, seeded background decoration owned by each theme.
 - Exposes typed design tokens, CSS classes, and `data-roadmap-element` hooks.
 - Preserves headings, comments, links, emphasis, highlights, inserts, tags,
   emoji shortcodes, source positions, and legacy abbreviation definitions.
-- Renders common roadmap shortcodes with deterministic embedded SVG symbols
-  instead of platform-dependent emoji glyphs.
+- Supports the full GitHub emoji shortcode set: popular shortcodes render as
+  deterministic embedded SVG symbols, the rest as platform glyphs, with an
+  opt-in pack that upgrades every GitHub shortcode to embedded artwork.
 - Produces accessible SVG with `<title>`, `<desc>`, safe links, and no
   `foreignObject` elements.
 
@@ -143,7 +144,9 @@ SVG Roadmap maps familiar Markdown structure to visual structure.
   chart node.
 
 Comrak extensions enable `++insert++`, `==highlight==`, `~subscript~`,
-`^superscript^`, strikethrough, footnotes, and emoji shortcodes. SVG Roadmap
+`^superscript^`, strikethrough, footnotes, and emoji shortcodes. Every GitHub
+(gemoji) shortcode is recognized, including aliases such as `:+1:` for
+`:thumbsup:`. SVG Roadmap
 doesn't impose an application-level topic-depth limit; the practical maximum is
 bounded only by the parser and JavaScript runtime resources. The test suite
 exercises a 128-level topic tree.
@@ -177,6 +180,36 @@ tempo. Programmatic `theme` options
 override the front-matter theme, which lets an editor follow the system color
 scheme without rewriting its source.
 
+## Emoji
+
+Emoji handling is tiered so documents render identically on every platform
+without shipping megabytes by default.
+
+- Popular shortcodes (about 260: faces, hands, hearts, status marks, arrows,
+  keycaps, and engineering objects such as `:rocket:`, `:gear:`, `:bug:`, and
+  `:bulb:`) render as embedded Twemoji SVG symbols and look the same in every
+  viewer.
+- Every other GitHub shortcode resolves to its Unicode character and renders
+  with the viewer's platform emoji font.
+- Unknown names stay as literal `:text:`.
+- Raw Unicode emoji typed directly into the Markdown always render as platform
+  glyphs.
+
+Register the opt-in GitHub pack to upgrade the entire shortcode set to
+embedded artwork. The pack is a separate entry point (about 1 MB gzipped), and
+generated SVGs only embed the symbols a document actually uses.
+
+```ts
+import { registerEmojiArtwork } from "svg-roadmap";
+import { githubEmojiArtwork } from "svg-roadmap/emoji-github";
+
+registerEmojiArtwork(githubEmojiArtwork);
+```
+
+Twemoji artwork is licensed CC-BY 4.0; see `LICENSES/TWEMOJI.txt`.
+`pnpm generate:emoji` regenerates the shortcode map and both artwork packs
+from the gemoji database and Twemoji assets.
+
 ## Themes and restyling
 
 `Fun`, `Sci-fi`, `Rose`, `Print`, `Pro`, `Retro`, `Arcade`, and `ASCII` are
@@ -187,10 +220,12 @@ translucent surfaces, cyan and violet accents, geometric orbital and signal
 motifs, chamfered cards and boards, capsule notes, technical grid and dot
 patterns, a straight architectural spine, and orthogonal circuit-like branches
 for an optimistic near-future look.
-`Rose` uses blush, berry, and lavender colors with vintage cameo labels and
-fine inset keylines, petal-edged cards and notes, floral lace, pearl, and bow
-boards, curved branches, a double-strand spine, and soft pearl, bow, and floral
-motifs. `Print` uses warm paper and ink surfaces, editorial serif display
+`Rose` is an antique botanical plate: warm parchment, engraved sepia and
+old-rose hairlines with madder reserved as the accent, Didot-class display
+serifs over a Palatino body, stadium medallion chapters with an engraved inner
+keyline, a climbing sage-stem spine whose branches end in rose-hip dots, and
+plate marginalia — wild roses, leaf sprigs, thorned canes, rose hips, and
+fern fronds — with a wine-dark folio for dark mode. `Print` uses warm paper and ink surfaces, editorial serif display
 type, sharp flat cards with hairline rules, serif italic pull-quote notes,
 solid ink chapter blocks, restrained badges, and no background artifacts for a
 minimal editorial result. `Pro` targets software professionals with cool slate
@@ -301,6 +336,9 @@ maximum node width because those values require a new layout pass. Dedicated
 `renderScale`, `renderScaleX`, and `renderScaleY` offer opt-in optical-size
 adjustments without changing the layout box. Set `baselineRatio` on a typography
 token when a custom font needs different optical vertical alignment.
+`letterSpacing` and `textTransform: "uppercase"` provide tracked display
+lettering that is measured into the layout and declared as real letter
+spacing in the SVG.
 `legend.rowGap`, per-placement badge sizes, and independent connector widths
 expose the remaining layout details. The light and dark presets use one
 connector tone across branch depths by default. A custom tag definition inherits
@@ -366,7 +404,9 @@ The geometry exports include `rectanglesOverlap`, `resolveOverlaps`,
 
 The Vite workbench starts with a compact editable roadmap, renders it with both
 themes, and supports SVG download. Focused regression tests cover parsing,
-layout geometry, collision handling, and SVG rendering.
+layout geometry, collision handling, and SVG rendering, and a layout-invariant
+suite renders a corpus of documents across every theme and rejects card,
+board, connector, and legend occlusions in the generated geometry.
 
 ```sh
 pnpm dev
