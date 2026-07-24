@@ -241,30 +241,29 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(generated.theme).toBe(builtInThemes.rose?.modes.dark);
 		expect(generated.theme.name).toBe("rose");
 		expect(generated.theme.mode).toBe("dark");
-		expect(generated.theme.chapter.shape).toBe("cameo");
+		expect(generated.theme.chapter.shape).toBe("capsule");
 		expect(generated.theme.note.shape).toBe("rounded");
 		expect(generated.theme.topic.shape).toBe("rounded");
 		expect(generated.theme.nestedTopic.shape).toBe("rounded");
-		expect(generated.theme.topicHeader.shape).toBe("cameo");
+		expect(generated.theme.topicHeader.shape).toBe("capsule");
 		expect(generated.theme.boards.topic.shape).toBe("rounded");
 		expect(generated.theme.boards.topic.pattern).toBe("none");
 		expect(generated.theme.floatingNote.pattern).toBe("lace");
 		expect(generated.theme.connectors.spine.routing).toBe("braided");
 		expect(generated.theme.connectors.topicToChildren.routing).toBe("curved");
 		expect(generated.svg).toContain('data-roadmap-theme="rose"');
-		expect(generated.svg).toContain('data-roadmap-shape="cameo"');
+		expect(generated.svg).toContain('data-roadmap-shape="capsule"');
 		expect(generated.svg).toContain('data-roadmap-shape="rounded"');
 		expect(generated.svg).toContain('data-roadmap-pattern="lace"');
 		expect(generated.svg).toContain('data-roadmap-routing="braided"');
 		expect(generated.svg).toContain("--roadmap-rose-artifact-madder:#b57682");
 		expect(generated.svg).not.toContain("--roadmap-sci-fi-artifact-cyan:");
-		const cameoPath = generated.svg.match(
-			/roadmap__node--chapter[^>]*>.*?<path class="roadmap__frame" data-roadmap-shape="cameo"[^>]* d="([^"]+)"/u,
-		)?.[1];
-		expect(cameoPath).toBeDefined();
-		expect(cameoPath).not.toMatch(/[HL]/u);
-		expect(cameoPath?.split(" C ")).toHaveLength(7);
-		expect(generated.svg).toContain("roadmap__frame-detail--cameo");
+		// The chapter medallion is a stadium with an engraved inner keyline.
+		const capsuleFrame = generated.svg.match(
+			/roadmap__node--chapter[^>]*>.*?<rect class="roadmap__frame" data-roadmap-shape="capsule"[^>]* rx="([\d.]+)"/u,
+		);
+		expect(capsuleFrame).toBeDefined();
+		expect(generated.svg).toContain('class="roadmap__frame-detail"');
 		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.7");
 		expect(generated.theme.chapter.typography.fontFamily).toContain("Iowan Old Style");
 		// The title line contains a shortcode emoji, so it renders positioned
@@ -276,12 +275,12 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		expect(generated.svg).toMatch(
 			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Product <\/tspan><tspan[^>]*>discovery<\/tspan>.*?<a class="roadmap__link"[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a>/u,
 		);
-		// Lines without shortcode emoji keep Rose's native text decorations;
-		// the emoji title line falls back to painted decorations.
-		expect(generated.svg).not.toContain('<rect class="roadmap__highlight"');
+		// Highlights and inserts always paint rects behind the glyphs: SVG
+		// text-decoration paint order is not interoperable (Firefox draws
+		// decorations over the text).
+		expect(generated.svg).toContain('<rect class="roadmap__highlight"');
 		expect(generated.svg).toContain('<rect class="roadmap__insert-underline"');
-		expect(generated.svg).toContain("roadmap__inline--highlight");
-		expect(generated.svg).toContain("roadmap__inline--insert");
+		expect(generated.svg).not.toContain("text-decoration-thickness");
 	});
 
 	test("resolves Print as an artifact-free editorial theme", () => {

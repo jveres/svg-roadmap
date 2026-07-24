@@ -546,12 +546,7 @@ function letterSpacingAttribute(node: LayoutNode): string {
 	return spacing === 0 ? "" : ` letter-spacing="${Math.round(spacing * 100) / 100}"`;
 }
 
-interface FlowingTextOptions {
-	readonly nativeHighlight?: boolean;
-	readonly nativeInsert?: boolean;
-}
-
-function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): string {
+function renderFlowingText(node: LayoutNode): string {
 	const scale = node.text.renderScale;
 	const renderScaleX = node.text.renderScaleX ?? 1;
 	const renderScaleY = node.text.renderScaleY ?? 1;
@@ -568,14 +563,9 @@ function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): 
 		let backgroundX = paintedLine.x;
 		for (const segment of line.segments) {
 			const segmentWidth = segment.width * scale * renderScaleX;
-			const decorationIsNative =
-				(options.nativeHighlight && segment.marks.includes("highlight")) ||
-				(options.nativeInsert && segment.marks.includes("insert"));
-			if (!decorationIsNative) {
-				backgrounds.push(
-					segmentBackground(segment, node, backgroundX, baseline, fontSize, segmentWidth),
-				);
-			}
+			backgrounds.push(
+				segmentBackground(segment, node, backgroundX, baseline, fontSize, segmentWidth),
+			);
 			backgroundX += segmentWidth;
 		}
 
@@ -611,13 +601,11 @@ function renderFlowingText(node: LayoutNode, options: FlowingTextOptions = {}): 
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	if (theme.name !== "rose" && theme.name !== "sci-fi") return renderPositionedText(node, prefix);
-	const nativeDecorations = theme.name === "rose";
-	const flowingOptions: FlowingTextOptions = nativeDecorations
-		? { nativeHighlight: true, nativeInsert: true }
-		: {};
 	// Painted decoration rects must line up with glyphs exactly. WebKit
 	// distributes textLength across a flowing line differently from other
 	// engines, so lines with painted decorations render positioned instead.
+	// Highlights and inserts always paint rects: SVG text-decoration paint
+	// order is not interoperable (Firefox draws decorations over the glyphs).
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
@@ -626,10 +614,10 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 				(segment.abbreviation !== undefined &&
 					!segment.destination &&
 					!segment.abbreviationIndicator) ||
-				(!nativeDecorations &&
-					(segment.marks.includes("highlight") || segment.marks.includes("insert"))),
+				segment.marks.includes("highlight") ||
+				segment.marks.includes("insert"),
 		);
-	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node, flowingOptions);
+	if (!node.text.lines.some(requiresPositionedText)) return renderFlowingText(node);
 
 	const paintedLines = paintedTextLines(node);
 	return node.text.lines
@@ -644,7 +632,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 			};
 			return requiresPositionedText(line)
 				? renderPositionedText(lineNode, prefix)
-				: renderFlowingText(lineNode, flowingOptions);
+				: renderFlowingText(lineNode);
 		})
 		.join("");
 }
@@ -739,14 +727,19 @@ function cameoCardPath(rectangle: Rect): string {
 	const { x, y, width, height } = rectangle;
 	const right = x + width;
 	const bottom = y + height;
+	// End caps scale with the card's height, not its width: a wide chapter
+	// keeps plump, rounded ends instead of degenerating into a long taper.
+	const cap = Math.min(width * 0.3, height * 1.15);
+	const flat = width - cap * 2;
+	const control = cap * 0.38;
 	return [
-		`M ${x + width * 0.16} ${y}`,
-		`C ${x + width * 0.34} ${y} ${x + width * 0.66} ${y} ${x + width * 0.84} ${y}`,
-		`C ${x + width * 0.94} ${y} ${right} ${y + height * 0.18} ${right} ${y + height * 0.5}`,
-		`C ${right} ${y + height * 0.82} ${x + width * 0.94} ${bottom} ${x + width * 0.84} ${bottom}`,
-		`C ${x + width * 0.65} ${bottom} ${x + width * 0.35} ${bottom} ${x + width * 0.16} ${bottom}`,
-		`C ${x + width * 0.06} ${bottom} ${x} ${y + height * 0.82} ${x} ${y + height * 0.5}`,
-		`C ${x} ${y + height * 0.18} ${x + width * 0.06} ${y} ${x + width * 0.16} ${y}`,
+		`M ${x + cap} ${y}`,
+		`C ${x + cap + flat * 0.3} ${y} ${right - cap - flat * 0.3} ${y} ${right - cap} ${y}`,
+		`C ${right - cap + control} ${y} ${right} ${y + height * 0.18} ${right} ${y + height * 0.5}`,
+		`C ${right} ${y + height * 0.82} ${right - cap + control} ${bottom} ${right - cap} ${bottom}`,
+		`C ${right - cap - flat * 0.3} ${bottom} ${x + cap + flat * 0.3} ${bottom} ${x + cap} ${bottom}`,
+		`C ${x + cap - control} ${bottom} ${x} ${y + height * 0.82} ${x} ${y + height * 0.5}`,
+		`C ${x} ${y + height * 0.18} ${x + cap - control} ${y} ${x + cap} ${y}`,
 		"Z",
 	].join(" ");
 }
@@ -1216,8 +1209,6 @@ function baseStyles(): string {
 	.roadmap__text text{dominant-baseline:auto}
 	.roadmap__link{text-decoration:none}
 	.roadmap__inline--abbreviation-indicator{cursor:help}
-	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--highlight{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-highlight-background);text-decoration-thickness:.96em;text-underline-offset:-.4em;text-decoration-skip-ink:none}
-	.roadmap[data-roadmap-theme="rose"] .roadmap__inline--insert{text-decoration-line:underline;text-decoration-color:var(--roadmap-inline-insert-underline);text-decoration-thickness:.09em;text-underline-offset:.12em;text-decoration-skip-ink:none}
 	.roadmap__node--heading .roadmap__frame{display:none}`;
 }
 
