@@ -17,239 +17,282 @@ roadmap:
 * :one: Discovery & Design
 *:beginner: [Product discovery](https://www.svpg.com/product-discovery/) is **crucial** to success. Involve your customers and key stakeholders — discovery decides ==_what_== to create.*
   + [Domain Discovery](https://www.infoq.com/articles/architecture-modernization-domain-driven-discovery/)
-    > A field guide to discovering domains, subdomains, and boundaries when modernizing an
-    > architecture.
+    > Before designing anything, learn the business terrain: which domains exist, where their
+    > boundaries run, and which ones differentiate you. InfoQ's field guide shows how to run
+    > this discovery.
     * [Capability mapping](https://microservices.io/patterns/decomposition/decompose-by-business-capability.html) [personal recommendation]
-      > Chris Richardson's pattern: decompose a system by the business capabilities it must
-      > provide.
+      > Name what the business must be able to do, independent of any system — those
+      > capabilities become candidate module and team boundaries. Richardson's pattern shows the
+      > technique.
     * [Context mapping](https://www.infoq.com/articles/ddd-contextmapping/) [recommended]
-      > The DDD technique for mapping how bounded contexts — and the teams behind them — relate.
+      > Your domains will overlap and translate badly at the seams; map the bounded contexts and
+      > their relationships early, because every seam is a future integration contract.
     * [Event storming](https://www.eventstorming.com/) [recommended]
-      > Alberto Brandolini's workshop format: explore a whole domain by mapping its events on a
-      > wall, together.
+      > The fastest way to get engineers and domain experts sharing one picture: a wall, sticky
+      > notes, and the domain's events in order. Run one before committing to a design.
   * [Product Design](https://www.nngroup.com/articles/design-thinking/)
-    > Nielsen Norman Group's primer on design thinking: empathize, define, ideate, prototype,
-    > test.
+    > Shape what you build around evidence from users, not opinions in meetings. Design
+    > thinking's cycle — empathize, define, ideate, prototype, test — is the loop to
+    > internalize.
     * [UI/UX prototyping](https://www.figma.com/) [recommended]
-      > The de facto collaborative design tool: prototype and test flows before writing any
-      > code.
+      > Test the flow while it is still cheap to change: a clickable Figma prototype answers
+      > usability questions no spec ever will, days before code exists.
     * [User story mapping](https://www.jpattonassociates.com/story-mapping/) [recommended]
-      > Jeff Patton's technique for arranging stories along the user journey to see the whole
-      > product.
+      > Flat backlogs hide the product; arrange stories along the user's journey instead, so
+      > releases slice into thin end-to-end walking skeletons. Jeff Patton invented the
+      > technique.
     * [Impact mapping](https://www.impactmapping.org/) [insightful]
-      > Gojko Adzic's planning technique: connect deliverables to actors, impacts, and business
-      > goals.
+      > Tie every deliverable to an actor and the behavior change you expect from them —
+      > features that map to no impact are cut before they cost anything.
     * [Design Sprint](https://designsprintkit.withgoogle.com)
-      > Google Ventures' five-day process for answering critical questions by prototyping with
-      > customers.
+      > When a question is worth a quarter's roadmap, spend five days instead: prototype and
+      > test with real customers before you commit the team.
     * [Design systems](https://www.designsystems.com/) [recommended]
-      > A guide collection on building and scaling shared component libraries, tokens, and
-      > guidelines.
+      > One shared library of components and tokens keeps every screen consistent and every new
+      > feature faster than the last — invest once, reuse everywhere.
     * [Accessibility](https://www.w3.org/WAI/standards-guidelines/wcag/) [recommended]
-      > The Web Content Accessibility Guidelines: the standard for products usable by everyone.
+      > Design it in from the first wireframe — retrofitting is expensive and usually wrong.
+      > WCAG is the bar; meeting it improves the product for everyone.
   * [Technical Design](https://martinfowler.com/architecture/)
-    > Martin Fowler's guide to software architecture: what it is, and why the boring parts
-    > matter.
+    > Decide the shapes that are expensive to change — boundaries, data ownership, communication
+    > — and postpone everything else. Fowler's guide frames which decisions deserve the effort.
     * [Visual communication](https://c4model.com/) [recommended]
-      > Simon Brown's C4 model: context, containers, components, code — four zoom levels for
-      > diagrams.
+      > An architecture nobody can see is an architecture nobody can critique. C4's four zoom
+      > levels give the team one drawing convention from birds-eye to code.
     * [Technology scouting](https://www.thoughtworks.com/radar)
-      > ThoughtWorks' twice-yearly opinionated map of techniques, tools, platforms, and
-      > languages.
+      > Watch the landscape deliberately instead of adopting whatever trends: assess, trial,
+      > adopt, hold. The ThoughtWorks Radar models the discipline twice a year.
     * [API design-first](https://www.infoq.com/articles/design-first-api-development/) [personal recommendation]
-      > Why designing the API contract before implementing it produces better, consumer-friendly
-      > APIs.
+      > Agree the contract before writing the implementation: consumers review it, mocks unblock
+      > parallel work, and the API ends up shaped by its users rather than your database.
     * [ADRs](https://adr.github.io/) [recommended]
-      > Architecture Decision Records: small documents capturing one decision, its context, and
-      > consequences.
+      > Future maintainers will ask why — answer them now, in a one-page record per significant
+      > decision, with the context and the trade-offs that drove it.
     * [Threat modeling](https://owasp.org/www-community/Threat_Modeling) [recommended]
-      > OWASP's overview of structured ways to find what can go wrong in a design before it is
-      > built.
+      > Ask what can go wrong while the design is still on the whiteboard: attackers, assets,
+      > entry points. Fixing a flaw here costs a meeting; in production it costs an incident.
   * Team Spirit [insightful]
     * [Psychological safety](https://rework.withgoogle.com/en/guides/understanding-team-effectiveness) [insightful]
-      > Google's Project Aristotle found psychological safety to be the strongest predictor of
-      > team effectiveness.
+      > Google's Project Aristotle found it to be the strongest predictor of team effectiveness:
+      > people must be safe to ask, dissent, and admit mistakes — build this before process.
     * [Empowerment](https://www.svpg.com/empowered-product-teams/) [personal favourite]
-      > Marty Cagan on empowered product teams: given problems to solve, not features to build.
+      > Give teams problems to solve, not features to build — empowered teams discover
+      > solutions; feature factories just ship output. Cagan's essay is the reference argument.
     * [Ownership](https://www.scrum.org/resources/blog/how-can-agile-leaders-create-right-context-ownership) [recommended]
-      > How leaders create the context in which teams genuinely own their product and process.
+      > Ownership is created by context, not demanded: teams that hold their product end to end
+      > make better decisions than teams executing someone else's ticket queue.
     * [Accountability](https://www.scrum.org/resources/blog/accountability-quality-agile) [recommended]
-      > Accountability and quality go together: professional teams hold themselves to their own
-      > definition of done.
+      > The counterpart of autonomy: a professional team holds itself to its own definition of
+      > done and answers for outcomes, not activity.
     * [Aligned objectives](https://www.svpg.com/team-objectives-overview/) [personal favourite]
-      > Team objectives done right: outcome-based goals assigned to empowered teams, not feature
-      > lists.
+      > Autonomous teams still need one direction: outcome-based objectives, assigned with
+      > context, keep ten empowered teams from pulling in ten directions.
 
 * :two: Development & Delivery
 *:beginner: [Software Engineers](https://en.wikipedia.org/wiki/Software_engineering) strive for better **quality** and embrace practices like [Software Craftsmanship](https://manifesto.softwarecraftsmanship.org/) and [the 12-Factor App](https://12factor.net/). Engineering decisions drive ==_how_== to create.*
   * [Developer Experience](https://developerexperience.io/articles/good-developer-experience) [personal recommendation]
-    > What good developer experience feels like: fast feedback, low cognitive load, clear golden
-    > paths.
+    > Fast feedback, low cognitive load, clear golden paths — DevEx is the compound interest of
+    > delivery: every friction you remove pays out on every change forever after.
   * [DevOps](https://martinfowler.com/bliki/DevOpsCulture.html) [recommended]
-    > Fowler on DevOps culture: shared responsibility and automation over wall-throwing silos.
+    > You build it, you run it: shared responsibility between development and operations is the
+    > cultural foundation everything else in this chapter stands on.
   * [Team Topologies](https://teamtopologies.com/) [insightful]
-    > Four team types and three interaction modes for organizing teams around a fast flow of
-    > change.
+    > Organize teams for fast flow: stream-aligned teams own value end to end, platform and
+    > enabling teams reduce their load, and interaction modes are chosen deliberately.
   * [QA](https://www.istqb.org/) [insightful]
-    > The international software testing qualification body: shared vocabulary, syllabi, and
-    > certifications.
+    > Quality is engineered, not inspected in at the end — but a shared testing vocabulary and
+    > discipline still matter; ISTQB provides the common language.
   * [Code review](https://google.github.io/eng-practices/review/) [recommended]
-    > Google's engineering practices: how to do code review well, as author and as reviewer.
+    > Every change gets a second pair of eyes — for correctness, but equally for shared
+    > ownership and knowledge spread. Google's practices show how to review without stalling
+    > flow.
   * [Branching strategy](https://martinfowler.com/articles/branching-patterns.html) [recommended]
-    > Fowler's catalog of branching patterns and the trade-offs behind integration frequency.
+    > How you branch decides how often you integrate, and integration frequency drives delivery
+    > performance more than almost anything — choose a strategy, don't inherit one.
     * [Gitflow](https://nvie.com/posts/a-successful-git-branching-model/)
-      > The original Gitflow post — including the author's own note that trunk-based often fits
-      > better today.
+      > The heavyweight classic: release and hotfix branches for versioned, multi-release
+      > products. Even its author now points most teams to trunk-based instead.
     * [Trunk-based](https://trunkbaseddevelopment.com/) [recommended]
-      > One shared branch, short-lived feature branches, feature flags: the reference site for
-      > trunk-based development.
+      > Everyone integrates to one branch at least daily, behind flags when needed — small
+      > merges, no long-lived divergence, and the foundation CI/CD actually requires.
   * [CI/CD](https://continuousdelivery.com/)
-    > Jez Humble's home for continuous delivery: shipping reliably, repeatably, and at low risk.
+    > Make releasing boring: every commit builds, tests, and can deploy through one automated
+    > pipeline, so shipping is a routine decision rather than an event.
     * [Commit semantics](https://www.conventionalcommits.org/en/v1.0.0/) [recommended]
-      > A lightweight commit-message convention that both machines and humans can parse.
+      > Structured commit messages (feat:, fix:, breaking) turn history into data — changelogs
+      > and releases generate themselves.
     * [Feature flags](https://martinfowler.com/articles/feature-toggles.html) [recommended]
-      > Pete Hodgson's definitive guide to feature toggles: categories, dynamics, and hygiene.
+      > Decouple deploy from release: unfinished work ships dark, risky changes roll out
+      > gradually, and rollback is a toggle. Budget for flag cleanup or they become debt.
     * [Merge queues](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)
-      > GitHub's merge queue validates every pull request against the latest main before it
-      > lands.
+      > At scale, green PRs still break main when they land together; a merge queue validates
+      > each merge against the latest main before it lands, keeping trunk always releasable.
   * FRs
   * [NFRs](https://en.wikipedia.org/wiki/Non-functional_requirement)
-    > Non-functional requirements: the quality attributes — performance, security, operability —
-    > that shape design.
+    > Performance, security, operability — the qualities that shape the architecture more than
+    > any feature does. Make them explicit and testable, or they silently become 'slow and
+    > down'.
   * DoR
   * [DoD](https://www.scrum.org/resources/blog/walking-through-definition-done)
-    > A walkthrough of crafting a Definition of Done that a team can actually honor.
+    > One shared answer to 'is it actually done?' — tested, reviewed, documented, deployed.
+    > Without it, every done means something different.
   * SCM
     * [Git](https://git-scm.com) [personal recommendation]
-      > The distributed version control system underneath nearly everything; docs plus the free
-      > Pro Git book.
+      > The substrate of modern delivery; learn it beyond commit and push — history surgery,
+      > bisect, and reflog pay for themselves the first bad week.
   * [Progressive delivery](https://launchdarkly.com/blog/what-is-progressive-delivery-all-about/)
-    > Rolling changes out gradually with canaries, rings, and targeting instead of big-bang
-    > releases.
+    > Release to 1% before 100%: canaries, rings, and targeting contain the blast radius of
+    > every change, with metrics deciding each next step.
 
   * [Architecture patterns](https://en.wikipedia.org/wiki/Architectural_pattern)
-    > A catalog of reusable solutions to recurring architecture problems, from layers to
-    > microservices.
+    > Layers, events, microservices — patterns are a vocabulary of trade-offs, not badges; know
+    > them well enough to pick the boring one that fits.
   * [Coding conventions](https://en.wikipedia.org/wiki/Coding_conventions) [recommended]
-    > Why shared conventions matter and what they typically cover, from naming to file layout.
+    > Consistency is a team feature: shared conventions make every file feel familiar and free
+    > reviews to discuss substance instead of style.
     * [Linting](https://en.wikipedia.org/wiki/Lint_(software))
-      > Static analysis that flags bugs, smells, and style violations before a human ever
-      > reviews.
+      > Machines catch the mechanical bugs and smells before humans ever look — a linter in the
+      > pipeline is the cheapest reviewer you will ever hire.
     * [Formatting](https://editorconfig.org/)
-      > EditorConfig: one file that keeps whitespace and encoding consistent across every
-      > editor.
+      > Automate style entirely out of discussion: one formatter config in the repo
+      > (EditorConfig at minimum) and no human ever argues whitespace again.
     * [Coding style](https://google.github.io/styleguide/)
-      > Google's public style guides for every major language, battle-tested at scale.
+      > Where conventions need judgment — naming, idioms, structure — write them down. Google's
+      > public style guides show what battle-tested guidance looks like.
   * [Refactoring](https://refactoring.com/) [recommended]
-    > Fowler's home for refactoring: improving design in small, behavior-preserving steps.
+    > Improve structure in small, behavior-preserving steps as part of daily work — not as a
+    > big-bang project you must ask permission for. Fowler's catalog names the moves.
   * Versioning
     * [Semver](https://semver.org/) [recommended]
-      > MAJOR.MINOR.PATCH: the versioning contract that tells consumers what a release may
-      > break.
+      > MAJOR.MINOR.PATCH is a promise to your consumers about what may break; version numbers
+      > become contracts instead of marketing.
   * [Instrumentation](https://opentelemetry.io/docs/concepts/instrumentation/) [insightful]
-    > OpenTelemetry's guide to instrumenting your own services: spans, metrics, and logs at the
-    > source.
+    > Telemetry is a feature you build, not an agent you bolt on: emit spans, metrics, and logs
+    > from your own code at the source, and chapter three becomes possible.
     * [OpenTelemetry](https://opentelemetry.io/) :telescope: [personal recommendation]
-      > The vendor-neutral standard for traces, metrics, and logs: one SDK, any backend.
+      > The vendor-neutral standard for every signal — instrument once, point it at any backend,
+      > and never rewrite telemetry when tooling changes.
   * [Docs-as-Code](https://www.writethedocs.org/guide/docs-as-code/) [recommended]
-    > Write the Docs' guide: documentation in version control, reviewed and shipped like code.
+    > Docs live where code lives: versioned, reviewed in PRs, published by the pipeline — the
+    > only documentation that stays true is the kind that ships with the change.
     * [Markdown](https://www.markdownguide.org/) [personal favourite]
-      > The reference guide for Markdown syntax and its extensions.
+      > The lingua franca of docs-as-code: plain text that diffs, reviews, and renders
+      > everywhere.
   * [Testability](https://martinfowler.com/testing/) [recommended]
-    > Fowler's map of software testing: test shapes, doubles, and strategies in one place.
+    > Design code so it can be tested — seams, injectable dependencies, honest boundaries;
+    > testability pressure is design feedback, not overhead.
     * [TDD](https://martinfowler.com/bliki/TestDrivenDevelopment.html)
-      > Red, green, refactor: Fowler's summary of test-driven development and its rhythm.
+      > Red, green, refactor: writing the test first forces the design conversation before the
+      > implementation hardens, and leaves a regression net behind.
     * [Contract testing](https://docs.pact.io/)
-      > Pact verifies that services honour the expectations their consumers depend on — without
-      > full-stack tests.
+      > Verify that each service honours what its consumers actually depend on — catching
+      > integration breaks in seconds without spinning up the whole stack.
     * [Test pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) [recommended]
-      > The practical test pyramid: many fast unit tests, fewer integration tests, a handful
-      > end-to-end.
+      > Many fast unit tests, fewer integration tests, a handful end-to-end — invert it and you
+      > get slow, flaky suites nobody trusts. Vocke's article is the practical guide.
   * [Deployability](https://www.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [recommended]
-    > SEI on the architecture patterns that make software independently and safely deployable.
+    > Architect so any component can deploy independently and safely — deployability is a design
+    > property you build in, not an ops problem you discover later.
   * AI-assisted engineering [insightful]
     > The defining shift since 2023: agents plan, edit, and verify code under
     > engineer supervision. Start here after your delivery flow is solid.
     * [Coding agents](https://martinfowler.com/articles/exploring-gen-ai.html) [personal recommendation]
-      > Fowler and colleagues' running memos on what actually works when building software with
-      > GenAI.
+      > The 2023-onward shift: agents plan, edit, and verify code under your supervision. Treat
+      > them as capable pairs whose work you review, and learn their failure modes.
     * [Context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) [recommended]
-      > Anthropic's guide to curating the instructions, tools, and knowledge that make agents
-      > effective.
+      > An agent is only as good as what it can see: curate the instructions, tools, and
+      > knowledge in its context deliberately — this is the new craft of working with AI.
     * [Spec-driven development](https://github.com/github/spec-kit)
-      > GitHub's Spec Kit: write an executable specification first, then let agents implement
-      > against it.
+      > Write the specification precisely enough to constrain an agent, then let implementation
+      > flow from it — GitHub's Spec Kit turns the idea into a working method.
   * [DORA metrics](https://dora.dev/) [recommended]
-    > DORA's research program: the four keys, and the capabilities proven to improve them.
+    > Four numbers — deployment frequency, lead time, change failure rate, time to restore —
+    > that measure your delivery system honestly and tell you which capability to improve next.
 
 * :three: Deployment & Operations
 *:beginner: High-quality software can ship frequently and safely — and stay ==_running_==. [DevSecOps](https://www.redhat.com/en/topics/devops/what-is-devsecops) provides continuous delivery and deployment capabilities by bringing development, security, and operations together.*
   + [Infrastructure](https://aws.amazon.com/architecture/well-architected/)
-    > The Well-Architected pillars: operational excellence, security, reliability, performance,
-    > cost, sustainability.
+    > Run on foundations you can reason about: the Well-Architected pillars — operations,
+    > security, reliability, performance, cost, sustainability — are the checklist for this
+    > whole column.
     * [Monitoring & alerting](https://sre.google/sre-book/monitoring-distributed-systems/)
-      > The SRE book on monitoring: four golden signals, symptoms versus causes, alert on user
-      > pain.
+      > Watch the four golden signals and alert on user-visible symptoms, not causes — a page
+      > should always mean a human decision is needed right now.
     * [Infra-as-code](https://martinfowler.com/bliki/InfrastructureAsCode.html) [recommended]
-      > Fowler on defining infrastructure in versioned, testable code instead of console clicks.
+      > Infrastructure belongs in version control like everything else: reviewed, repeatable,
+      > and rebuildable from scratch — console clicks are unrecorded outages waiting to happen.
     * [GitOps](https://opengitops.dev/) [recommended]
-      > The four OpenGitOps principles: declarative, versioned, automatically pulled,
-      > continuously reconciled.
+      > Declare the desired state in Git and let controllers continuously reconcile reality to
+      > it — deployments become pull requests, and drift fixes itself.
     * [Platform engineering](https://platformengineering.org/) [insightful]
-      > The community hub for internal developer platforms and the golden paths they pave.
+      > Pave the golden path: an internal platform, run as a product, lets stream teams ship
+      > without each reinventing infrastructure — and without ticket-ops in between.
     * [Auto-scaling](https://en.wikipedia.org/wiki/Autoscaling) [personal recommendation]
-      > Matching capacity to demand automatically: scale out, scale in, scheduled or reactive.
+      > Match capacity to demand automatically, in both directions — paying for idle peak
+      > capacity is as unnecessary as falling over at the real peak.
     * [FinOps](https://www.finops.org/) [recommended]
-      > The FinOps Foundation: practices for making cloud spend a shared engineering concern.
+      > Cloud spend is an engineering signal: give teams visibility and ownership of their cost,
+      > and efficiency becomes part of design instead of a finance escalation.
     * [Green operations](https://greensoftware.foundation/) [insightful]
-      > The Green Software Foundation: standards and patterns for carbon-aware, energy-efficient
-      > software.
+      > Carbon is the next budget: carbon-aware scheduling and energy-efficient design are
+      > becoming table stakes — the Green Software Foundation collects the patterns.
   * [Reliability](https://learn.microsoft.com/en-us/azure/well-architected/reliability/design-patterns)
-    > Microsoft's catalog of reliability design patterns: retries, bulkheads, circuit breakers,
-    > and more.
+    > Assume everything fails and design for it: retries with backoff, bulkheads, circuit
+    > breakers — Microsoft's pattern catalog is a practical menu.
     * [SRE](https://sre.google/) [recommended]
-      > Google's Site Reliability Engineering hub: the books that defined the discipline, free
-      > online.
+      > Operations as a software problem: engineers automate away toil and error budgets decide
+      > when to ship versus stabilize. Google's free SRE books define the discipline.
     * [SLOs](https://sre.google/sre-book/service-level-objectives/) [recommended]
-      > The SRE book chapter on service level objectives and the error budgets they fund.
+      > Pick the reliability level users actually need, measure it, and spend the error budget
+      > deliberately — SLOs turn 'is it reliable enough?' into an engineering decision.
     * Self-healing [recommended]
+      > Prefer systems that remediate themselves — restarts, failover, reconciliation — so
+      > humans handle the novel failures, not the routine ones.
     * [Chaos engineering](https://principlesofchaos.org/) [personal recommendation]
-      > The manifesto: build confidence by experimenting on a system under production-like
-      > conditions.
+      > Inject failure on purpose, in controlled experiments, before production does it for you
+      > at 3 a.m. — confidence in resilience is earned, not assumed.
     * [Incident response](https://sre.google/sre-book/managing-incidents/) [recommended]
-      > The SRE book on managing incidents: clear roles, incident command, and calm
-      > communication.
+      > When production breaks, structure beats heroics: clear roles, one incident commander,
+      > calm communication. Practice the choreography before you need it.
     * [Blameless postmortems](https://sre.google/sre-book/postmortem-culture/) [recommended]
-      > The SRE book's case for postmortems that fix systems instead of blaming people.
+      > After every incident, fix the system rather than the person: blame buries the
+      > information you need most. Google's postmortem culture chapter shows how.
     * [Backup and restore](https://learn.microsoft.com/en-us/azure/well-architected/reliability/disaster-recovery)
-      > Designing for disaster recovery: recovery time and point objectives, and restore paths
-      > you have tested.
+      > A backup you have never restored is a hope, not a plan: define recovery time and point
+      > objectives, then rehearse the restore path until it is boring.
   * [Security](https://owasp.org/)
-    > OWASP: the open community behind the Top 10, the cheat sheet series, and the testing
-    > guides.
+    > Security is a property of the whole pipeline, not a final gate: shift it left into design,
+    > dependencies, and deployment. OWASP is the community hub for all of it.
     * [Zero trust](https://csrc.nist.gov/pubs/sp/800/207/final) [insightful]
-      > NIST SP 800-207, the zero trust architecture reference: verify explicitly, never by
-      > network location.
+      > Never trust by network location: authenticate and authorize every access explicitly, as
+      > if the perimeter were already breached — NIST 800-207 is the reference architecture.
     * [Penetration testing](https://owasp.org/www-project-web-security-testing-guide/)
-      > OWASP's Web Security Testing Guide: the standard playbook for probing web applications.
+      > Invite the attack before attackers do: regular authorized probes find what reviews and
+      > scanners miss. OWASP's testing guide is the playbook.
     * [Vulnerability scanning](https://owasp.org/www-community/Vulnerability_Scanning_Tools) [recommended]
-      > OWASP's overview of vulnerability scanning tools and where they fit in the pipeline.
+      > Continuously scan code, dependencies, and images in the pipeline — known CVEs are the
+      > cheapest vulnerabilities you will ever fix, if you find them first.
     * [Secrets management](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html) [recommended]
-      > OWASP's cheat sheet for storing, rotating, and auditing secrets properly.
+      > No credentials in code, config, or chat: store secrets in a vault, rotate them
+      > routinely, and audit access — one leaked key can undo everything else here.
     * [Supply chain security](https://slsa.dev/) [recommended]
-      > SLSA: a maturity ladder for protecting artifacts all the way from source to deployment.
+      > Your build is only as trustworthy as its least trustworthy dependency: SLSA's levels
+      > harden the path from source to artifact against tampering.
     * [SBOM](https://www.cisa.gov/sbom)
-      > CISA on software bills of materials: an ingredient list for every build artifact.
+      > Keep an ingredient list for every artifact — when the next Log4Shell lands, you want to
+      > answer 'are we affected?' in minutes, not weeks.
   * [Observability](https://opentelemetry.io/docs/concepts/observability-primer/#what-is-observability) [insightful]
-    > OpenTelemetry's primer: understanding a system from the outside, without shipping new code
-    > to ask.
+    > Instrumented signals from chapter two pay off here: understand any system state from the
+    > outside, without shipping new code to ask the question.
     * [Metrics capturing](https://opentelemetry.io/docs/concepts/signals/metrics/) [recommended]
-      > OpenTelemetry metrics: aggregated measurements feeding dashboards, alerts, and trends.
+      > Aggregated measurements power dashboards, alerts, and capacity planning — capture them
+      > consistently and they become the system's vital signs.
     * [Distributed tracing](https://opentelemetry.io/docs/concepts/signals/traces/) [recommended]
-      > OpenTelemetry traces: follow a single request across every service it touches.
+      > One request, every hop: traces turn 'something is slow somewhere' into 'this call, in
+      > this service, this long'.
     * [Structured logging](https://opentelemetry.io/docs/concepts/signals/logs/) [recommended]
-      > OpenTelemetry logs: structured events correlated with the traces and metrics around
-      > them.
+      > Log events as structured data, correlated with traces — grep gives way to queries, and
+      > debugging distributed systems stops being archaeology.
 
 ## Keep ++**sweeping**++ :sparkles:
 
