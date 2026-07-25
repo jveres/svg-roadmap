@@ -2,8 +2,7 @@
 roadmap:
   theme:
     preset: sci-fi
-  # legend: false — uncomment to hide the tag legend entirely
-  # scale: 1.25 — renders the whole SVG a quarter larger
+  # legend: false  # uncomment to hide the tag legend
   background:
     enabled: true
     seed: feature-tour
@@ -57,7 +56,7 @@ roadmap:
 *:beginner: Emphasis works everywhere: **strong**, _emphasis_, ==highlight==, ++insert++, `inline code`, and ~~strikethrough~~. Term definitions get dotted underlines.*
   * Emoji :tada:
     * Shortcodes :rocket: [core]
-    * GitHub set :octocat: [optional]
+    * GitHub set :joystick: [optional]
   * Term definitions [core]
   * Footnote markers [optional]
   * Old habits ~~like these~~ [deprecated]

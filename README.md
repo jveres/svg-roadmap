@@ -204,7 +204,6 @@ roadmap:
   theme:
     preset: sci-fi
     mode: dark
-  scale: 1.25
   background:
     enabled: true
     seed: engineering-2026
@@ -214,9 +213,6 @@ roadmap:
 ---
 ```
 
-`scale` (from `0.25` to `4`) multiplies the rendered size of the whole SVG
-while the viewBox keeps layout coordinates, so geometry and tokens stay
-identical at every scale; the `render.scale` option overrides it.
 `density` accepts values from `0` to `1`. `size` is a scale from `0.25` to `3`;
 `1` uses the theme's default artifact size. `animated` adds a deterministic
 CSS drift loop to the artifacts: `true` uses the default intensity of `1`, and

@@ -71,11 +71,9 @@ function generateFromDocument(
 	});
 	const animatedBackground =
 		options.render?.animatedBackground ?? document.settings.background.animated;
-	const scale = options.render?.scale ?? document.settings.scale;
 	const svg = renderRoadmapSvg(layout, theme, {
 		...options.render,
 		...(animatedBackground !== undefined ? { animatedBackground } : {}),
-		scale,
 	});
 	return { document, layout, svg, theme };
 }

@@ -1526,14 +1526,9 @@ export function renderRoadmapSvg(
 		.map((legend) => renderLegend(legend, theme, prefix))
 		.join("");
 	const responsiveStyle = options.responsive === false ? "" : ' style="max-width:100%;height:auto"';
-	// Scale multiplies only the rendered size; the viewBox keeps layout
-	// coordinates, so geometry, ids, and tokens are identical at every scale.
-	const scale = options.scale ?? 1;
-	const renderedWidth = roundCoordinate(layout.width * scale);
-	const renderedHeight = roundCoordinate(layout.height * scale);
 	const userCss = options.css ? `\n${escapeStyleText(options.css)}` : "";
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${renderedWidth}" height="${renderedHeight}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
+	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
 	<title id="${titleId}">${escapeXml(title)}</title>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
 	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>

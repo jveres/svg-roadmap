@@ -159,8 +159,6 @@ export interface RoadmapSettings {
 	readonly tags: Readonly<Record<string, RoadmapTagSetting>>;
 	/** Whether the tag legend renders. Defaults to `true`. */
 	readonly legend: boolean;
-	/** Rendered-size multiplier for the whole SVG. Defaults to `1`. */
-	readonly scale: number;
 }
 
 export interface RoadmapDocument {
@@ -619,12 +617,6 @@ export interface RoadmapRenderOptions {
 	 * Defaults to the document's background setting.
 	 */
 	readonly animatedBackground?: boolean | number;
-	/**
-	 * Scales the rendered size: the root width/height multiply by this while
-	 * the viewBox keeps layout coordinates. Defaults to the document's
-	 * `roadmap.scale` front-matter setting.
-	 */
-	readonly scale?: number;
 }
 
 export interface RoadmapThemeSelection {

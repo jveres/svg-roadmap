@@ -130,41 +130,7 @@ function pixelHeart(): readonly LayoutBackgroundArtifactShape[] {
 	return [{ kind: "path", d: pixelPath(sprite, 2.8), fill: pink }];
 }
 
-/** A classic dogbone gamepad: two grip lobes, d-pad, buttons, start/select. */
-function gamepad(): readonly LayoutBackgroundArtifactShape[] {
-	return [
-		{
-			kind: "path",
-			d: "M -5.5 -7 L 5.5 -7 A 11 11 0 1 1 5.5 7 L -5.5 7 A 11 11 0 1 1 -5.5 -7 Z",
-			fill: purple,
-		},
-		{
-			kind: "path",
-			d: "M -18 -1.8 L -10 -1.8 L -10 1.8 L -18 1.8 Z M -15.8 -5.8 L -12.2 -5.8 L -12.2 5.8 L -15.8 5.8 Z",
-			fill: cyan,
-		},
-		{ kind: "circle", cx: 11.5, cy: 3, radius: 2.7, fill: pink },
-		{ kind: "circle", cx: 17, cy: -2.6, radius: 2.7, fill: pink },
-		{ kind: "circle", cx: 10.8, cy: 2.3, radius: 0.8, fill: white },
-		{ kind: "circle", cx: 16.3, cy: -3.3, radius: 0.8, fill: white },
-		{
-			kind: "path",
-			d: "M -4 -0.8 L -0.5 -0.8 L -0.5 0.8 L -4 0.8 Z M 0.8 -0.8 L 4.3 -0.8 L 4.3 0.8 L 0.8 0.8 Z",
-			fill: white,
-		},
-	];
-}
-
-const motifs = [
-	pacman,
-	ghost,
-	invader,
-	cherries,
-	powerPellet,
-	tetromino,
-	pixelHeart,
-	gamepad,
-] as const;
+const motifs = [pacman, ghost, invader, cherries, powerPellet, tetromino, pixelHeart] as const;
 
 export function generateArcadeBackgroundArtifacts({
 	width,

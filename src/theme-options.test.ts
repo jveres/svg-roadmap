@@ -265,25 +265,6 @@ roadmap:
 		expect(generated.svg).not.toMatch(/tree-line[^>]*marker-end/u);
 	});
 
-	test("the scale setting resizes the root while the viewBox keeps geometry", () => {
-		const scaled = generateRoadmap("---\nroadmap:\n  scale: 1.5\n---\n\n# T\n\n* C\n  * Topic\n");
-		const plain = generateRoadmap("# T\n\n* C\n  * Topic\n");
-		const root = (svg: string) => svg.match(/<svg[^>]*>/u)?.[0] ?? "";
-		expect(root(scaled.svg)).toContain(`width="${plain.layout.width * 1.5}"`);
-		expect(root(scaled.svg)).toContain(`viewBox="0 0 ${plain.layout.width} `);
-		// Geometry is identical; only the rendered size changes.
-		expect(scaled.layout.width).toBe(plain.layout.width);
-		// The render option wins over the document setting.
-		const overridden = generateRoadmap(
-			"---\nroadmap:\n  scale: 1.5\n---\n\n# T\n\n* C\n  * Topic\n",
-			{ render: { scale: 2 } },
-		);
-		expect(root(overridden.svg)).toContain(`width="${plain.layout.width * 2}"`);
-		expect(() => generateRoadmap("---\nroadmap:\n  scale: 9\n---\n\n# T\n")).toThrow(
-			/scale must be a number between/u,
-		);
-	});
-
 	test("misplaced roadmap-level keys and inline comments are handled helpfully", () => {
 		expect(() =>
 			generateRoadmap(
@@ -291,7 +272,7 @@ roadmap:
 			),
 		).toThrow(/put it directly under "roadmap:" with a two-space indent/u);
 		expect(() =>
-			generateRoadmap("---\nroadmap:\n  theme:\n    preset: fun\n    scale: 2\n---\n\n# T\n"),
+			generateRoadmap("---\nroadmap:\n  theme:\n    preset: fun\n    legend: false\n---\n\n# T\n"),
 		).toThrow(/put it directly under "roadmap:" with a two-space indent/u);
 		// Plain unknown keys list what the block supports.
 		expect(() =>

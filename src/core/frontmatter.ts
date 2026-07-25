@@ -11,7 +11,6 @@ export const defaultRoadmapSettings: RoadmapSettings = {
 	background: { enabled: false, seed: "default", density: 0.55, size: 1, animated: false },
 	tags: {},
 	legend: true,
-	scale: 1,
 };
 
 export class RoadmapFrontmatterError extends Error {
@@ -104,7 +103,7 @@ function isMap(value: FrontmatterValue | undefined): value is FrontmatterMap {
 	return typeof value === "object" && value !== null;
 }
 
-const roadmapLevelKeys = ["theme", "background", "tags", "legend", "scale"] as const;
+const roadmapLevelKeys = ["theme", "background", "tags", "legend"] as const;
 
 function assertKnownKeys(value: FrontmatterMap, keys: readonly string[], context: string): void {
 	for (const key of Object.keys(value)) {
@@ -261,20 +260,15 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 	if (!isMap(roadmap)) {
 		throw new RoadmapFrontmatterError("The roadmap front-matter value must be a mapping.");
 	}
-	assertKnownKeys(roadmap, ["theme", "background", "tags", "legend", "scale"], "roadmap");
+	assertKnownKeys(roadmap, ["theme", "background", "tags", "legend"], "roadmap");
 	const legend = roadmap.legend ?? defaultRoadmapSettings.legend;
 	if (typeof legend !== "boolean") {
 		throw new RoadmapFrontmatterError("The roadmap legend setting must be a boolean.");
-	}
-	const scale = roadmap.scale ?? defaultRoadmapSettings.scale;
-	if (typeof scale !== "number" || scale < 0.25 || scale > 4) {
-		throw new RoadmapFrontmatterError("The roadmap scale must be a number between 0.25 and 4.");
 	}
 	return {
 		theme: parseTheme(roadmap.theme),
 		background: parseBackground(roadmap.background),
 		tags: parseTags(roadmap.tags),
 		legend,
-		scale,
 	};
 }
