@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	contiguousTravel,
 	distributeAlongLengths,
 	nextProgressState,
 	progressTravelWeight,
@@ -21,6 +22,16 @@ describe("interactive helpers", () => {
 		expect(distributeAlongLengths([100, 300], 1)).toEqual([1, 1]);
 		// Zero-length segments never divide by zero.
 		expect(distributeAlongLengths([0, 200], 0.5)).toEqual([0, 0.5]);
+	});
+
+	test("the journey line is contiguous: gaps ink only behind completed chapters", () => {
+		// Everything half-started: only the first gap inks, to one half.
+		expect(contiguousTravel([0.5, 0.5, 0.5])).toEqual([0.5, 0, 0]);
+		// Chapter one complete: the second gap shows its own progress.
+		expect(contiguousTravel([1, 0.5, 0.7])).toEqual([1, 0.5, 0]);
+		// Working ahead without finishing chapter one keeps the line home.
+		expect(contiguousTravel([0, 1, 1])).toEqual([0, 0, 0]);
+		expect(contiguousTravel([1, 1, 1])).toEqual([1, 1, 1]);
 	});
 
 	test("travel weights: done and skipped are traveled, in-progress is half", () => {

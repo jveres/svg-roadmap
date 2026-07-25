@@ -61,6 +61,21 @@ export function progressTravelWeight(state: RoadmapProgressState | undefined): n
 	return 0;
 }
 
+/**
+ * The journey line is contiguous: a chapter's gap inks only after every
+ * earlier chapter is complete, so working ahead cannot tear the line into
+ * islands or throw the frontier marker downstream. Stations still report
+ * each chapter's own fraction locally.
+ */
+export function contiguousTravel(fractions: readonly number[]): number[] {
+	let reached = true;
+	return fractions.map((fraction) => {
+		const effective = reached ? fraction : 0;
+		if (fraction < 0.999) reached = false;
+		return effective;
+	});
+}
+
 /** Strips the render-instance prefix, leaving the stable per-document id. */
 export function stableNodeId(elementId: string, instancePrefix: string): string {
 	return instancePrefix && elementId.startsWith(`${instancePrefix}-`)
@@ -472,10 +487,11 @@ function createChartProgress(
 			(totals[i] ?? 0) > 0 ? (traveled[i] ?? 0) / (totals[i] as number) : 0,
 		);
 		const anyProgress = fractions.some((f) => f > 0);
+		const travel = contiguousTravel(fractions);
 
-		let deepest: { segment: InkSegment; fill: number } | undefined;
+		let deepest: { segment: InkSegment; fill: number; gap: number } | undefined;
 		for (const [gap, list] of inksByGap) {
-			const fraction = gap === 0 ? (anyProgress ? 1 : 0) : (fractions[gap - 1] ?? 0);
+			const fraction = gap === 0 ? (anyProgress ? 1 : 0) : (travel[gap - 1] ?? 0);
 			const fills = distributeAlongLengths(
 				list.map((segment) => segment.length),
 				fraction,
@@ -489,7 +505,9 @@ function createChartProgress(
 				segment.core.style.display = visible ? "" : "none";
 				segment.glow.setAttribute("stroke-dasharray", `${fill * 100} 100`);
 				segment.core.setAttribute("stroke-dasharray", `${fill * 100} 100`);
-				if (visible && gap > 0) deepest = { segment, fill };
+				if (visible && gap > 0 && (!deepest || gap >= (deepest.gap ?? 0))) {
+					deepest = { segment, fill, gap };
+				}
 			});
 		}
 
@@ -503,9 +521,13 @@ function createChartProgress(
 			station.arc.setAttribute("stroke-dasharray", `${fraction * 100} 100`);
 		});
 
-		if (deepest && deepest.fill < 0.999) {
+		// The tip terminates the contiguous ink whenever the journey is
+		// unfinished — including resting on a junction while the next
+		// chapter is still untouched.
+		const journeyComplete = fractions.every((f) => f >= 0.999);
+		if (deepest && !journeyComplete) {
 			const length = deepest.segment.core.getTotalLength();
-			const point = deepest.segment.core.getPointAtLength(length * deepest.fill);
+			const point = deepest.segment.core.getPointAtLength(length * Math.min(1, deepest.fill));
 			tip.setAttribute("transform", `translate(${point.x} ${point.y})`);
 			tip.style.display = "";
 		} else {

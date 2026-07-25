@@ -191,7 +191,9 @@ when complete — a you-are-here roundel terminates the ink at the frontier,
 and fully completed chapters fade to gray while the active chapter stays at
 full strength. The line measures travel, not just completion: done and
 skipped topics count as traveled (skipping is deciding to pass by), and
-in-progress counts half. Untraveled territory renders as the plain, undecorated
+in-progress counts half. The line is contiguous — a chapter's gap inks only
+after every earlier chapter is complete, so working ahead never tears the
+line into islands; stations still show each chapter's own arc. Untraveled territory renders as the plain, undecorated
 chart.
 State persists in `localStorage` keyed by stable node ids (pluggable via
 `storage`/`storageKey`), so it survives re-renders and theme switches.
