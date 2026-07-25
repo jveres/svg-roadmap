@@ -165,6 +165,45 @@ Generate in a browser and save the SVG when a roadmap uses fonts or scripts
 the tables cannot approximate; the Node path keeps using tables and remains
 fully deterministic for CI.
 
+## Interactive host layer
+
+The SVG is always script-free. For self-learning use, the optional
+`svg-roadmap/interactive` module (browser-only, ~2 kB gzipped) adds
+progress tracking on top of a rendered chart from the host page, through
+hooks the SVG already exposes — stable node ids, `data-` attributes, and
+CSS classes. A downloaded chart remains a plain image.
+
+```ts
+import { attachRoadmapInteractivity } from "svg-roadmap/interactive";
+
+const handle = attachRoadmapInteractivity(svgElement, {
+  onSelect: (topic) => showDetailPanel(topic), // title, href, tags, state
+});
+// later: handle.reset(); handle.dispose();
+```
+
+Clicking a topic cycles in progress → done → skipped → unset: an accent
+ring, a dimmed struck-through card, and a faded dashed frame. Progress also
+paints into the chart itself (`onChart: false` disables it): the spine inks
+in like a metro line in the theme's accent, station roundels appear at
+chapters once they have progress — an arc while partial, solid with a check
+when complete — a you-are-here roundel terminates the ink at the frontier,
+and fully completed chapters fade to gray while the active chapter stays at
+full strength. The line measures travel, not just completion: done and
+skipped topics count as traveled (skipping is deciding to pass by), and
+in-progress counts half. Untraveled territory renders as the plain, undecorated
+chart.
+State persists in `localStorage` keyed by stable node ids (pluggable via
+`storage`/`storageKey`), so it survives re-renders and theme switches.
+Topics become keyboard-operable (`Tab`, then `Enter`/`Space`) with state
+announced through `aria-label`, text selection is suppressed on click, and
+topic links are intercepted by default — the destination arrives on the
+selection detail for the host's panel (`interceptLinks: false` restores
+navigation). Colors follow `--roadmap-progress-accent`,
+`--roadmap-progress-done`, and related custom properties. The workbench's
+Interactive toggle demonstrates the full pattern, including a topic detail
+panel fed by `onSelect`.
+
 ## Markdown conventions
 
 SVG Roadmap maps familiar Markdown structure to visual structure.

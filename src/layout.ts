@@ -75,7 +75,9 @@ const defaults: RequiredLayoutOptions = {
 	gridStepGap: 50,
 	treeStepGap: 27,
 	chapterContentGap: 71,
-	chapterDescriptionGap: 18,
+	// Roomy enough for the interactive layer's station roundel (16px) to
+	// sit centered between a chapter capsule and its description.
+	chapterDescriptionGap: 26,
 	treeDescriptionGap: 48,
 	commentGap: 24,
 	groupGap: 176,

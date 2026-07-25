@@ -36,6 +36,10 @@
 		"./emoji-github": {
 			"types": "./dist/emoji-github.d.ts",
 			"import": "./dist/emoji-github.js"
+		},
+		"./interactive": {
+			"types": "./dist/interactive.d.ts",
+			"import": "./dist/interactive.js"
 		}
 	},
 	"files": [

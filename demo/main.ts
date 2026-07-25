@@ -7,6 +7,11 @@ import {
 	type RoadmapThemeSelection,
 	registerEmojiArtwork,
 } from "../src/index.ts";
+import {
+	attachRoadmapInteractivity,
+	type RoadmapInteractivityHandle,
+	type RoadmapTopicDetail,
+} from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import softwareHygiene from "./software-hygiene.md?raw";
@@ -86,6 +91,9 @@ app.innerHTML = `
 					<option value="dark">Dark</option>
 				</select>
 			</label>
+			<label class="theme-picker interact-toggle">Interactive
+				<input id="interactive" type="checkbox" />
+			</label>
 			<button id="download" type="button">Download SVG</button>
 		</div>
 	</header>
@@ -131,6 +139,8 @@ const stats = requiredElement<HTMLSpanElement>("#stats");
 const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
 const download = requiredElement<HTMLButtonElement>("#download");
 const workbench = requiredElement<HTMLElement>("#workbench");
+const interactiveToggle = requiredElement<HTMLInputElement>("#interactive");
+let topicPanel: HTMLElement | undefined;
 const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
@@ -151,6 +161,7 @@ interface WorkbenchSettings {
 	readonly theme?: string;
 	readonly mode?: string;
 	readonly editorHidden?: boolean;
+	readonly interactive?: boolean;
 }
 
 function loadStoredSettings(): WorkbenchSettings {
@@ -170,6 +181,7 @@ function saveSettings(): void {
 				theme: themePresetSelect.value,
 				mode: colorModeSelect.value,
 				editorHidden,
+				interactive: interactiveToggle.checked,
 			} satisfies WorkbenchSettings),
 		);
 	} catch {
@@ -204,6 +216,7 @@ loadSample(sampleSelect.value);
 applyStoredValue(themePresetSelect, storedSettings.theme);
 applyStoredValue(colorModeSelect, storedSettings.mode);
 setEditorHidden(storedSettings.editorHidden === true);
+interactiveToggle.checked = storedSettings.interactive === true;
 let svg = "";
 let renderTimer: number | undefined;
 let generator: RoadmapGenerator | undefined;
@@ -235,6 +248,74 @@ function suppressPreviewTitleTooltip(): void {
 	title.remove();
 }
 
+let interactivity: RoadmapInteractivityHandle | undefined;
+let abbreviations: Readonly<Record<string, string>> = {};
+
+/**
+ * The floating detail panel pairs with click-to-track: the same click that
+ * cycles a topic's progress shows its resource link, tags, and definition.
+ */
+function showTopicDetail(detail: RoadmapTopicDetail): void {
+	if (!topicPanel) return;
+	topicPanel.hidden = false;
+	topicPanel.replaceChildren();
+	const heading = document.createElement("h3");
+	heading.textContent = detail.title;
+	topicPanel.append(heading);
+	const state = document.createElement("p");
+	state.className = "topic-panel__state";
+	state.dataset.state = detail.state ?? "none";
+	state.textContent = detail.state ? detail.state.replace("-", " ") : "not started";
+	topicPanel.append(state);
+	if (detail.tags.length > 0) {
+		const tags = document.createElement("p");
+		tags.className = "topic-panel__tags";
+		tags.textContent = detail.tags.join(" · ");
+		topicPanel.append(tags);
+	}
+	const definition = abbreviations[detail.title];
+	if (definition) {
+		const paragraph = document.createElement("p");
+		paragraph.className = "topic-panel__definition";
+		paragraph.textContent = definition;
+		topicPanel.append(paragraph);
+	}
+	if (detail.href) {
+		const link = document.createElement("a");
+		link.href = detail.href;
+		link.target = "_blank";
+		link.rel = "noopener noreferrer";
+		link.textContent = "Open resource ↗";
+		topicPanel.append(link);
+	}
+}
+
+function syncInteractivity(): void {
+	interactivity?.dispose();
+	interactivity = undefined;
+	if (!interactiveToggle.checked) return;
+	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
+	if (!previewSvg) return;
+	interactivity = attachRoadmapInteractivity(previewSvg, {
+		storageKey: `workbench-progress:${sampleSelect.value}`,
+		onSelect: showTopicDetail,
+		// A reset clears the tracking context, so the last selection's detail
+		// section disappears with it.
+		onReset: () => {
+			if (topicPanel) topicPanel.hidden = true;
+		},
+	});
+	// One panel, not two: the topic detail lives inside the module's sticky
+	// summary card instead of floating separately.
+	topicPanel = undefined;
+	if (interactivity.summaryElement) {
+		topicPanel = document.createElement("section");
+		topicPanel.className = "topic-panel";
+		topicPanel.hidden = true;
+		interactivity.summaryElement.append(topicPanel);
+	}
+}
+
 function render(): void {
 	if (!generator) return;
 	try {
@@ -251,6 +332,8 @@ function render(): void {
 		preview.dataset.mode = result.theme.mode;
 		stats.textContent = `${result.document.stats.chapters} chapters · ${result.document.stats.topics} topics · depth ${result.document.stats.maxDepth}`;
 		dimensions.textContent = `${result.layout.width} × ${result.layout.height}`;
+		abbreviations = result.document.abbreviations;
+		syncInteractivity();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		preview.innerHTML = `<p class="error" role="alert"></p>`;
@@ -284,6 +367,10 @@ systemTheme.addEventListener("change", () => {
 });
 toggleEditor.addEventListener("click", () => {
 	setEditorHidden(!editorHidden);
+	saveSettings();
+});
+interactiveToggle.addEventListener("change", () => {
+	syncInteractivity();
 	saveSettings();
 });
 download.addEventListener("click", () => {

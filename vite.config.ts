@@ -7,6 +7,7 @@ export default defineConfig({
 				index: "src/index.ts",
 				node: "src/node.ts",
 				"emoji-github": "src/emoji-github.ts",
+				interactive: "src/interactive.ts",
 			},
 			formats: ["es"],
 		},
