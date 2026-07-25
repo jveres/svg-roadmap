@@ -938,7 +938,7 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
-	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${noteData}>${description}${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
+	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${description}${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {
@@ -1144,7 +1144,7 @@ function renderConnector(
 		endShape !== "none" && connectorTheme.routing !== "braided"
 			? ` marker-end="url(#${prefix}-marker-${token}-${endShape})"`
 			: "";
-	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"${marker}`;
+	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}"${connector.groupId ? ` data-group="${safeId(connector.groupId)}"` : ""} d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"${marker}`;
 	if (connectorTheme.routing !== "braided") {
 		return `<path id="${prefix}-${safeId(connector.id)}" ${attributes}/>`;
 	}

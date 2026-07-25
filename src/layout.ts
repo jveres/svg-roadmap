@@ -643,9 +643,11 @@ function layoutGridGroup(
 	context: ChapterLayoutContext,
 ): { bottom: number; anchors: Point[] } {
 	const padding = context.theme.boards.topic.padding;
-	const columns = group.topics.map((topic) =>
-		packGridColumn(flattenGridTopic(topic, context.theme), context.options.gridItemGap),
-	);
+	const columns = group.topics.map((topic) => {
+		const entries = flattenGridTopic(topic, context.theme);
+		for (const entry of entries) entry.node.groupId = group.id;
+		return packGridColumn(entries, context.options.gridItemGap);
+	});
 	const chunks = splitGridColumns(columns, context.options, padding);
 	let y = startY;
 	const anchors: Point[] = [];
@@ -895,6 +897,7 @@ function layoutTreeGroups(
 	for (const [index, group] of groups.entries()) {
 		const side = index % 2 === 0 ? initialSide : oppositeSide(initialSide);
 		const cluster = packCluster(group.topics, group.id, 1, "tree", context.theme, context.options);
+		for (const node of cluster.nodes) node.groupId = group.id;
 		const y = sideBottom.get(side) ?? startY;
 		const x =
 			side < 0
@@ -915,6 +918,7 @@ function layoutTreeGroups(
 		context.connectors.push({
 			id: `${chapter.id}-${group.id}-link`,
 			kind: "chapterToTopics",
+			groupId: group.id,
 			from: {
 				x: chapterNode.x + chapterNode.width * (side < 0 ? 0.25 : 0.75),
 				y: rectBottom(chapterNode),

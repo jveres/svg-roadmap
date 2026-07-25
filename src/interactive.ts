@@ -2,14 +2,15 @@
  * Optional browser-side interactivity for a rendered roadmap SVG.
  *
  * The SVG itself stays script-free: this module runs in the host page and
- * talks to hooks the renderer already emits — stable node ids,
- * `data-roadmap-element` attributes, and CSS classes. A downloaded chart
- * remains a plain, portable image.
+ * talks to hooks the renderer already emits — stable node ids, `data-`
+ * attributes (`data-parent`, `data-group`, `data-roadmap-note`), and CSS
+ * classes. A downloaded chart remains a plain, portable image.
  *
- * Clicking a topic cycles its progress state (in progress → done → skipped)
- * and reports a selection, so a host can pair the same click with a detail
- * panel. State persists per stable node id, so it survives re-renders and
- * theme switches.
+ * Clicking a topic selects it; progress changes happen in the detail panel
+ * (or through the handle), never by stray clicks on the chart. State
+ * persists per stable node id, so it survives re-renders and theme
+ * switches. A separate, composable hover spotlight lights structural
+ * scopes — column, chapter, topic subtree — while the rest recedes.
  */
 
 export type RoadmapProgressState = "in-progress" | "done" | "skipped";
@@ -312,8 +313,11 @@ const interactiveCss = `
 .roadmap--spotlight .roadmap__node--done:hover{opacity:.8}
 .roadmap--spotlight .roadmap__node--skipped:hover{opacity:.55}
 .roadmap--spotlight-lit .roadmap__node:not(.roadmap__node--lit){opacity:.4}
+.roadmap--spotlight .roadmap__connector{transition:opacity .18s}
+.roadmap--spotlight-lit .roadmap__connector--dim{opacity:.2}
 @media (prefers-reduced-motion: reduce){
 .roadmap--spotlight .roadmap__node,
+.roadmap--spotlight .roadmap__connector,
 .roadmap--spotlight .roadmap__node .roadmap__frame{transition:none}}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible .roadmap__frame,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible .roadmap__frame,
@@ -727,19 +731,73 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 	const nodes = [...svg.querySelectorAll<SVGGElement>("g.roadmap__node")];
 	const byId = new Map(nodes.map((node) => [stableNodeId(node.id, prefix), node]));
 	const children = new Map<string, string[]>();
+	const parents = new Map<string, string>();
+	const groupOf = new Map<string, string>();
 	for (const node of nodes) {
+		const id = stableNodeId(node.id, prefix);
+		const group = node.getAttribute("data-group");
+		if (group) groupOf.set(id, group);
 		const parent = node.getAttribute("data-parent");
 		if (!parent) continue;
+		parents.set(id, parent);
 		const siblings = children.get(parent) ?? [];
-		siblings.push(stableNodeId(node.id, prefix));
+		siblings.push(id);
 		children.set(parent, siblings);
 	}
 
+	// Path links dim with their targets: a child-cluster link follows its
+	// owner topic, a grid gutter line follows its child (or the child's
+	// parent, keeping chained gutter segments continuous), and a chapter's
+	// group link follows whether the group holds any lit node.
+	interface PathLink {
+		readonly element: SVGElement;
+		isActive(lit: ReadonlySet<string>, groups: ReadonlySet<string>): boolean;
+	}
+	const pathLinks: PathLink[] = [];
+	for (const connector of svg.querySelectorAll<SVGElement>(".roadmap__connector")) {
+		const id = stableNodeId(connector.id, prefix);
+		const kind = connector.getAttribute("data-roadmap-element");
+		if (kind === "topicToChildren-connector" && id.endsWith("-children-link")) {
+			const owner = id.slice(0, -"-children-link".length);
+			pathLinks.push({ element: connector, isActive: (lit) => lit.has(owner) });
+		} else if (kind === "chapterToTopics-connector") {
+			const group = connector.getAttribute("data-group");
+			if (group) {
+				pathLinks.push({ element: connector, isActive: (_, groups) => groups.has(group) });
+			}
+		} else if (kind === "tree-line" && id.endsWith("-grid-link")) {
+			const child = id.slice(0, -"-grid-link".length);
+			pathLinks.push({
+				element: connector,
+				isActive: (lit) => {
+					const parent = parents.get(child);
+					return lit.has(child) || (parent !== undefined && lit.has(parent));
+				},
+			});
+		}
+	}
+	const syncPathLinks = (lit: ReadonlySet<string>, groups: ReadonlySet<string>): void => {
+		for (const link of pathLinks) {
+			link.element.classList.toggle("roadmap__connector--dim", !link.isActive(lit, groups));
+		}
+	};
+
 	let litRoot: string | undefined;
 	let lit: SVGGElement[] = [];
+	let litIds: ReadonlySet<string> = new Set();
+	let litGroups: ReadonlySet<string> = new Set();
+	let pendingClear: ReturnType<typeof setTimeout> | undefined;
+	const cancelPendingClear = (): void => {
+		if (pendingClear !== undefined) clearTimeout(pendingClear);
+		pendingClear = undefined;
+	};
 	const clear = (): void => {
+		cancelPendingClear();
 		for (const element of lit) element.classList.remove("roadmap__node--lit");
+		for (const link of pathLinks) link.element.classList.remove("roadmap__connector--dim");
 		lit = [];
+		litIds = new Set();
+		litGroups = new Set();
 		litRoot = undefined;
 		svg.classList.remove("roadmap--spotlight-lit");
 	};
@@ -747,43 +805,89 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 		if (litRoot === rootId) return;
 		clear();
 		litRoot = rootId;
+		const ids = new Set<string>();
 		const stack = [rootId];
 		while (stack.length > 0) {
 			const id = stack.pop();
-			if (!id) continue;
+			if (!id || ids.has(id)) continue;
+			ids.add(id);
+			stack.push(...(children.get(id) ?? []));
+		}
+		// The path up stays lit for orientation — a topic keeps its column
+		// header and chapter visible, and a lit chapter brings its comment.
+		let ancestor = parents.get(rootId);
+		while (ancestor) {
+			ids.add(ancestor);
+			for (const childId of children.get(ancestor) ?? []) {
+				const role = byId.get(childId)?.getAttribute("data-roadmap-element");
+				if (role === "chapter-description") ids.add(childId);
+			}
+			ancestor = parents.get(ancestor);
+		}
+		for (const id of ids) {
 			const element = byId.get(id);
 			if (element) {
 				element.classList.add("roadmap__node--lit");
 				lit.push(element);
 			}
-			stack.push(...(children.get(id) ?? []));
 		}
+		litIds = ids;
+		const groups = new Set<string>();
+		for (const id of ids) {
+			const group = groupOf.get(id);
+			if (group) groups.add(group);
+		}
+		litGroups = groups;
+		syncPathLinks(ids, groups);
 		svg.classList.add("roadmap--spotlight-lit");
 	};
+	// The spotlight is sticky over the lit scope's own hull: the board paths
+	// are real elements, so crossing an in-group gap keeps the pointer on a
+	// board that belongs to the scope and nothing resets. Everywhere else a
+	// short grace period bridges gap crossings (no flashing) but releases the
+	// spotlight when the pointer actually settles outside the scope.
+	const graceMs = 250;
+	const boardInScope = (target: Element | null): boolean => {
+		const board = target?.closest(
+			'[data-roadmap-element="topic-group"],[data-roadmap-element="nested-group"]',
+		);
+		if (!board) return false;
+		const boardId = stableNodeId(board.id, prefix);
+		if (boardId.endsWith("-children")) {
+			return litIds.has(boardId.slice(0, -"-children".length));
+		}
+		return litGroups.has(boardId.replace(/-grid-\d+$/u, ""));
+	};
 	const onOver = (event: PointerEvent): void => {
-		const source = (event.target as Element | null)?.closest(spotlightSources);
-		if (!source) {
-			clear();
+		const target = event.target as Element | null;
+		const source = target?.closest(spotlightSources);
+		if (source) {
+			// The chapter comment has no scope of its own — hovering it
+			// spotlights the chapter it describes.
+			const rootId =
+				source.getAttribute("data-roadmap-element") === "chapter-description"
+					? (source.getAttribute("data-parent") ?? stableNodeId(source.id, prefix))
+					: stableNodeId(source.id, prefix);
+			light(rootId);
+			cancelPendingClear();
 			return;
 		}
-		// The chapter comment has no scope of its own — hovering it spotlights
-		// the chapter it describes.
-		const rootId =
-			source.getAttribute("data-roadmap-element") === "chapter-description"
-				? (source.getAttribute("data-parent") ?? stableNodeId(source.id, prefix))
-				: stableNodeId(source.id, prefix);
-		light(rootId);
+		if (litRoot === undefined) return;
+		if (boardInScope(target)) {
+			cancelPendingClear();
+			return;
+		}
+		if (pendingClear === undefined) pendingClear = setTimeout(clear, graceMs);
 	};
-	const onOut = (event: PointerEvent): void => {
-		const next = event.relatedTarget as Element | null;
-		if (!next?.closest(spotlightSources)) clear();
+	const onLeave = (): void => {
+		clear();
 	};
 	svg.addEventListener("pointerover", onOver);
-	svg.addEventListener("pointerout", onOut);
+	svg.addEventListener("pointerleave", onLeave);
 	return () => {
 		clear();
 		svg.removeEventListener("pointerover", onOver);
-		svg.removeEventListener("pointerout", onOut);
+		svg.removeEventListener("pointerleave", onLeave);
 		svg.classList.remove("roadmap--spotlight");
 	};
 }

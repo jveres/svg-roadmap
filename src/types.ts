@@ -272,6 +272,12 @@ export interface LayoutNode extends Rect {
 	 */
 	parentId?: string;
 	/**
+	 * Tree-group membership emitted as `data-group`, pairing top-level tree
+	 * topics with their chapter connector so hosts can dim inactive paths.
+	 * Mutable: stamped after the cluster is packed.
+	 */
+	groupId?: string;
+	/**
 	 * Detail-note inline model. Rendered twice into the SVG: plain text as
 	 * the node's `<desc>` for assistive tech, and a whitelisted JSON model in
 	 * `data-roadmap-note` so hosts can rebuild rich text without a parser.
@@ -329,6 +335,8 @@ export interface LayoutConnector {
 	readonly from: Point;
 	readonly to: Point;
 	readonly depth: number;
+	/** Tree group this connector serves, matching its member nodes' `data-group`. */
+	readonly groupId?: string;
 	/**
 	 * `elbow` routes vertical-then-horizontal into the target's side — the
 	 * tree-gutter look grid nesting uses. Elbow connectors skip lane solving.
