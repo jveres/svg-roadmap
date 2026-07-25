@@ -716,13 +716,24 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 				pathLinks.push({ element: connector, isActive: (_, groups) => groups.has(group) });
 			}
 		} else if (kind === "tree-line" && id.endsWith("-grid-link")) {
+			// The horizontal stub enters exactly one card; it follows that
+			// child alone, so dimmed siblings keep no lit T-junctions.
 			const child = id.slice(0, -"-grid-link".length);
+			pathLinks.push({ element: connector, isActive: (lit) => lit.has(child) });
+		} else if (kind === "tree-line" && id.endsWith("-grid-rail")) {
+			// The vertical rail spans from the previous sibling's junction down
+			// to this child's. The run from the parent to a lit child passes
+			// every earlier sibling's rail, so a rail lights when this child or
+			// any later sibling under the same parent is lit. Ancestors are
+			// always in the lit set, which keeps deep paths continuous.
+			const child = id.slice(0, -"-grid-rail".length);
+			const parent = parents.get(child);
+			const siblings = parent === undefined ? [child] : (children.get(parent) ?? [child]);
+			const index = siblings.indexOf(child);
+			const tail = siblings.slice(index === -1 ? 0 : index);
 			pathLinks.push({
 				element: connector,
-				isActive: (lit) => {
-					const parent = parents.get(child);
-					return lit.has(child) || (parent !== undefined && lit.has(parent));
-				},
+				isActive: (lit) => tail.some((sibling) => lit.has(sibling)),
 			});
 		}
 	}

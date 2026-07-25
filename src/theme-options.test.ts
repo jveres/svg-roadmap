@@ -253,9 +253,13 @@ roadmap:
 			"# T\n\n* Chapter\n  + Head\n    * Parent\n      * Left child\n        * Grand child\n  * Head two\n    * Parent two\n      - Right child\n",
 		);
 		const elbows = generated.layout.connectors.filter((connector) => connector.shape === "elbow");
-		expect(elbows).toHaveLength(3);
+		// Each nested child draws a vertical rail plus a horizontal stub, so
+		// hosts can light a gutter path without its siblings' T-junctions.
+		expect(elbows.filter((connector) => connector.id.endsWith("-grid-rail"))).toHaveLength(3);
+		const stubs = elbows.filter((connector) => connector.id.endsWith("-grid-link"));
+		expect(stubs).toHaveLength(3);
 		const bySide = (sign: number) =>
-			elbows.filter((connector) => Math.sign(connector.to.x - connector.from.x) === sign);
+			stubs.filter((connector) => Math.sign(connector.to.x - connector.from.x) === sign);
 		// Left-side default enters the child's left edge; `-` mirrors right.
 		expect(bySide(1)).toHaveLength(2);
 		expect(bySide(-1)).toHaveLength(1);

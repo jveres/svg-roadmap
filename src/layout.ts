@@ -747,14 +747,27 @@ function layoutGridGroup(
 				const side = treeSide.get(entry.parentId) ?? -1;
 				const gutterX = side < 0 ? entry.node.x - 8 : rectRight(entry.node) + 8;
 				const anchorY = rectCenter(entry.node).y;
-				context.connectors.push({
-					id: `${entry.topic.id}-grid-link`,
-					kind: "topicToChildren",
-					shape: "elbow",
-					from: { x: gutterX, y: stemBottom.get(entry.parentId) ?? rectBottom(parent) },
-					to: { x: side < 0 ? entry.node.x : rectRight(entry.node), y: anchorY },
-					depth: entry.topic.depth,
-				});
+				// Rail and stub are separate paths so a host can light the
+				// vertical run to an active child without also lighting the
+				// T-junction stubs into its dimmed siblings.
+				context.connectors.push(
+					{
+						id: `${entry.topic.id}-grid-rail`,
+						kind: "topicToChildren",
+						shape: "elbow",
+						from: { x: gutterX, y: stemBottom.get(entry.parentId) ?? rectBottom(parent) },
+						to: { x: gutterX, y: anchorY },
+						depth: entry.topic.depth,
+					},
+					{
+						id: `${entry.topic.id}-grid-link`,
+						kind: "topicToChildren",
+						shape: "elbow",
+						from: { x: gutterX, y: anchorY },
+						to: { x: side < 0 ? entry.node.x : rectRight(entry.node), y: anchorY },
+						depth: entry.topic.depth,
+					},
+				);
 				stemBottom.set(entry.parentId, anchorY);
 			}
 		}
