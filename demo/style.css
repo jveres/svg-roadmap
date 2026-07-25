@@ -17,8 +17,10 @@
 	--panel-heading-title: #292b35;
 	--panel-heading-background: #fff;
 	--panel-heading-border: #d9dbe4;
+	--panel-toggle-hover: #ebedf3;
 	--editor-color: #252733;
 	--editor-background: #f8f8fb;
+	--editor-focus-background: #fff;
 	--preview-grid: #f1f1f4;
 	--preview-background: #fafafd;
 	--preview-shadow: rgb(24 25 34 / 16%);
@@ -30,6 +32,13 @@
 	color: var(--app-color);
 	background: var(--app-background);
 	font-synthesis: none;
+
+	/*
+	 * Both panel headings size to this: the chevron in one, the title box in
+	 * the other. Matching the tallest child keeps the two headings equal
+	 * without restating the padding and border arithmetic here.
+	 */
+	--panel-toggle-size: 22px;
 }
 
 :root[data-workbench-theme="dark"] {
@@ -51,8 +60,10 @@
 	--panel-heading-title: #f0f1f6;
 	--panel-heading-background: #1c1e28;
 	--panel-heading-border: #343744;
+	--panel-toggle-hover: #2a2d3a;
 	--editor-color: #e4e6ef;
 	--editor-background: #171922;
+	--editor-focus-background: #1c1f2a;
 	--preview-grid: #20222c;
 	--preview-background: #15171f;
 	--preview-shadow: rgb(0 0 0 / 38%);
@@ -115,6 +126,17 @@ textarea {
 	gap: 10px;
 }
 
+/* Narrow viewports wrap the controls instead of pushing them off-screen. */
+.actions {
+	flex-wrap: wrap;
+	row-gap: 8px;
+}
+
+.toolbar select {
+	max-width: 100%;
+	min-width: 0;
+}
+
 .theme-picker {
 	font-size: 13px;
 }
@@ -144,10 +166,20 @@ button:hover {
 }
 
 button:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+select:focus-visible {
 	outline: 3px solid var(--focus-color);
 	outline-offset: 2px;
+}
+
+/*
+ * The editor fills its whole panel, so a ring around it read as a thick blue
+ * border on the layout rather than as focus. The caret is the real focus
+ * indicator for a text field; this adds a quiet tint so the state is still
+ * visible before typing.
+ */
+textarea:focus-visible {
+	outline: none;
+	background: var(--editor-focus-background);
 }
 
 .workbench {
@@ -156,6 +188,44 @@ textarea:focus-visible {
 	gap: 1px;
 	min-height: calc(100vh - 83px);
 	background: var(--divider-color);
+}
+
+/*
+ * Editor collapsed: the preview takes the remaining width and the editor
+ * keeps a narrow rail, so the chevron that collapsed it stays in place.
+ */
+.workbench--preview-only {
+	grid-template-columns: auto 1fr;
+}
+
+.workbench--preview-only .editor-panel {
+	grid-template-rows: 1fr;
+}
+
+.workbench--preview-only .editor-panel .panel-heading {
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 14px;
+	padding: 10px 9px;
+	border-bottom: 0;
+}
+
+.workbench--preview-only .editor-panel h2 {
+	display: block;
+	margin: 0;
+	writing-mode: vertical-rl;
+	font-size: 12.5px;
+	letter-spacing: 0.02em;
+}
+
+.workbench--preview-only .editor-panel textarea,
+.workbench--preview-only .editor-panel .panel-heading span {
+	display: none;
+}
+
+.workbench--preview-only .panel-toggle svg {
+	transform: rotate(180deg);
 }
 
 .editor-panel,
@@ -178,8 +248,48 @@ textarea:focus-visible {
 }
 
 .panel-heading h2 {
+	display: flex;
+	align-items: center;
+	/* Matches the chevron, so a heading without one is exactly as tall. */
+	min-height: var(--panel-toggle-size);
+	margin-right: auto;
 	color: var(--panel-heading-title);
 	font-size: 14px;
+}
+
+/*
+ * Disclosure chevron sitting before the panel title. Overrides the toolbar
+ * button styling, which is built for dark controls on the toolbar.
+ */
+.panel-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: var(--panel-toggle-size);
+	height: var(--panel-toggle-size);
+	padding: 0;
+	border: 0;
+	border-radius: 5px;
+	color: var(--panel-heading-color);
+	background: none;
+	cursor: pointer;
+}
+
+.panel-toggle:hover {
+	color: var(--panel-heading-title);
+	background: var(--panel-toggle-hover);
+}
+
+.panel-toggle svg {
+	width: 15px;
+	height: 15px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.panel-toggle svg {
+		transition: transform 140ms ease;
+	}
 }
 
 .panel-heading span {
@@ -194,7 +304,6 @@ textarea {
 	resize: none;
 	border: 0;
 	border-radius: 0;
-	outline-offset: -3px;
 	color: var(--editor-color);
 	background: var(--editor-background);
 	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -240,10 +349,51 @@ textarea {
 	.toolbar {
 		align-items: flex-start;
 		flex-direction: column;
+		gap: 14px;
 	}
 
-	.workbench {
+	.actions {
+		width: 100%;
+	}
+
+	.theme-picker {
+		flex: 1 1 auto;
+	}
+
+	.workbench,
+	.workbench--preview-only {
 		grid-template-columns: 1fr;
+	}
+
+	/*
+	 * Stacked rows are auto-sized, and a grid stretches leftover space into
+	 * them by default. Pin the collapsed header to its content height so the
+	 * preview takes the remaining space instead of splitting it.
+	 */
+	.workbench--preview-only {
+		grid-template-rows: auto 1fr;
+	}
+
+	/*
+	 * Stacked panels collapse as an accordion, so the heading stays a normal
+	 * horizontal bar instead of turning into a vertical rail.
+	 */
+	.workbench--preview-only .editor-panel .panel-heading {
+		flex-direction: row;
+		align-items: center;
+		gap: 16px;
+		padding: 10px 16px;
+		border-bottom: 1px solid var(--panel-heading-border);
+	}
+
+	.workbench--preview-only .editor-panel h2 {
+		margin-right: auto;
+		writing-mode: horizontal-tb;
+		font-size: 14px;
+	}
+
+	.workbench--preview-only .panel-toggle svg {
+		transform: rotate(-90deg);
 	}
 
 	textarea {

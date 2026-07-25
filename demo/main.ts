@@ -82,9 +82,18 @@ app.innerHTML = `
 			<button id="download" type="button">Download SVG</button>
 		</div>
 	</header>
-	<main class="workbench">
-		<section class="editor-panel" aria-labelledby="editor-title">
+	<main id="workbench" class="workbench">
+		<section id="editor-panel" class="editor-panel" aria-labelledby="editor-title">
 			<div class="panel-heading">
+				<button
+					id="toggle-editor"
+					class="panel-toggle"
+					type="button"
+					aria-controls="source"
+					aria-expanded="true"
+				>
+					<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8 10 12.5"/></svg>
+				</button>
 				<h2 id="editor-title">Markdown</h2>
 				<span id="stats">Loading parser…</span>
 			</div>
@@ -114,6 +123,10 @@ const preview = requiredElement<HTMLDivElement>("#preview");
 const stats = requiredElement<HTMLSpanElement>("#stats");
 const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
 const download = requiredElement<HTMLButtonElement>("#download");
+const workbench = requiredElement<HTMLElement>("#workbench");
+const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
+const previewOnlyClass = "workbench--preview-only";
+let editorHidden = false;
 
 function loadSample(id: string): void {
 	const sample = samples[id];
@@ -130,6 +143,7 @@ interface WorkbenchSettings {
 	readonly sample?: string;
 	readonly theme?: string;
 	readonly mode?: string;
+	readonly editorHidden?: boolean;
 }
 
 function loadStoredSettings(): WorkbenchSettings {
@@ -148,7 +162,8 @@ function saveSettings(): void {
 				sample: sampleSelect.value,
 				theme: themePresetSelect.value,
 				mode: colorModeSelect.value,
-			}),
+				editorHidden,
+			} satisfies WorkbenchSettings),
 		);
 	} catch {
 		// Storage may be unavailable (private browsing); settings just do not persist.
@@ -161,11 +176,27 @@ function applyStoredValue(select: HTMLSelectElement, value: string | undefined):
 	}
 }
 
+/**
+ * Collapses the Markdown editor so the preview spans the full window. The
+ * panel keeps a narrow rail carrying its chevron and title, so the control
+ * that collapsed it is still where the reader left it. The label lives on
+ * aria-label rather than in the button, whose content is the chevron.
+ */
+function setEditorHidden(hidden: boolean): void {
+	editorHidden = hidden;
+	const label = hidden ? "Show Markdown editor" : "Hide Markdown editor";
+	workbench.classList.toggle(previewOnlyClass, hidden);
+	toggleEditor.setAttribute("aria-expanded", hidden ? "false" : "true");
+	toggleEditor.setAttribute("aria-label", label);
+	toggleEditor.title = label;
+}
+
 const storedSettings = loadStoredSettings();
 applyStoredValue(sampleSelect, storedSettings.sample);
 loadSample(sampleSelect.value);
 applyStoredValue(themePresetSelect, storedSettings.theme);
 applyStoredValue(colorModeSelect, storedSettings.mode);
+setEditorHidden(storedSettings.editorHidden === true);
 let svg = "";
 let renderTimer: number | undefined;
 let generator: RoadmapGenerator | undefined;
@@ -243,6 +274,10 @@ colorModeSelect.addEventListener("change", () => {
 });
 systemTheme.addEventListener("change", () => {
 	if (colorModeSelect.value === "system") render();
+});
+toggleEditor.addEventListener("click", () => {
+	setEditorHidden(!editorHidden);
+	saveSettings();
 });
 download.addEventListener("click", () => {
 	if (!svg) return;
