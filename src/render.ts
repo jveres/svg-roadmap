@@ -74,8 +74,13 @@ function markerAnchor(
 		return { refX: 1, trimFactor: 0.78 };
 	}
 	if (endShape === "arrow") return { refX: 5, trimFactor: 0.3 };
-	if (endShape === "diamond") return { refX: 9, trimFactor: 0.25 };
-	return { refX: 8.7, trimFactor: 0.25 };
+	// Overlapped circles and diamonds must swallow the stroke's round cap:
+	// the cap reaches up to ~1.25 marker units past the trimmed endpoint, so
+	// the reference point stays that far behind the shape's leading edge —
+	// otherwise a dash landing at the path end pokes out in front of the
+	// shape. The extra trim keeps the leading edge on its original spot.
+	if (endShape === "diamond") return { refX: 7.2, trimFactor: 0.43 };
+	return { refX: 6.8, trimFactor: 0.44 };
 }
 
 /**
@@ -346,8 +351,13 @@ function renderNodeBadges(node: LayoutNode, theme: RoadmapTheme, prefix: string)
 	if (badges.length === 0) return "";
 	const size = badgeSize(node, theme);
 	const advance = size * 0.75 + theme.badges.gap;
-	const startX = rectRight(node) - size * 0.5;
-	const y = node.y - size * 0.5;
+	// A capsule's top-right corner is recessed by its cap curve, so the badge
+	// anchors on the cap's 45° shoulder instead of the bounding-box corner —
+	// otherwise it floats detached outside the painted shape.
+	const capsuleInset =
+		cardTheme(node, theme)?.shape === "capsule" ? (node.height / 2) * (1 - Math.SQRT1_2) : 0;
+	const startX = rectRight(node) - size * 0.5 - capsuleInset;
+	const y = node.y - size * 0.5 + capsuleInset;
 	return badges
 		.map((badge, index) => renderBadge(badge, startX - index * advance, y, size, prefix))
 		.join("");
@@ -363,12 +373,10 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 		attributes.push('font-family="ui-monospace, SFMono-Regular, Menlo, monospace"');
 	if (marks.has("highlight")) classes.push("roadmap__inline", "roadmap__inline--highlight");
 	if (marks.has("insert")) classes.push("roadmap__inline", "roadmap__inline--insert");
-	const decorations: string[] = [];
-	if (marks.has("strikethrough")) decorations.push("line-through");
-	if (segment.destination && !segment.abbreviationIndicator) {
-		decorations.push("underline");
-	}
-	if (decorations.length > 0) attributes.push(`text-decoration="${decorations.join(" ")}"`);
+	// Link underlines are painted rects (see segmentBackground); only the
+	// strikethrough remains a text-decoration, where drawing over the glyphs
+	// is the correct rendering in every engine.
+	if (marks.has("strikethrough")) attributes.push('text-decoration="line-through"');
 	if (segment.destination) attributes.push(`fill="${cssToken("inline-link")}"`);
 	else attributes.push(`fill="${cssToken(textToken(node))}"`);
 	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
@@ -394,28 +402,47 @@ function segmentBackground(
 	fontSize: number,
 	width: number,
 ): string {
+	const parts: string[] = [];
 	if (segment.marks.includes("highlight")) {
-		return `<rect class="roadmap__highlight" x="${x - 1}" y="${baseline - fontSize * 0.8}" width="${width + 2}" height="${fontSize * 0.96}" rx="1" fill="${cssToken("inline-highlight-background")}"/>`;
-	}
-	if (segment.marks.includes("insert")) {
-		if (node.kind === "heading") {
-			const thickness = node.depth === 0 ? 1 : 2;
-			const offset = node.depth === 0 ? 2 : 1;
-			return `<rect class="roadmap__insert-underline" x="${x}" y="${baseline + offset}" width="${width}" height="${thickness}" fill="${cssToken("inline-insert-underline")}"/>`;
-		}
-		return `<rect class="roadmap__insert-underline" x="${x}" y="${baseline + 1}" width="${width}" height="${fontSize * 0.15}" fill="${cssToken("inline-insert-underline")}"/>`;
-	}
-	if (segment.marks.includes("code")) {
-		return `<rect class="roadmap__code-background" x="${x - 2}" y="${baseline - fontSize * 0.82}" width="${width + 4}" height="${fontSize}" rx="2" fill="${cssToken("inline-code-background")}"/>`;
+		parts.push(
+			`<rect class="roadmap__highlight" x="${x - 1}" y="${baseline - fontSize * 0.8}" width="${width + 2}" height="${fontSize * 0.96}" rx="1" fill="${cssToken("inline-highlight-background")}"/>`,
+		);
+	} else if (segment.marks.includes("insert")) {
+		// One relative weight (~0.1em) everywhere, so a large title's insert
+		// rule reads at least as strong as the same mark in body text.
+		const thickness = Math.max(1, Math.round(fontSize * 0.1 * 2) / 2);
+		const offset = node.kind === "heading" && node.depth === 0 ? 2 : 1;
+		parts.push(
+			`<rect class="roadmap__insert-underline" x="${x}" y="${baseline + offset}" width="${width}" height="${thickness}" fill="${cssToken("inline-insert-underline")}"/>`,
+		);
+	} else if (segment.marks.includes("code")) {
+		parts.push(
+			`<rect class="roadmap__code-background" x="${x - 2}" y="${baseline - fontSize * 0.82}" width="${width + 4}" height="${fontSize}" rx="2" fill="${cssToken("inline-code-background")}"/>`,
+		);
 	}
 	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
 		// Defined terms get a painted dotted rule (browsers do not reliably
 		// honor text-decoration-style on SVG text), so they read as
-		// definitions rather than links.
-		const y = baseline + 2.5;
-		return `<line class="roadmap__abbreviation-underline" x1="${x}" y1="${y}" x2="${x + width}" y2="${y}" stroke="${cssToken("inline-abbreviation-underline")}" stroke-width="1" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>`;
+		// definitions rather than links. The rule is snapped to the pixel
+		// grid: a hairline dash pattern at fractional coordinates antialiases
+		// into smeared diagonal marks instead of dots.
+		const y = Math.round(baseline + 2.5) + 0.5;
+		const startX = Math.round(x);
+		parts.push(
+			`<line class="roadmap__abbreviation-underline" x1="${startX}" y1="${y}" x2="${startX + Math.round(width)}" y2="${y}" stroke="${cssToken("inline-abbreviation-underline")}" stroke-width="1" stroke-dasharray="1 2"/>`,
+		);
 	}
-	return "";
+	if (segment.destination && !segment.abbreviationIndicator && !segment.marks.includes("insert")) {
+		// Link underlines are painted too: SVG text-decoration is not
+		// interoperable (WebKit segments it per glyph under letter-spacing
+		// and textLength; Firefox paints it over the glyphs).
+		const thickness = Math.max(1, Math.round((fontSize / 15) * 2) / 2);
+		const y = baseline + Math.max(2, fontSize * 0.13);
+		parts.push(
+			`<rect class="roadmap__link-underline" x="${x}" y="${y}" width="${width}" height="${thickness}" fill="${cssToken("inline-link")}"/>`,
+		);
+	}
+	return parts.join("");
 }
 
 interface ShortcodeEmojiGeometry {
@@ -539,9 +566,12 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 			const destination = segment.destination
 				? safeLinkDestination(segment.destination)
 				: undefined;
+			// SVG hit-testing on text is per glyph, so without a backing rect
+			// the pointer flickers between characters of a link.
+			const linkHitArea = `<rect x="${x}" y="${paintedLine.y}" width="${segmentWidth}" height="${paintedLine.height}" fill="none" pointer-events="all"/>`;
 			text.push(
 				destination
-					? `<a class="roadmap__link" href="${escapeXml(destination)}" target="_blank" rel="noopener noreferrer">${content}</a>`
+					? `<a class="roadmap__link" href="${escapeXml(destination)}" target="_blank" rel="noopener noreferrer">${linkHitArea}${content}</a>`
 					: `<g>${content}</g>`,
 			);
 			x += segmentWidth;
@@ -572,8 +602,10 @@ function renderFlowingText(node: LayoutNode): string {
 	for (const [lineIndex, line] of node.text.lines.entries()) {
 		const paintedLine = paintedLines[lineIndex];
 		if (!paintedLine) continue;
-		const lineCenterY = paintedLine.y + paintedLine.height / 2;
-		const baseline = lineCenterY + fontSize * 0.35;
+		// The same baseline the positioned path and the collision frames use:
+		// deriving it any other way makes mixed positioned/flowing blocks show
+		// uneven line spacing and drift against capsule optical centering.
+		const baseline = paintedLine.baseline;
 		let backgroundX = paintedLine.x;
 		for (const segment of line.segments) {
 			const segmentWidth = segment.width * scale * renderScaleX;
@@ -620,16 +652,17 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 	// Painted decoration rects must line up with glyphs exactly. WebKit
 	// distributes textLength across a flowing line differently from other
 	// engines, so lines with painted decorations render positioned instead.
-	// Highlights and inserts always paint rects: SVG text-decoration paint
-	// order is not interoperable (Firefox draws decorations over the glyphs).
+	// Highlights, inserts, and link/term underlines always paint rects: SVG
+	// text-decoration paint order and segmentation are not interoperable
+	// (Firefox draws decorations over the glyphs, WebKit splits underlines
+	// per glyph under letter-spacing and textLength).
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
 				(segment.shortcode !== undefined && emojiArtwork(segment.shortcode) !== undefined) ||
 				segment.marks.includes("code") ||
-				(segment.abbreviation !== undefined &&
-					!segment.destination &&
-					!segment.abbreviationIndicator) ||
+				(segment.abbreviation !== undefined && !segment.abbreviationIndicator) ||
+				segment.destination !== undefined ||
 				segment.marks.includes("highlight") ||
 				segment.marks.includes("insert"),
 		);

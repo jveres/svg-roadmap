@@ -13,53 +13,55 @@ export interface DomMeasurementHandle {
 	dispose(): void;
 }
 
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
 /**
- * Creates a provider backed by a hidden measuring element. The element is
- * `visibility: hidden` (never `display: none`, which measures zero), attached
- * to `document.body` so no transformed or hidden ancestor distorts its rects,
- * shielded from page CSS with `all: initial`, and set to `white-space: pre`
- * so segment whitespace keeps its width. Widths come from
- * `getBoundingClientRect` for sub-pixel precision, corrected by a one-time
- * calibration probe in case an ancestor still scales the page.
+ * Creates a provider backed by a hidden SVG `<text>` element. Measuring in
+ * SVG — not an HTML div — is load-bearing: Safari resolves generic font
+ * families differently for SVG text than for HTML, so an HTML-measured width
+ * can be several percent wide and `textLength` then visibly stretches the
+ * glyphs. `getComputedTextLength()` reads the same advances the rendered
+ * roadmap will use, and is independent of ancestor transforms, so no
+ * calibration pass is needed. The host is `visibility: hidden` (never
+ * `display: none`, which measures zero), attached to `document.body`, and
+ * shielded from page CSS; `xml:space="preserve"` keeps segment whitespace.
  */
 export function createDomMeasurementProvider(targetDocument?: Document): DomMeasurementHandle {
 	const hostDocument = targetDocument ?? globalThis.document;
 	if (!hostDocument?.body) {
 		throw new Error("DOM measurement needs a document with a body; run in a browser or pass one.");
 	}
-	const host = hostDocument.createElement("div");
-	host.style.all = "initial";
+	const host = hostDocument.createElementNS(SVG_NAMESPACE, "svg");
+	host.setAttribute("width", "0");
+	host.setAttribute("height", "0");
+	host.setAttribute("aria-hidden", "true");
 	host.style.position = "absolute";
 	host.style.top = "0";
 	host.style.left = "-99999px";
 	host.style.visibility = "hidden";
-	host.style.whiteSpace = "pre";
+	host.style.overflow = "hidden";
 	host.style.pointerEvents = "none";
-	host.style.direction = "ltr";
-	host.style.letterSpacing = "0";
-	host.style.setProperty("-webkit-text-size-adjust", "none");
-	host.setAttribute("aria-hidden", "true");
 	hostDocument.body.appendChild(host);
 
-	const probe = hostDocument.createElement("div");
-	probe.style.width = "100px";
-	host.appendChild(probe);
-	const probeWidth = probe.getBoundingClientRect().width;
-	const calibration = probeWidth > 0 ? 100 / probeWidth : 1;
-	host.removeChild(probe);
-
-	const span = hostDocument.createElement("span");
-	host.appendChild(span);
+	const text = hostDocument.createElementNS(SVG_NAMESPACE, "text") as SVGTextElement;
+	text.setAttribute("x", "0");
+	text.setAttribute("y", "0");
+	text.setAttribute("xml:space", "preserve");
+	// Tracking is added by the caller per character; page CSS must not leak in.
+	text.style.letterSpacing = "0";
+	text.style.whiteSpace = "pre";
+	text.style.direction = "ltr";
+	host.appendChild(text);
 	let currentFont = "";
 
-	const provider: MeasurementProvider = (text, style) => {
+	const provider: MeasurementProvider = (value, style) => {
 		const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
 		if (font !== currentFont) {
-			span.style.font = font;
+			text.style.font = font;
 			currentFont = font;
 		}
-		span.textContent = text;
-		return span.getBoundingClientRect().width * calibration;
+		text.textContent = value;
+		return text.getComputedTextLength();
 	};
 
 	return {

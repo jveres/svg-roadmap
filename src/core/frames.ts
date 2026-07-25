@@ -114,11 +114,14 @@ export function fittedCapsuleFrame(node: LayoutNode): Rect {
 	const lastLine = lines.at(-1);
 	if (!firstLine || !lastLine) return node;
 	const fontSize = node.text.fontSize * node.text.renderScale;
-	const padding = Math.max(4, fontSize * 0.3);
+	const paddingY = Math.max(6, fontSize * 0.45);
+	// The widest line meets the capsule at its fattest point, so side air
+	// needs to be visibly larger than the vertical padding to read as padded.
+	const paddingX = Math.max(9, fontSize * 0.7);
 	const verticalSafety = 1;
 	const curveClearance = Math.max(1.5, fontSize * 0.12);
-	const top = Math.min(...lines.map((line) => line.y)) - padding;
-	const bottom = Math.max(...lines.map((line) => line.y + line.height)) + padding;
+	const top = Math.min(...lines.map((line) => line.y)) - paddingY;
+	const bottom = Math.max(...lines.map((line) => line.y + line.height)) + paddingY;
 	const centerX = node.x + node.width / 2;
 	// Optical vertical centering: line boxes reserve a full descender row that
 	// mostly reads as empty space, so center the capsule on the cap-height
@@ -126,7 +129,7 @@ export function fittedCapsuleFrame(node: LayoutNode): Rect {
 	// the height symmetrically so the shifted capsule still covers every line.
 	const centerY = (firstLine.baseline - fontSize * 0.72 + lastLine.baseline) / 2;
 	const height = 2 * Math.max(centerY - top, bottom - centerY);
-	let width = Math.max(...lines.map((line) => line.width)) + padding * 2;
+	let width = Math.max(...lines.map((line) => line.width)) + paddingX * 2;
 	const points = lines.flatMap((line) => {
 		// Line widths are pinned by textLength, so a flat safety margin is
 		// enough — no allowance needed for fallback-font width drift.

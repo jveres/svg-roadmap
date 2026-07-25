@@ -248,7 +248,7 @@ describe("SVG rendering boundaries", () => {
 		const svg = renderRoadmapSvg(layout, sciFiLightTheme, { idPrefix: "sci-fi-flow" });
 
 		expect(svg).toContain('text-anchor="middle"');
-		expect(svg).toContain('class="roadmap__flow-line" x="100" y="34.5"');
+		expect(svg).toContain('class="roadmap__flow-line" x="100" y="34"');
 		expect(svg).toContain(">competencies cover </tspan>");
 		expect(svg).toMatch(/<tspan\b[^>]*font-weight="700"[^>]*>end to end<\/tspan>/u);
 		expect(svg).toContain('textLength="100" lengthAdjust="spacingAndGlyphs"');
@@ -337,9 +337,12 @@ describe("SVG rendering boundaries", () => {
 
 		expect(svg).toContain('class="roadmap__emoji roadmap__emoji--beginner"');
 		expect(svg).toContain('textLength="58" lengthAdjust="spacingAndGlyphs"');
+		// The link line renders positioned (its underline is a painted rect),
+		// each segment fitted to its own measured width.
 		expect(svg).toMatch(
-			/<text class="roadmap__flow-line"[^>]*><tspan[^>]*>key people\. <\/tspan><a[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a><\/text>/u,
+			/<a class="roadmap__link"[^>]*href="https:\/\/example\.com\/product-owner"[^>]*><rect[^>]*pointer-events="all"\/><text[^>]*textLength="50"[^>]*>Product Owners<\/text><\/a>/u,
 		);
+		expect(svg).toContain('class="roadmap__link-underline"');
 	});
 
 	it("should preserve natural link proportions across lines", () => {
@@ -364,11 +367,13 @@ describe("SVG rendering boundaries", () => {
 
 		const svg = renderNodes([layoutNode("link-decoration", lines)]);
 
-		expect(textElement(svg, "Visual Communication")).toContain('text-decoration="underline"');
-		expect(textElement(svg, "Capability mapping")).toContain('text-decoration="underline"');
+		// Underlines are painted rects, never text-decoration: WebKit segments
+		// decorations per glyph and Firefox paints them over the glyphs.
+		expect(textElement(svg, "Visual Communication")).not.toContain("text-decoration");
+		expect(textElement(svg, "Capability mapping")).not.toContain("text-decoration");
+		expect(svg.match(/class="roadmap__link-underline"/gu)).toHaveLength(2);
 		expect(textElement(svg, "Visual Communication")).not.toContain("transform=");
 		expect(textElement(svg, "Capability mapping")).not.toContain("transform=");
-		expect(svg).not.toContain('class="roadmap__link-decoration"');
 	});
 
 	it("should render custom-font links without content-sensitive fitting", () => {
@@ -392,9 +397,7 @@ describe("SVG rendering boundaries", () => {
 			}),
 		]);
 
-		expect(textElement(customFontSvg, "Visual Communication")).toContain(
-			'text-decoration="underline"',
-		);
+		expect(customFontSvg).toContain('class="roadmap__link-underline"');
 		expect(textElement(customFontSvg, "Visual Communication")).not.toContain("transform=");
 	});
 
@@ -579,7 +582,9 @@ describe("SVG rendering boundaries", () => {
 		);
 
 		expect(inserts).toHaveLength(2);
-		expect(inserts[0]).toContain('height="1"');
+		// Thickness scales with the text size (~0.1em, floored at 1px) so the
+		// same mark carries the same relative weight in titles and body text.
+		expect(inserts[0]).toContain('height="2"');
 		expect(inserts[1]).toContain('height="2"');
 	});
 

@@ -1,8 +1,12 @@
 import { artifactFreeLightTheme, createTheme } from "../../theme.ts";
 import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 
+// No system-ui: Safari resolves it to the system font whose advance widths
+// change with the effective on-screen size (SF optical tracking), so a scaled
+// or zoomed SVG drifts from every measured width. Named faces keep one set of
+// metrics at every scale.
 const bodyFontFamily =
-	'"SF Pro Text", "Segoe UI", system-ui, "Helvetica Neue", "Liberation Sans", sans-serif';
+	'"Segoe UI", "Helvetica Neue", Helvetica, "Liberation Sans", Arial, sans-serif';
 const monoFontFamily =
 	'ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace';
 

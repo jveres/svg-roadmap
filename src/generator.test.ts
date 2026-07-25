@@ -272,9 +272,15 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 			/class="roadmap__emoji roadmap__emoji--soap"[^>]*>.*?<use href="#[^"]*-emoji-soap"/u,
 		);
 		expect(generated.svg).not.toMatch(/<tspan[^>]*>🧼<\/tspan>/u);
+		// Undecorated lines still flow; the link line renders positioned with
+		// its underline painted as a rect.
+		expect(generated.svg).toMatch(/<text class="roadmap__flow-line"/u);
+		// The rect gives the anchor a continuous hit area: SVG hit-testing on
+		// text alone is per glyph and the pointer flickers between characters.
 		expect(generated.svg).toMatch(
-			/<text class="roadmap__flow-line"[^>]*>.*?<tspan[^>]*>Product <\/tspan><tspan[^>]*>discovery<\/tspan>.*?<a class="roadmap__link"[^>]*><tspan[^>]*>Product Owners<\/tspan><\/a>/u,
+			/<a class="roadmap__link"[^>]*><rect[^>]*pointer-events="all"\/><text[^>]*>Product Owners<\/text><\/a>/u,
 		);
+		expect(generated.svg).toContain('class="roadmap__link-underline"');
 		// Highlights and inserts always paint rects behind the glyphs: SVG
 		// text-decoration paint order is not interoperable (Firefox draws
 		// decorations over the text).

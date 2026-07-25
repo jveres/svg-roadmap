@@ -3,9 +3,14 @@ import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 
 const bodyFontFamily =
 	'"Avenir Next", Avenir, Seravek, "Gill Sans", "Segoe UI", "Helvetica Neue", sans-serif';
-const displayFontFamily =
-	'ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif';
+// No ui-serif/"New York": Safari resolves those to system fonts whose advance
+// widths change with the effective on-screen size (optical tracking), so a
+// scaled or zoomed SVG drifts from every measured width.
+const displayFontFamily = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif';
 
+// Print sets every renderScaleX/Y to 1: the base theme's glyph squeezes
+// (up to 0.985×/0.96×) suit its own faces but visibly distort the aspect of
+// the editorial serif/Avenir stacks.
 const paper = "#fbfaf6";
 const ink = "#1b1a17";
 const inkMuted = "#57534b";
@@ -30,6 +35,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 				fontFamily: displayFontFamily,
 				fontSize: 27,
 				fontWeight: 600,
+				renderScaleX: 1,
 			},
 			section: {
 				color: ink,
@@ -58,6 +64,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 				color: "#f7f5ef",
 				fontFamily: displayFontFamily,
 				fontWeight: 600,
+				renderScaleX: 1,
 			},
 		},
 		note: {
@@ -71,6 +78,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 				color: "#48443d",
 				fontFamily: displayFontFamily,
 				fontStyle: "italic",
+				renderScaleX: 1,
 			},
 		},
 		floatingNote: {
@@ -86,6 +94,7 @@ export const printLightTheme: RoadmapTheme = createTheme(
 				color: "#48443d",
 				fontFamily: displayFontFamily,
 				fontStyle: "italic",
+				renderScaleX: 1,
 			},
 		},
 		topic: {
@@ -95,7 +104,13 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 0.75,
 			radius: 0,
 			shadow: false,
-			typography: { color: "#26241f", fontFamily: bodyFontFamily, fontWeight: 500 },
+			typography: {
+				color: "#26241f",
+				fontFamily: bodyFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "rounded",
@@ -104,7 +119,13 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 0.75,
 			radius: 0,
 			shadow: false,
-			typography: { color: "#33302a", fontFamily: bodyFontFamily, fontWeight: 500 },
+			typography: {
+				color: "#33302a",
+				fontFamily: bodyFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		topicHeader: {
 			shape: "rounded",
@@ -120,6 +141,8 @@ export const printLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 600,
 				letterSpacing: 1.1,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

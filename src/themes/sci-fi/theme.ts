@@ -2,7 +2,19 @@ import { createTheme, lightTheme } from "../../theme.ts";
 import type { RoadmapTheme, RoadmapThemePresetWithModes } from "../../types.ts";
 import { generateSciFiBackgroundArtifacts } from "./background-artifacts.ts";
 
-const fontFamily = "Inter, ui-sans-serif, system-ui, sans-serif";
+// No ui-sans-serif/system-ui: Safari resolves those to the system font whose
+// advance widths change with the effective on-screen size (SF optical
+// tracking), so a scaled or zoomed SVG drifts from every measured width.
+// Named faces keep one set of metrics at every scale.
+// Prose tier: Seravek's rounded geometry reads mission-briefing without
+// Futura's near-black bold cut, and its full weight range keeps strong runs
+// proportionate. Trebuchet is the closest widely-available fallback.
+const fontFamily = 'Seravek, "Trebuchet MS", "Helvetica Neue", Helvetica, sans-serif';
+// Control-panel display type: DIN Alternate on macOS, Bahnschrift on Windows
+// (both engineering DIN faces), then geometric fallbacks. The face ships
+// bold-only on macOS, so display text always requests heavy weights.
+const displayFontFamily =
+	'"DIN Alternate", Bahnschrift, "Franklin Gothic Medium", Futura, "Arial Narrow", sans-serif';
 
 export const sciFiLightTheme: RoadmapTheme = createTheme(
 	{
@@ -22,11 +34,21 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 		},
 		canvas: { background: "#f6fbff" },
 		heading: {
-			title: { color: "#10263d", fontFamily, fontWeight: 700 },
-			section: { color: "#173a55", fontFamily, fontWeight: 500 },
-			minor: { color: "#31536c", fontFamily },
+			title: {
+				color: "#10263d",
+				fontFamily: displayFontFamily,
+				fontWeight: 700,
+				letterSpacing: 0.6,
+			},
+			section: {
+				color: "#173a55",
+				fontFamily: displayFontFamily,
+				fontWeight: 700,
+				letterSpacing: 0.5,
+			},
+			minor: { color: "#31536c", fontFamily: displayFontFamily, letterSpacing: 0.5 },
 		},
-		legend: { color: "#31536c", fontFamily },
+		legend: { color: "#31536c", fontFamily, fontStyle: "normal", letterSpacing: 0.4 },
 		chapter: {
 			shape: "chamfered",
 			stroke: "#45cfe5",
@@ -36,9 +58,9 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			detailInset: 2.5,
 			typography: {
 				color: "#10263d",
-				fontFamily,
-				fontWeight: 600,
-				letterSpacing: 0.5,
+				fontFamily: displayFontFamily,
+				fontWeight: 700,
+				letterSpacing: 0.8,
 				renderScaleX: 1,
 			},
 		},
@@ -48,7 +70,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			stroke: "#8dddeb",
 			strokeWidth: 1,
 			radius: 30,
-			typography: { color: "#27465e", fontFamily },
+			// Painted at 12.5px to match the topic text size.
+			typography: { color: "#27465e", fontFamily, fontSize: 12.5, renderScale: 1 },
 		},
 		floatingNote: {
 			shape: "capsule",
@@ -58,21 +81,21 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			hatchOpacity: 0.14,
 			stroke: "#82d8e8",
 			radius: 30,
-			typography: { color: "#27465e", fontFamily },
+			typography: { color: "#27465e", fontFamily, fontSize: 12.5, renderScale: 1 },
 		},
 		topic: {
 			shape: "chamfered",
 			fill: "#f9fdff",
 			stroke: "#78b8d4",
 			radius: 8,
-			typography: { color: "#17364d", fontFamily },
+			typography: { color: "#17364d", fontFamily: displayFontFamily, letterSpacing: 0.3 },
 		},
 		nestedTopic: {
 			shape: "capsule",
 			fill: "#f9fdff",
 			stroke: "#9b91df",
 			radius: 8,
-			typography: { color: "#17364d", fontFamily },
+			typography: { color: "#17364d", fontFamily: displayFontFamily, letterSpacing: 0.3 },
 		},
 		topicHeader: {
 			shape: "chamfered",
@@ -83,9 +106,9 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			shadowOpacity: 0.2,
 			typography: {
 				color: "#17364d",
-				fontFamily,
-				fontWeight: 600,
-				letterSpacing: 0.8,
+				fontFamily: displayFontFamily,
+				fontWeight: 700,
+				letterSpacing: 1.2,
 				textTransform: "uppercase",
 			},
 		},

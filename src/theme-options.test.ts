@@ -76,7 +76,7 @@ describe("theme customization options", () => {
 		});
 		const refX = (svg: string): string =>
 			svg.match(/-marker-topic-to-children-dot"[^>]*\brefX="([^"]+)"/u)?.[1] ?? "";
-		expect(refX(overlap.svg)).toBe("8.7");
+		expect(refX(overlap.svg)).toBe("6.8");
 		expect(refX(detached.svg)).toBe("1");
 		const pathEndX = (svg: string): number =>
 			Number(

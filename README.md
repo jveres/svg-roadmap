@@ -126,6 +126,45 @@ await writeFile("roadmap.svg", svg);
 
 The package requires Node.js 22 or newer.
 
+## Text measurement
+
+Layout needs the width of every text run before the SVG exists. By default
+the library measures with built-in deterministic metric tables — no DOM or
+canvas — and the rendered SVG pins each run's geometry with `textLength`, so
+every viewer reproduces the measured layout even when its fonts differ.
+
+In a browser, install the DOM measurement oracle to measure with the real
+fonts instead. Layout then reflects the generating browser exactly —
+including custom fonts and scripts the tables cannot cover — while
+`textLength` still keeps the saved SVG stable in every other viewer:
+
+```ts
+import { createRoadmapGenerator, installDomMeasurement } from "svg-roadmap";
+
+const uninstall = await installDomMeasurement({
+  // Optional web fonts to load before measuring; `document.fonts.ready`
+  // alone would not request faces nothing has used yet.
+  fonts: ['600 16px "My Display Face"'],
+  // Late font loads change advances; regenerate when they land.
+  onFontsChanged: () => render(),
+});
+
+using generator = await createRoadmapGenerator();
+```
+
+The oracle measures inside a hidden SVG `<text>` element — not an HTML
+element — because Safari resolves and spaces fonts differently for SVG text
+than for HTML. Fixed-advance content (code spans, monospace families, and
+vendored emoji) stays on contractual metrics in every mode, so those never
+shift between environments.
+
+`setMeasurementProvider(provider)` accepts any `(text, style) => width`
+function for full control — tests use deterministic fake providers this way —
+and `setMeasurementProvider(undefined)` restores the metric tables.
+Generate in a browser and save the SVG when a roadmap uses fonts or scripts
+the tables cannot approximate; the Node path keeps using tables and remains
+fully deterministic for CI.
+
 ## Markdown conventions
 
 SVG Roadmap maps familiar Markdown structure to visual structure.
@@ -216,10 +255,12 @@ from the gemoji database and Twemoji assets.
 built-in roadmap theme presets. Each
 preset supplies a complete appearance and light and dark palettes; decorative
 background artifacts are an optional theme capability. `Sci-fi` uses clean
-translucent surfaces, cyan and violet accents, geometric orbital and signal
-motifs, chamfered cards and boards, capsule notes, technical grid and dot
-patterns, a straight architectural spine, and orthogonal circuit-like branches
-for an optimistic near-future look.
+translucent surfaces, cyan and violet accents, engineering DIN display type
+over Seravek prose, chamfered cards and boards, capsule notes, technical grid
+and dot patterns, a straight architectural spine, orthogonal circuit-like
+branches, and background motifs drawn from mission hardware — ringed planets,
+radar dials, satellites, circuit chips, comets, electron orbits, HUD
+reticles, and data streams — for an optimistic near-future look.
 `Rose` is an antique botanical plate: warm parchment, engraved sepia and
 old-rose hairlines with madder reserved as the accent, Didot-class display
 serifs over a Palatino body, stadium medallion chapters with an engraved inner
@@ -248,6 +289,9 @@ dark mode.
 The `lightTheme` and `darkTheme` exports remain convenient Fun resolved-mode
 values for the lower-level API. Typography and spacing properties affect
 layout; CSS custom properties control rendered paint and effects.
+[docs/theming.md](docs/theming.md) is the full styling guide for building
+themes: type tiers and font-stack rules, optical scaling, shapes, connector
+joins, background-artifact generators, and the verification workflow.
 
 Select a built-in preset programmatically in the same form used by front
 matter.
@@ -441,4 +485,7 @@ pnpm run test:coverage
 Use the workbench to inspect layout and theme changes at browser rendering size.
 Content-fitted note frames are also covered by focused geometry and collision
 tests. When you add a Markdown convention, add focused model and geometry tests
-for its layout behavior.
+for its layout behavior. Check text-heavy changes in Safari as well as
+Chromium and Firefox — Safari lays out HTML and SVG text differently and is
+the engine most sensitive to font-stack mistakes; the rules a theme must
+follow are collected in [docs/theming.md](docs/theming.md).

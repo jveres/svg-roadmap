@@ -71,14 +71,16 @@ interface StubElement {
 	textContent: string;
 	children: StubElement[];
 	attributes: Record<string, string>;
+	namespace: string | undefined;
+	tag: string | undefined;
 	appendChild(child: StubElement): void;
 	removeChild(child: StubElement): void;
 	remove(): void;
 	setAttribute(name: string, value: string): void;
-	getBoundingClientRect(): { width: number };
+	getComputedTextLength(): number;
 }
 
-function createStubDocument(scale = 1): {
+function createStubDocument(): {
 	document: Document;
 	body: StubElement;
 	fonts: {
@@ -89,7 +91,7 @@ function createStubDocument(scale = 1): {
 		emitLoadingDone(): void;
 	};
 } {
-	const createElement = (): StubElement => {
+	const createElement = (namespace?: string, tag?: string): StubElement => {
 		const element: StubElement = {
 			style: Object.assign(Object.create(null), {
 				setProperty(name: string, value: string) {
@@ -99,6 +101,8 @@ function createStubDocument(scale = 1): {
 			textContent: "",
 			children: [],
 			attributes: {},
+			namespace,
+			tag,
 			appendChild(child) {
 				element.children.push(child);
 			},
@@ -111,11 +115,9 @@ function createStubDocument(scale = 1): {
 			setAttribute(name, value) {
 				element.attributes[name] = value;
 			},
-			getBoundingClientRect() {
-				// A fixed-width probe scales like everything else; text spans
-				// measure 7px per character in this stub.
-				const fixed = element.style.width ? Number.parseFloat(element.style.width) : undefined;
-				return { width: (fixed ?? element.textContent.length * 7) * scale };
+			getComputedTextLength() {
+				// Text advances measure 7px per character in this stub.
+				return element.textContent.length * 7;
 			},
 		};
 		return element;
@@ -135,19 +137,25 @@ function createStubDocument(scale = 1): {
 			listeners.get("loadingdone")?.();
 		},
 	};
-	const stub = { createElement, body, fonts };
+	const stub = {
+		createElementNS: (namespace: string, tag: string) => createElement(namespace, tag),
+		body,
+		fonts,
+	};
 	return { document: stub as unknown as Document, body, fonts };
 }
 
 describe("hidden-DOM oracle", () => {
-	test("measures via a hidden pre-formatted span with calibration", () => {
-		// Everything in this document is scaled 0.5x, as if an ancestor
-		// transform shrank the page; calibration must undo it.
-		const { document, body } = createStubDocument(0.5);
+	test("measures via a hidden SVG text element in the SVG font-resolution path", () => {
+		const { document, body } = createStubDocument();
 		const handle = createDomMeasurementProvider(document);
 		const host = body.children[0];
+		// Measuring in SVG (not an HTML div) is load-bearing: Safari resolves
+		// fonts differently for SVG text, and textLength would stretch glyphs
+		// to any HTML-measured width.
+		expect(host?.namespace).toBe("http://www.w3.org/2000/svg");
+		expect(host?.tag).toBe("svg");
 		expect(host?.style.visibility).toBe("hidden");
-		expect(host?.style.whiteSpace).toBe("pre");
 		expect(host?.style.position).toBe("absolute");
 		expect(host?.attributes["aria-hidden"]).toBe("true");
 		const width = handle.provider("abcd", {
@@ -157,8 +165,11 @@ describe("hidden-DOM oracle", () => {
 			fontStyle: "italic",
 		});
 		expect(width).toBe(4 * 7);
-		const span = host?.children[0];
-		expect(span?.style.font).toBe("italic 600 12px Didot, serif");
+		const text = host?.children[0];
+		expect(text?.tag).toBe("text");
+		expect(text?.attributes["xml:space"]).toBe("preserve");
+		expect(text?.style.letterSpacing).toBe("0");
+		expect(text?.style.font).toBe("italic 600 12px Didot, serif");
 		handle.dispose();
 		expect(body.children).toHaveLength(0);
 	});
