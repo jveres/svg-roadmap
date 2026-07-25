@@ -305,13 +305,12 @@ function topicFromItem(item: XmlElementNode, depth: number, context: ParseContex
 		listItems(list).map((child) => topicFromItem(child, depth + 1, context)),
 	);
 	// Blockquotes under the topic carry its detail note — learning depth for
-	// host panels, never drawn on the chart.
-	const note = withAbbreviations(
-		paragraphContent(
-			childElements(item, "block_quote").flatMap((quote) => childElements(quote, "paragraph")),
-		),
-		context,
-	);
+	// host panels, never drawn on the chart. The note stays raw Markdown,
+	// sliced from the source; rendering it is the host's concern.
+	const note = childElements(item, "block_quote")
+		.map((quote) => rawBlockMarkdown(nodeRange(quote), context.lines))
+		.filter(Boolean)
+		.join("\n\n");
 	return {
 		type: "topic",
 		id: context.nextId("topic", title),
@@ -320,10 +319,23 @@ function topicFromItem(item: XmlElementNode, depth: number, context: ParseContex
 		content: title,
 		description,
 		tags: parts.tags,
-		...(note.length > 0 ? { note } : {}),
+		...(note ? { note } : {}),
 		children,
 		...(sourceRange ? { sourceRange } : {}),
 	};
+}
+
+/**
+ * The Markdown of a blockquote exactly as authored, minus the `>` markers
+ * and list indentation — the sourcepos slice of the original document.
+ */
+function rawBlockMarkdown(range: SourceRange | undefined, lines: readonly string[]): string {
+	if (!range) return "";
+	return lines
+		.slice(range.start.line - 1, range.end.line)
+		.map((line) => line.replace(/^\s*>[ ]?/u, ""))
+		.join("\n")
+		.trim();
 }
 
 function groupTopics(items: readonly XmlElementNode[], context: ParseContext): RoadmapTopicGroup[] {

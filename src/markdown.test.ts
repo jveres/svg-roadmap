@@ -159,9 +159,7 @@ roadmap:
 		const topic = chapter.groups[0]?.topics[0];
 		expect(inlineToPlainText(topic?.content ?? [])).toBe("Topic one");
 		expect(inlineToPlainText(topic?.description ?? [])).toBe("desc");
-		expect(inlineToPlainText(topic?.note ?? [])).toBe(
-			"Why it matters: depth for the panel. Second note paragraph.",
-		);
+		expect(topic?.note).toBe("Why it matters: depth for the panel.\nSecond note paragraph.");
 	});
 
 	test("uses Unicode source columns when recognizing star comments", () => {

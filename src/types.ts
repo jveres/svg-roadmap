@@ -89,10 +89,11 @@ export interface RoadmapTopic {
 	readonly description: readonly InlineNode[];
 	readonly tags: readonly string[];
 	/**
-	 * Detail note from blockquotes under the topic: learning depth surfaced
-	 * by hosts (a detail panel), never drawn on the chart itself.
+	 * Detail note from blockquotes under the topic, as raw Markdown exactly
+	 * as authored: learning depth surfaced by hosts (a detail panel), never
+	 * drawn on the chart itself.
 	 */
-	readonly note?: readonly InlineNode[];
+	readonly note?: string;
 	readonly children: readonly RoadmapTopic[];
 	readonly sourceRange?: SourceRange;
 }
@@ -277,12 +278,8 @@ export interface LayoutNode extends Rect {
 	 * Mutable: stamped after the cluster is packed.
 	 */
 	groupId?: string;
-	/**
-	 * Detail-note inline model. Rendered twice into the SVG: plain text as
-	 * the node's `<desc>` for assistive tech, and a whitelisted JSON model in
-	 * `data-roadmap-note` so hosts can rebuild rich text without a parser.
-	 */
-	readonly note?: readonly InlineNode[];
+	/** Detail-note Markdown, emitted verbatim as `data-roadmap-note`. */
+	readonly note?: string;
 	/** The theme card shape this node is painted with; drives frame fitting. */
 	readonly frameShape?: "rounded" | "chamfered" | "capsule" | "organic" | "cameo" | "petal";
 }

@@ -48,9 +48,9 @@ roadmap:
       > own board and routed connectors, at any depth.
     * Nested boards [advanced]
       * Deep nesting [advanced]
-        > Click a topic with a note like this one and the detail appears in
-        > the progress panel — authored as a Markdown blockquote, invisible
-        > on the chart itself.
+        > Click a topic with a **note** like this one and the detail appears
+        > in the progress panel — authored as a plain `>` blockquote in
+        > [Markdown](https://www.markdownguide.org/), invisible on the chart.
         * No depth limit
       * Lane routing [experimental]
   * Notes

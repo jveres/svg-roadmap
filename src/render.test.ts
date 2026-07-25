@@ -573,18 +573,20 @@ describe("SVG rendering boundaries", () => {
 		expect(generated.svg).toContain('roadmap__badge--check" transform="translate(36 45)"');
 	});
 
-	it("should embed topic notes as escaped desc elements", () => {
+	it("should embed topic notes once, as their authored Markdown", () => {
 		const svg = generateRoadmapSvgSync(
-			"# T\n\n* Chapter\n  * Noted\n    > Depth & more.\n  * Plain\n",
+			"# T\n\n* Chapter\n  * Noted\n    > Depth & **more**.\n  * Plain\n",
 			{
-				render: { idPrefix: "note-desc" },
+				render: { idPrefix: "note-md" },
 			},
 		);
-		// The note rides inside the topic group as an escaped <desc>; topics
-		// without notes stay desc-free.
-		expect(svg).toMatch(/<g id="note-desc-topic-\d+-noted"[^>]*><desc>Depth &amp; more\.<\/desc>/u);
-		expect(svg.match(/<desc>/gu)).toHaveLength(1);
-		expect(svg).not.toMatch(/plain"[^>]*><desc>/u);
+		// The note rides on the topic group as data-roadmap-note only — raw
+		// Markdown, escaped; no <desc> copy; noteless topics stay bare.
+		expect(svg).toMatch(
+			/<g id="note-md-topic-\d+-noted"[^>]*data-roadmap-note="Depth &amp; \*\*more\*\*\."/u,
+		);
+		expect(svg).not.toMatch(/<g id="note-md-topic-\d+-noted"[^>]*><desc>/u);
+		expect(svg).not.toMatch(/plain"[^>]*data-roadmap-note/u);
 	});
 
 	it("should scope insert thickness to heading level", () => {

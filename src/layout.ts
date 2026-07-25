@@ -137,9 +137,8 @@ function layoutText(
 	};
 }
 
-function topicNote(topic: RoadmapTopic): readonly InlineNode[] | undefined {
-	if (!topic.note || topic.note.length === 0) return undefined;
-	return inlineToPlainText(topic.note).trim() ? topic.note : undefined;
+function topicNote(topic: RoadmapTopic): string | undefined {
+	return topic.note?.trim() ? topic.note : undefined;
 }
 
 function contentWithDescription(topic: RoadmapTopic): InlineNode[] {
@@ -175,7 +174,7 @@ function createCardNode(
 	card: CardTheme,
 	sourceRange?: SourceRange,
 	abbreviationIndicatorSize = card.typography.fontSize * 0.75,
-	note?: readonly InlineNode[],
+	note?: string,
 	parentId?: string,
 ): LayoutNode {
 	const maxContentWidth = Math.max(16, card.maxWidth - card.paddingX * 2);

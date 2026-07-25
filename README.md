@@ -241,8 +241,8 @@ const handle = attachRoadmapInteractivity(svgElement, {
   onChange: () => renderMyProgressBar(handle.getSummary()),
 });
 
-handle.topics();               // every topic: id, title, href, tags, note,
-                               // rich noteModel, definitions, state
+handle.topics();               // every topic: id, title, href, tags,
+                               // note (Markdown), definitions, state
 handle.headers();              // grid column headers: kind "grid-header",
                                // columnIds plus aggregate columnProgress
 handle.getTopic(id);           // one topic or header by stable id
@@ -252,10 +252,10 @@ handle.setState(id, "done");   // mutate from your own controls;
                                // chart repaints, onChange fires
 ```
 
-`RoadmapTopicDetail` carries everything the built-in panel renders: rich
-notes arrive as a parsed `noteModel` that `buildNoteFragment(model,
-document)` turns into a safe DOM fragment (bold, italics, code, vetted
-links), and term definitions ride along as plain strings. `onChange` fires
+`RoadmapTopicDetail` carries everything the built-in panel renders: the
+note arrives as its authored Markdown string — render it with whatever
+the host already has (comrak, marked, plain text) — and term definitions
+ride along as plain strings. `onChange` fires
 on every mutation regardless of source — the built-in selector, your
 controls, or `reset()` — so a custom panel stays in sync without extra
 wiring. `summarizeProgress(states, total)` is exported as a pure helper for
@@ -281,10 +281,12 @@ SVG Roadmap maps familiar Markdown structure to visual structure.
 - A `*[Term]: Definition` line adds an abbreviation tooltip without adding a
   chart node.
 - A `>` blockquote under a topic becomes its detail note: never drawn on
-  the chart, it travels inside the SVG twice — plain text as the node's
-  `<desc>` for assistive tech, and a whitelisted JSON inline model in
-  `data-roadmap-note` from which the interactive layer rebuilds rich text
-  (bold, italics, code, safe links) without any parser in the host.
+  the chart, it travels inside the SVG once, as the authored Markdown in
+  `data-roadmap-note`. Rendering it is the host's concern — the workbench
+  passes comrak's `mdToHtml` as `renderNote`; without a renderer the panel
+  shows plain text. The interactive layer injects a de-marked prose
+  reading as the node's `<desc>` when it makes topics focusable, so
+  assistive tech hears the note exactly where it can be reached.
 
 Comrak extensions enable `++insert++`, `==highlight==`, `~subscript~`,
 `^superscript^`, strikethrough, footnotes, and emoji shortcodes. Every GitHub

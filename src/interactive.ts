@@ -3,8 +3,9 @@
  *
  * The SVG itself stays script-free: this module runs in the host page and
  * talks to hooks the renderer already emits — stable node ids, `data-`
- * attributes (`data-parent`, `data-group`, `data-roadmap-note`), and CSS
- * classes. A downloaded chart remains a plain, portable image.
+ * attributes (`data-parent`, `data-group`, and `data-roadmap-note` carrying
+ * the authored note Markdown), and CSS classes. A downloaded chart remains
+ * a plain, portable image.
  *
  * Clicking a topic selects it; progress changes happen in the detail panel
  * (or through the handle), never by stray clicks on the chart. State
@@ -77,44 +78,6 @@ export function contiguousTravel(fractions: readonly number[]): number[] {
 	});
 }
 
-/**
- * One node of the whitelisted rich-note model embedded by the renderer as
- * `data-roadmap-note`. Hosts building their own detail UI can render a model
- * with {@link buildNoteFragment} or walk it directly.
- */
-export type NoteNode =
-	| { readonly t: "text"; readonly v: string }
-	| { readonly t: "strong" | "em" | "code"; readonly c: readonly NoteNode[] }
-	| { readonly t: "link"; readonly href: string; readonly c: readonly NoteNode[] }
-	| { readonly t: "break" };
-
-function isNoteNode(value: unknown): value is NoteNode {
-	if (typeof value !== "object" || value === null) return false;
-	const node = value as { t?: unknown; v?: unknown; c?: unknown; href?: unknown };
-	if (node.t === "text") return typeof node.v === "string";
-	if (node.t === "break") return true;
-	if (node.t === "strong" || node.t === "em" || node.t === "code") {
-		return Array.isArray(node.c) && node.c.every(isNoteNode);
-	}
-	if (node.t === "link") {
-		return typeof node.href === "string" && Array.isArray(node.c) && node.c.every(isNoteNode);
-	}
-	return false;
-}
-
-/** Parses the whitelisted note model embedded as `data-roadmap-note`. */
-export function parseNoteModel(json: string): readonly NoteNode[] | undefined {
-	try {
-		const parsed: unknown = JSON.parse(json);
-		if (Array.isArray(parsed) && parsed.every(isNoteNode)) return parsed;
-	} catch {
-		// Malformed data falls back to the plain <desc> text.
-	}
-	return undefined;
-}
-
-const safeNoteHref = /^(?:https?:|mailto:|#)/iu;
-
 // GitHub Octicon "link-external" (https://primer.style/octicons, MIT
 // license): fill-based, so it stays crisp and square at small sizes where
 // scaled strokes read distorted.
@@ -122,46 +85,16 @@ const externalLinkIcon =
 	'<svg width="12" height="12" viewBox="0 0 16 16" preserveAspectRatio="xMidYMid meet" fill="currentColor" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"/></svg>';
 
 /**
- * Renders a parsed note model into a safe DOM fragment (text, strong, em,
- * code, vetted links, line breaks) — the same rendering the built-in panel
- * uses, available to custom host panels.
+ * Best-effort plain-prose reading of note Markdown for accessible
+ * descriptions: emphasis and code markers drop, links keep their text.
+ * (Faithful rendering is the host's job; this only serves screen readers.)
  */
-export function buildNoteFragment(
-	nodes: readonly NoteNode[],
-	hostDocument: Document,
-): DocumentFragment {
-	const fragment = hostDocument.createDocumentFragment();
-	for (const node of nodes) {
-		switch (node.t) {
-			case "text":
-				fragment.append(hostDocument.createTextNode(node.v));
-				break;
-			case "break":
-				fragment.append(hostDocument.createElement("br"));
-				break;
-			case "link": {
-				if (!safeNoteHref.test(node.href)) {
-					fragment.append(buildNoteFragment(node.c, hostDocument));
-					break;
-				}
-				const anchor = hostDocument.createElement("a");
-				anchor.href = node.href;
-				anchor.target = "_blank";
-				anchor.rel = "noopener noreferrer";
-				anchor.append(buildNoteFragment(node.c, hostDocument));
-				fragment.append(anchor);
-				break;
-			}
-			default: {
-				const tag = node.t === "em" ? "em" : node.t;
-				const element = hostDocument.createElement(tag);
-				element.append(buildNoteFragment(node.c, hostDocument));
-				fragment.append(element);
-				break;
-			}
-		}
-	}
-	return fragment;
+export function stripNoteMarkdown(markdown: string): string {
+	return markdown
+		.replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
+		.replace(/[*_`~]/gu, "")
+		.replace(/\s+/gu, " ")
+		.trim();
 }
 
 /** Strips the render-instance prefix, leaving the stable per-document id. */
@@ -183,10 +116,13 @@ export interface RoadmapTopicDetail {
 	readonly title: string;
 	readonly href?: string;
 	readonly tags: readonly string[];
-	/** Authored detail note as plain text, lifted from the embedded `<desc>`. */
+	/**
+	 * Authored detail note as raw Markdown, exactly as written under the
+	 * topic's blockquote. Rendering is the host's concern — pass `renderNote`
+	 * to make the built-in panel show rich text; custom panels receive this
+	 * string and do whatever they like with it.
+	 */
 	readonly note?: string;
-	/** Authored detail note as a rich model, when the chart embeds one. */
-	readonly noteModel?: readonly NoteNode[];
 	/** Term definitions carried by the node's `<title>` tooltips. */
 	readonly definitions: readonly string[];
 	readonly state?: RoadmapProgressState;
@@ -257,6 +193,13 @@ export interface AttachRoadmapInteractivityOptions {
 	readonly onChange?: (detail: RoadmapTopicDetail) => void;
 	/** Fires after progress is reset, from the panel button or `reset()`. */
 	readonly onReset?: () => void;
+	/**
+	 * Renders a note's Markdown for the built-in detail panel. Return an
+	 * element, fragment, or HTML string (the host owns its safety — e.g.
+	 * comrak's mdToHtml with default escaping). Without it, the panel shows
+	 * the Markdown as plain text.
+	 */
+	readonly renderNote?: (markdown: string) => Node | string;
 	/**
 	 * Fires when a topic is selected — by click, keyboard, or `select()` —
 	 * and with `undefined` when the selection is cleared. Everything a detail
@@ -407,6 +350,8 @@ const interactiveCss = `
 	border-radius:99px;border:1px solid var(--_summary-border);font-size:10px;font-weight:600;
 	letter-spacing:.06em;text-transform:uppercase;opacity:.85;line-height:1.35;text-align:left}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
+.roadmap-topic-detail__note p{margin:0 0 6px}
+.roadmap-topic-detail__note p:last-child{margin-bottom:0}
 .roadmap-topic-detail__note code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;
 	padding:0 4px;border-radius:4px;border:1px solid var(--_summary-border)}
 .roadmap-topic-detail__note a{color:var(--_accent);font-weight:600;text-decoration:none}
@@ -1084,9 +1029,7 @@ export function attachRoadmapInteractivity(
 	const detailFor = (id: string, group: SVGGElement): RoadmapTopicDetail => {
 		const columnIds = headerColumns.get(id);
 		const state = states[id];
-		const note = group.querySelector(":scope > desc")?.textContent?.trim();
-		const noteData = group.getAttribute("data-roadmap-note");
-		const noteModel = noteData ? parseNoteModel(noteData) : undefined;
+		const note = group.getAttribute("data-roadmap-note")?.trim() || undefined;
 		// Term definitions already travel as <title> tooltips in the text.
 		const definitions = [
 			...new Set(
@@ -1102,7 +1045,6 @@ export function attachRoadmapInteractivity(
 				: {}),
 			tags: (group.getAttribute("data-tags") ?? "").split(",").filter(Boolean),
 			...(note ? { note } : {}),
-			...(noteModel ? { noteModel } : {}),
 			definitions,
 			...(state ? { state } : {}),
 			...(columnIds
@@ -1231,15 +1173,13 @@ export function attachRoadmapInteractivity(
 			}
 			detailSection.append(tags);
 		}
-		if (detail.noteModel) {
-			const note = hostDocument.createElement("p");
+		if (detail.note) {
+			const note = hostDocument.createElement("div");
 			note.className = "roadmap-topic-detail__note";
-			note.append(buildNoteFragment(detail.noteModel, hostDocument));
-			detailSection.append(note);
-		} else if (detail.note) {
-			const note = hostDocument.createElement("p");
-			note.className = "roadmap-topic-detail__note";
-			note.textContent = detail.note;
+			const rendered = options.renderNote?.(detail.note);
+			if (rendered === undefined) note.textContent = detail.note;
+			else if (typeof rendered === "string") note.innerHTML = rendered;
+			else note.append(rendered);
 			detailSection.append(note);
 		}
 		for (const definition of detail.definitions) {
@@ -1309,6 +1249,18 @@ export function attachRoadmapInteractivity(
 	const wire = (id: string, group: SVGGElement): void => {
 		group.setAttribute("tabindex", "0");
 		group.setAttribute("role", "button");
+		// The note travels in the SVG only as authored Markdown; now that the
+		// node is focusable, give assistive tech a lightly de-marked reading
+		// as its <desc>.
+		const noteData = group.getAttribute("data-roadmap-note")?.trim();
+		if (noteData && !group.querySelector(":scope > desc")) {
+			const desc = hostDocument.createElementNS(svgNamespace, "desc");
+			desc.textContent = stripNoteMarkdown(noteData);
+			group.insertBefore(desc, group.firstChild);
+			disposers.push(() => {
+				desc.remove();
+			});
+		}
 		const onClick = (event: MouseEvent): void => {
 			if (interceptLinks) event.preventDefault();
 			else if ((event.target as Element | null)?.closest("a")) return;

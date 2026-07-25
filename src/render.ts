@@ -12,14 +12,13 @@ import {
 	roundCoordinate,
 	verticalBumpPath,
 } from "./core/geometry.ts";
-import { codePaintScale, inlineToPlainText, measureTrackedText } from "./core/inline.ts";
+import { codePaintScale, measureTrackedText } from "./core/inline.ts";
 import { escapeXml, hashNumber, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
 	BadgeStyle,
 	BoardTheme,
 	CardTheme,
 	ConnectorTheme,
-	InlineNode,
 	LayoutBackgroundArtifact,
 	LayoutConnector,
 	LayoutElement,
@@ -926,19 +925,16 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		: "";
 	const card = cardTheme(node, theme);
 	const frame = card ? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid") : "";
-	// The detail note travels inside the SVG twice: plain text as <desc>
-	// (assistive tech hears clean prose) and a whitelisted JSON inline model
-	// in data-roadmap-note (hosts rebuild rich text without a parser). A
-	// downloaded chart keeps its knowledge either way.
-	const description = node.note ? `<desc>${escapeXml(inlineToPlainText(node.note))}</desc>` : "";
-	const noteData = node.note
-		? ` data-roadmap-note="${escapeXml(JSON.stringify(serializeNoteModel(node.note)))}"`
-		: "";
+	// The detail note travels once, as raw Markdown in data-roadmap-note —
+	// exactly what the author wrote. Turning it into rich text is the host's
+	// concern (the workbench renders it with comrak); the chart itself never
+	// draws it.
+	const noteData = node.note ? ` data-roadmap-note="${escapeXml(node.note)}"` : "";
 	const headingBackdrop =
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
-	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${description}${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
+	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {
@@ -1244,57 +1240,6 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 		return `<pattern id="${id}" data-roadmap-pattern="bows" patternUnits="userSpaceOnUse" width="24" height="18"><rect width="24" height="18" fill="${cssToken(`${token}-board-background`)}"/><path d="M 12 8 C 7 3 3 5 5 9 C 7 12 10 10 12 8 C 14 10 17 12 19 9 C 21 5 17 3 12 8 Z M 11 9 L 8 15 L 12 12 L 16 15 L 13 9" fill="none" ${paint}/><circle cx="12" cy="8.5" r="1.35" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/></pattern>`;
 	}
 	return `<pattern id="${id}" data-roadmap-pattern="${board.pattern}" patternUnits="userSpaceOnUse" width="12" height="12">${background}${decoration}</pattern>`;
-}
-
-/**
- * Serialized note node: the whitelist hosts rebuild rich text from. Only
- * text, emphasis marks, code, safe links, and breaks survive — nothing that
- * could smuggle markup.
- */
-export type SerializedNoteNode =
-	| { readonly t: "text"; readonly v: string }
-	| { readonly t: "strong" | "em" | "code"; readonly c: readonly SerializedNoteNode[] }
-	| { readonly t: "link"; readonly href: string; readonly c: readonly SerializedNoteNode[] }
-	| { readonly t: "break" };
-
-export function serializeNoteModel(nodes: readonly InlineNode[]): SerializedNoteNode[] {
-	const out: SerializedNoteNode[] = [];
-	for (const node of nodes) {
-		switch (node.type) {
-			case "text":
-				out.push({ t: "text", v: node.value });
-				break;
-			case "code":
-				out.push({ t: "code", c: [{ t: "text", v: node.value }] });
-				break;
-			case "strong":
-			case "emphasis":
-				out.push({
-					t: node.type === "strong" ? "strong" : "em",
-					c: serializeNoteModel(node.children),
-				});
-				break;
-			case "link": {
-				const href = safeLinkDestination(node.destination);
-				if (href) out.push({ t: "link", href, c: serializeNoteModel(node.children) });
-				else out.push(...serializeNoteModel(node.children));
-				break;
-			}
-			case "softBreak":
-				// Source-line wrapping is a space in prose, not a line break.
-				out.push({ t: "text", v: " " });
-				break;
-			case "lineBreak":
-				out.push({ t: "break" });
-				break;
-			default:
-				// Everything else (highlights, emoji containers, superscripts…)
-				// flattens to its children or plain text.
-				if ("children" in node) out.push(...serializeNoteModel(node.children));
-				break;
-		}
-	}
-	return out;
 }
 
 /** Canonical shortcodes used anywhere in the layout, for defs emission. */

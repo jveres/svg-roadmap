@@ -1,3 +1,4 @@
+import { mdToHtml } from "comrak-wasm";
 import {
 	builtInThemes,
 	createRoadmapGenerator,
@@ -273,6 +274,9 @@ function syncInteractivity(): void {
 	if (!previewSvg) return;
 	interactivity = attachRoadmapInteractivity(previewSvg, {
 		storageKey: `workbench-progress:${sampleSelect.value}`,
+		// Notes arrive as authored Markdown; rendering is the host's call.
+		// comrak escapes raw HTML by default, so the output is inert.
+		renderNote: (markdown) => mdToHtml(markdown),
 	});
 }
 
