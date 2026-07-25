@@ -300,8 +300,10 @@ const styleElementId = "svg-roadmap-interactive-style";
 // !important because CSS outranks them.
 const interactiveCss = `
 .roadmap--interactive [data-roadmap-element="topic"],
+.roadmap--interactive [data-roadmap-element="nested-topic"],
 .roadmap--interactive [data-roadmap-element="topic-header"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible,
+.roadmap--interactive [data-roadmap-element="nested-topic"]:focus-visible,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible{outline:none}
 .roadmap--spotlight .roadmap__node{transition:opacity .18s}
 .roadmap--spotlight [data-roadmap-element="topic"] .roadmap__frame,
@@ -313,13 +315,16 @@ const interactiveCss = `
 .roadmap--spotlight .roadmap__node--done:hover{opacity:.8}
 .roadmap--spotlight .roadmap__node--skipped:hover{opacity:.55}
 .roadmap--spotlight-lit .roadmap__node:not(.roadmap__node--lit){opacity:.4}
-.roadmap--spotlight .roadmap__connector{transition:opacity .18s}
+.roadmap--spotlight .roadmap__connector,.roadmap--spotlight .roadmap__group{transition:opacity .18s}
 .roadmap--spotlight-lit .roadmap__connector--dim{opacity:.2}
+.roadmap--spotlight-lit .roadmap__group--dim{opacity:.4}
 @media (prefers-reduced-motion: reduce){
 .roadmap--spotlight .roadmap__node,
 .roadmap--spotlight .roadmap__connector,
+.roadmap--spotlight .roadmap__group,
 .roadmap--spotlight .roadmap__node .roadmap__frame{transition:none}}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible .roadmap__frame,
+.roadmap--interactive [data-roadmap-element="nested-topic"]:focus-visible .roadmap__frame,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible .roadmap__frame,
 .roadmap--interactive .roadmap__node--in-progress .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.4}
 .roadmap--interactive .roadmap__node--done{opacity:var(--roadmap-progress-done-opacity,.55)}
@@ -795,6 +800,7 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 		cancelPendingClear();
 		for (const element of lit) element.classList.remove("roadmap__node--lit");
 		for (const link of pathLinks) link.element.classList.remove("roadmap__connector--dim");
+		for (const board of boardScope.keys()) board.classList.remove("roadmap__group--dim");
 		lit = [];
 		litIds = new Set();
 		litGroups = new Set();
@@ -839,6 +845,7 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 		}
 		litGroups = groups;
 		syncPathLinks(ids, groups);
+		syncBoards();
 		svg.classList.add("roadmap--spotlight-lit");
 	};
 	// The spotlight is sticky over the lit scope's own hull: the board paths
@@ -847,16 +854,28 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 	// short grace period bridges gap crossings (no flashing) but releases the
 	// spotlight when the pointer actually settles outside the scope.
 	const graceMs = 250;
+	const boardScope = new Map<Element, () => boolean>();
+	for (const board of svg.querySelectorAll(
+		'[data-roadmap-element="topic-group"],[data-roadmap-element="nested-group"]',
+	)) {
+		const boardId = stableNodeId(board.id, prefix);
+		boardScope.set(
+			board,
+			boardId.endsWith("-children")
+				? () => litIds.has(boardId.slice(0, -"-children".length))
+				: () => litGroups.has(boardId.replace(/-grid-\d+$/u, "")),
+		);
+	}
+	const syncBoards = (): void => {
+		for (const [board, inScope] of boardScope) {
+			board.classList.toggle("roadmap__group--dim", !inScope());
+		}
+	};
 	const boardInScope = (target: Element | null): boolean => {
 		const board = target?.closest(
 			'[data-roadmap-element="topic-group"],[data-roadmap-element="nested-group"]',
 		);
-		if (!board) return false;
-		const boardId = stableNodeId(board.id, prefix);
-		if (boardId.endsWith("-children")) {
-			return litIds.has(boardId.slice(0, -"-children".length));
-		}
-		return litGroups.has(boardId.replace(/-grid-\d+$/u, ""));
+		return board ? (boardScope.get(board)?.() ?? false) : false;
 	};
 	const onOver = (event: PointerEvent): void => {
 		const target = event.target as Element | null;
@@ -879,7 +898,10 @@ export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
 		}
 		if (pendingClear === undefined) pendingClear = setTimeout(clear, graceMs);
 	};
-	const onLeave = (): void => {
+	const onLeave = (event: PointerEvent): void => {
+		// A lifted finger fires pointerleave too; on touch the spotlight stays
+		// until the next tap lights a new scope or lands outside this one.
+		if (event.pointerType === "touch") return;
 		clear();
 	};
 	svg.addEventListener("pointerover", onOver);
@@ -1321,7 +1343,7 @@ export function attachRoadmapInteractivity(
 		openHeader = undefined;
 	};
 	for (const group of svg.querySelectorAll<SVGGElement>(
-		'g[data-roadmap-element="topic"],g[data-roadmap-element="topic-header"]',
+		'g[data-roadmap-element="topic"],g[data-roadmap-element="nested-topic"],g[data-roadmap-element="topic-header"]',
 	)) {
 		const id = stableNodeId(group.id, prefix);
 		if (!id) continue;
