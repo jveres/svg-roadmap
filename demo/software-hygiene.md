@@ -24,10 +24,13 @@ roadmap:
     * [UI/UX prototyping](https://figma.com/) [recommended]
     * [User story mapping](https://www.agilealliance.org/glossary/storymap) [recommended]
     * [Design Sprint](https://designsprintkit.withgoogle.com)
+    * [Accessibility](https://www.w3.org/WAI/standards-guidelines/wcag/) [recommended]
   * Technical Design
     * [Visual Communication](https://c4model.com/) [recommended]
     * Technology scouting
     * [API design-first](https://www.infoq.com/articles/design-first-api-development/) [personal recommendation]
+    * [ADRs](https://adr.github.io/) [recommended]
+    * [Threat modeling](https://owasp.org/www-community/Threat_Modeling) [recommended]
   * Team Spirit [insightful]
     * [Empowerment](https://www.svpg.com/empowered-product-teams/) [personal favourite]
     * [Ownership](https://www.scrum.org/resources/blog/how-can-agile-leaders-create-right-context-ownership) [recommended]
@@ -39,12 +42,14 @@ roadmap:
   * [Developer Experience](https://developerexperience.io/articles/good-developer-experience) [personal recommendation]
   * [DevOps](https://martinfowler.com/bliki/DevOpsCulture.html) [recommended]
   * [QA](https://github.com/jveres/diagen-QA) [insightful]
+  * [Code review](https://google.github.io/eng-practices/review/) [recommended]
   * Branching strategy [recommended]
-    * GitFlow [recommended]
+    * GitFlow
     * Trunk-based [recommended]
   * CI/CD
     * [Commit semantics](https://www.conventionalcommits.org/en/v1.0.0/) [recommended]
     * [Feature flags](https://martinfowler.com/articles/feature-toggles.html) [recommended]
+    * Merge queues
   * FRs
   * NFRs
   * DoR
@@ -66,27 +71,40 @@ roadmap:
     * [Markdown](https://www.markdownguide.org/) [personal favourite]
   * Testability [recommended]
     * [TDD](https://en.wikipedia.org/wiki/Test-driven_development)
+    * [Contract testing](https://docs.pact.io/)
   * [Deployability](https://insights.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [recommended]
+  * AI-assisted engineering [insightful]
+    * [Coding agents](https://martinfowler.com/articles/exploring-gen-ai.html) [personal recommendation]
+    * [Context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) [recommended]
+    * Spec-driven development
+  * [DORA metrics](https://dora.dev/) [recommended]
 
 * :three: Deployment & Operations
 *:beginner: High quality software can be shipped more frequently. [DevSecOps](https://www.redhat.com/en/topics/devops/what-is-devsecops) provides continuous delivery and deployment capabilities by bringing developers and IT operations close together.*
   + Infrastructure
     * Monitoring & alerting
     * Infra-as-code [recommended]
+    * [GitOps](https://opengitops.dev/) [recommended]
+    * [Platform engineering](https://platformengineering.org/) [insightful]
     * Auto-scaling [personal recommendation]
     * FinOps [recommended]
   * [Reliability](https://learn.microsoft.com/en-us/azure/well-architected/resiliency/reliability-patterns)
     * SRE [recommended]
+    * [SLOs](https://sre.google/sre-book/service-level-objectives/) [recommended]
     * Self-healing [recommended]
     * Chaos testing [personal recommendation]
+    * [Blameless postmortems](https://sre.google/sre-book/postmortem-culture/) [recommended]
     * Backup and restore
   * Security
     * Penetration testing
     * Vulnerability scanning [recommended]
     * Secrets management [recommended]
+    * [Supply chain security](https://slsa.dev/) [recommended]
+    * [SBOM](https://www.cisa.gov/sbom)
   * [Observability](https://opentelemetry.io/docs/concepts/observability-primer/#what-is-observability) [insightful]
     * Metrics capturing [recommended]
     * Distributed tracing [recommended]
+    * Structured logging [recommended]
 
 ## Keep ++**improving**++ :recycle:
 
@@ -112,3 +130,19 @@ roadmap:
 *[Reliability]: The ability of a system to perform consistently under expected conditions.
 *[Observability]: Observability lets us understand a system from the outside without knowing its inner workings.
 *[Infra-as-code]: Infrastructure managed and provisioned through machine-readable definition files.
+*[ADRs]: Architecture Decision Records capture the context and consequences of significant design choices.
+*[Threat modeling]: Systematically identifying what can go wrong in a design before it is built.
+*[Accessibility]: Building products usable by people with the widest range of abilities.
+*[Merge queues]: Queues that validate every merge against the latest main before it lands.
+*[Contract testing]: Verifying that services honour the expectations their consumers depend on.
+*[Coding agents]: AI agents that plan, edit, run, and verify code changes under engineer supervision.
+*[Context engineering]: Curating the instructions, tools, and knowledge an AI agent works from.
+*[Spec-driven development]: Writing a precise specification that guides and constrains AI-assisted implementation.
+*[DORA metrics]: Deployment frequency, lead time, change-fail rate, and time to restore.
+*[GitOps]: Operating infrastructure through declarative definitions continuously reconciled from Git.
+*[Platform engineering]: Product-managed internal platforms offering golden paths for delivery teams.
+*[SLOs]: Service Level Objectives, reliability targets backed by error budgets.
+*[Blameless postmortems]: Learning from incidents without blaming the people involved.
+*[Supply chain security]: Protecting the integrity of dependencies, builds, and released artifacts.
+*[SBOM]: Software Bill of Materials, an inventory of every component in a build artifact.
+*[Structured logging]: Emitting logs as queryable structured events rather than free text.
