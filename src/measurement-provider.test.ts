@@ -46,7 +46,7 @@ describe("measurement provider seam", () => {
 	test("code spans and monospace families bypass the provider", () => {
 		const provider = vi.fn(() => 999);
 		setMeasurementProvider(provider);
-		expect(measureText("code", 10, ["code"])).toBeCloseTo(4 * 10 * 0.61, 1);
+		expect(measureText("code", 10, ["code"])).toBeCloseTo(4 * 10 * 0.61 * 0.9, 1);
 		expect(measureText("mono", 10, [], 400, "Menlo, monospace")).toBeCloseTo(4 * 10 * 0.6, 1);
 		expect(provider).not.toHaveBeenCalled();
 	});

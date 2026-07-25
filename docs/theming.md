@@ -159,6 +159,39 @@ opacity, and an optional end shape (`arrow`, `circle`, `diamond`, `dot`).
 - `laneSpacing > 0` distributes nearby orthogonal routes into ordered lanes
   so dense nested trees stay traceable.
 
+## Badges, tags, and accent slots
+
+Themes style the built-in tags (`recommended`, `insightful`, …) directly in
+`badges.tags`. Documents can extend the taxonomy from front matter, and they
+bind colors through **accent slots** rather than literals:
+
+```ts
+badges: {
+  // …sizes, unknown, tags…
+  accents: {
+    green: { background: "#76c479", foreground: "#ffffff" },
+    red: { background: "#c75c5c", foreground: "#ffffff" },
+    amber: { background: "#f5a100", foreground: "#ffffff" },
+    blue: { background: "#748ffc", foreground: "#ffffff" },
+    violet: { background: "#8a75e5", foreground: "#ffffff" },
+    neutral: { background: "#777982", foreground: "#ffffff" },
+  },
+},
+```
+
+The base theme defines these six slots and every theme inherits them; a theme
+that restates them in its own palette makes every document taxonomy feel
+native. A document tag whose accent slot is missing falls back to the
+unknown-tag colors, so partial coverage degrades gracefully. Documents may
+also pass a literal CSS color as the accent; named slots take precedence,
+and literal colors do not adapt across themes or modes.
+
+Tag badges may also carry an emoji shortcode instead of a built-in icon; the
+renderer paints the artwork on a disc filled with the accent background.
+Document-defined tags emit per-tag CSS paint tokens
+(`--roadmap-badge-tag-<name>-background`/`-foreground`), while theme badges
+keep their icon-keyed tokens.
+
 ## Inline decoration tokens
 
 `inline` supplies the link color, highlight fill, insert-underline color,

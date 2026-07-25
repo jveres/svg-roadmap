@@ -1,4 +1,5 @@
 import {
+	createMotifCycler,
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
@@ -162,6 +163,7 @@ export function generateSciFiBackgroundArtifacts({
 	const rows = Math.ceil(height / tileSize);
 	const artifacts: LayoutBackgroundArtifact[] = [];
 	const accepted: Rect[] = [];
+	const nextMotif = createMotifCycler(`sci-fi:${settings.seed}`, 8);
 	for (let row = 0; row < rows; row += 1) {
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`sci-fi:${settings.seed}:${column}:${row}`);
@@ -195,7 +197,7 @@ export function generateSciFiBackgroundArtifacts({
 				// A gentle tilt only: these motifs depict objects with a clear
 				// "up", and full rotation reads as abstract scribbles.
 				transform: `translate(${x} ${y}) rotate(${roundCoordinate((random() - 0.5) * 36)}) scale(${roundCoordinate(size / 52)})`,
-				shapes: motifShapes(Math.floor(random() * 8), Math.floor(random() * 3)),
+				shapes: motifShapes(nextMotif(), Math.floor(random() * 3)),
 			});
 		}
 	}

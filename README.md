@@ -176,7 +176,10 @@ SVG Roadmap maps familiar Markdown structure to visual structure.
   remains part of the title.
 - A trailing `[recommended]` annotation becomes a tag badge.
 - A trailing `[tag one, tag two]` annotation creates multiple badges.
-- A `+` marker on the first topic in a group selects a grid layout.
+- A `+` marker on the first topic in a group selects a grid layout. Nested
+  items inside a grid column indent under their parent with hairline
+  tree-gutter connectors, to any depth; a `-` marker on the first nested item
+  mirrors the lines and indent to the right.
 - A blank line between first-level topics starts another group. Tree groups
   alternate around the main spine.
 - A `*[Term]: Definition` line adds an abbreviation tooltip without adding a
@@ -201,6 +204,7 @@ roadmap:
   theme:
     preset: sci-fi
     mode: dark
+  scale: 1.25
   background:
     enabled: true
     seed: engineering-2026
@@ -210,6 +214,9 @@ roadmap:
 ---
 ```
 
+`scale` (from `0.25` to `4`) multiplies the rendered size of the whole SVG
+while the viewBox keeps layout coordinates, so geometry and tokens stay
+identical at every scale; the `render.scale` option overrides it.
 `density` accepts values from `0` to `1`. `size` is a scale from `0.25` to `3`;
 `1` uses the theme's default artifact size. `animated` adds a deterministic
 CSS drift loop to the artifacts: `true` uses the default intensity of `1`, and
@@ -218,6 +225,43 @@ a number from `0` to `4` scales the motion. No scripts are involved,
 tempo. Programmatic `theme` options
 override the front-matter theme, which lets an editor follow the system color
 scheme without rewriting its source.
+
+### Document-defined tags
+
+Beyond the built-in tags, a document can declare its own taxonomy in front
+matter. The document owns the names, meanings, and legend labels; the theme
+owns the palette, referenced through named accent slots (`green`, `red`,
+`amber`, `blue`, `violet`, `neutral`) so a taxonomy adapts to every theme and
+mode. `legend: false` at the roadmap level hides the tag legend entirely.
+
+```yaml
+---
+roadmap:
+  tags:
+    advanced:
+      icon: star            # built-in icon: check, heart, star, x, question, cloud, warning
+      accent: violet        # theme accent slot supplying the colors
+      label: Advanced topic # legend text; defaults to the humanized tag name
+    experimental:
+      icon: ":rocket:"      # any emoji shortcode paints on a colored disc
+      accent: amber
+    internal:
+      icon: x
+      legend: false         # taggable, but kept out of the legend
+---
+```
+
+`accent` also accepts a literal CSS color (`accent: "#ffe066"`); named slots
+win when both interpretations exist, and hex accents derive a readable
+foreground automatically.
+
+Topics then use the tags exactly like built-ins: `Topic name [advanced]`.
+Declared tags join the legend in the theme's style; undeclared tags keep
+falling back to the unknown-tag badge. Each document tag also gets a semantic
+CSS paint token (`--roadmap-badge-tag-advanced-background`) for stylesheet
+overrides. Explicit `background`/`foreground` colors are accepted as an escape
+hatch, with the caveat that literal colors do not adapt across themes or
+modes.
 
 ## Emoji
 

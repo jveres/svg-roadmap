@@ -168,3 +168,150 @@ roadmap:
 		expect(generated.svg).toContain('letter-spacing="1.5"');
 	});
 });
+
+describe("document-defined tags", () => {
+	const taggedSource = `---
+roadmap:
+  tags:
+    advanced:
+      icon: star
+      accent: violet
+      label: Advanced topic
+    experimental:
+      icon: ":rocket:"
+      accent: amber
+    internal:
+      icon: x
+      legend: false
+    branded:
+      background: "#123456"
+      foreground: "#fedcba"
+---
+
+# Title
+
+* Chapter
+  * Deep topic [advanced]
+  * Rocket topic [experimental]
+  * Hidden topic [internal]
+  * Brand topic [branded]
+`;
+
+	test("front matter declares tags with accents, labels, and icons", () => {
+		const generated = generateRoadmap(taggedSource);
+		// Accent slots resolve through the theme palette.
+		expect(generated.svg).toContain("--roadmap-badge-tag-advanced-background:#8a75e5");
+		expect(generated.svg).toContain('href="#');
+		expect(generated.svg).toContain("roadmap__badge--tag-advanced");
+		const legend = generated.layout.elements.find((element) => element.kind === "legend");
+		if (!legend || !("items" in legend)) throw new Error("legend missing");
+		const labels = legend.items.map((item) => item.label);
+		expect(labels).toContain("Advanced topic");
+		// Default label humanizes the tag name.
+		expect(labels).toContain("Experimental");
+		// legend: false keeps the tag off the legend but the badge renders.
+		expect(labels).not.toContain("Internal");
+		expect(generated.svg).toContain("roadmap__badge--tag-internal");
+	});
+
+	test("emoji shortcode icons paint artwork on a colored disc", () => {
+		const generated = generateRoadmap(taggedSource);
+		expect(generated.svg).toMatch(/roadmap__badge--tag-experimental[^>]*>[\s\S]*?-emoji-rocket"/u);
+		// The rocket artwork is emitted even though no text uses the shortcode.
+		expect(generated.svg).toContain('-emoji-rocket" viewBox');
+	});
+
+	test("a color-valued accent is used literally with a derived foreground", () => {
+		const generated = generateRoadmap(
+			'---\nroadmap:\n  tags:\n    hot:\n      accent: "#ffe066"\n---\n\n# T\n\n* C\n  * Topic [hot]\n',
+		);
+		expect(generated.svg).toContain("--roadmap-badge-tag-hot-background:#ffe066");
+		// Light backgrounds get a dark foreground automatically.
+		expect(generated.svg).toContain("--roadmap-badge-tag-hot-foreground:#22242a");
+	});
+
+	test("explicit colors pass through as an escape hatch", () => {
+		const generated = generateRoadmap(taggedSource);
+		expect(generated.svg).toContain("--roadmap-badge-tag-branded-background:#123456");
+		expect(generated.svg).toContain("--roadmap-badge-tag-branded-foreground:#fedcba");
+	});
+
+	test("theme identity is preserved when no document tags are declared", () => {
+		const generated = generateRoadmap(source);
+		expect(generated.theme).toBe(lightTheme);
+	});
+
+	test("the legend can be disabled from front matter", () => {
+		const withLegend = generateRoadmap(taggedSource);
+		const without = generateRoadmap(taggedSource.replace("roadmap:", "roadmap:\n  legend: false"));
+		expect(withLegend.layout.elements.some((element) => element.kind === "legend")).toBe(true);
+		expect(without.layout.elements.some((element) => element.kind === "legend")).toBe(false);
+	});
+
+	test("grid nesting draws side-selected hairline tree lines", () => {
+		const generated = generateRoadmap(
+			"# T\n\n* Chapter\n  + Head\n    * Parent\n      * Left child\n        * Grand child\n  * Head two\n    * Parent two\n      - Right child\n",
+		);
+		const elbows = generated.layout.connectors.filter((connector) => connector.shape === "elbow");
+		expect(elbows).toHaveLength(3);
+		const bySide = (sign: number) =>
+			elbows.filter((connector) => Math.sign(connector.to.x - connector.from.x) === sign);
+		// Left-side default enters the child's left edge; `-` mirrors right.
+		expect(bySide(1)).toHaveLength(2);
+		expect(bySide(-1)).toHaveLength(1);
+		// Tree lines render as unmarked hairlines, not themed branch routes.
+		expect(generated.svg).toContain('data-roadmap-element="tree-line"');
+		expect(generated.svg).toMatch(/tree-line[^>]*stroke-width="1"[^>]*stroke-linecap="butt"/u);
+		expect(generated.svg).not.toMatch(/tree-line[^>]*marker-end/u);
+	});
+
+	test("the scale setting resizes the root while the viewBox keeps geometry", () => {
+		const scaled = generateRoadmap("---\nroadmap:\n  scale: 1.5\n---\n\n# T\n\n* C\n  * Topic\n");
+		const plain = generateRoadmap("# T\n\n* C\n  * Topic\n");
+		const root = (svg: string) => svg.match(/<svg[^>]*>/u)?.[0] ?? "";
+		expect(root(scaled.svg)).toContain(`width="${plain.layout.width * 1.5}"`);
+		expect(root(scaled.svg)).toContain(`viewBox="0 0 ${plain.layout.width} `);
+		// Geometry is identical; only the rendered size changes.
+		expect(scaled.layout.width).toBe(plain.layout.width);
+		// The render option wins over the document setting.
+		const overridden = generateRoadmap(
+			"---\nroadmap:\n  scale: 1.5\n---\n\n# T\n\n* C\n  * Topic\n",
+			{ render: { scale: 2 } },
+		);
+		expect(root(overridden.svg)).toContain(`width="${plain.layout.width * 2}"`);
+		expect(() => generateRoadmap("---\nroadmap:\n  scale: 9\n---\n\n# T\n")).toThrow(
+			/scale must be a number between/u,
+		);
+	});
+
+	test("misplaced roadmap-level keys and inline comments are handled helpfully", () => {
+		expect(() =>
+			generateRoadmap(
+				"---\nroadmap:\n  background:\n    enabled: true\n    legend: false\n---\n\n# T\n",
+			),
+		).toThrow(/put it directly under "roadmap:" with a two-space indent/u);
+		expect(() =>
+			generateRoadmap("---\nroadmap:\n  theme:\n    preset: fun\n    scale: 2\n---\n\n# T\n"),
+		).toThrow(/put it directly under "roadmap:" with a two-space indent/u);
+		// Plain unknown keys list what the block supports.
+		expect(() =>
+			generateRoadmap("---\nroadmap:\n  background:\n    speed: 2\n---\n\n# T\n"),
+		).toThrow(/Supported: enabled, seed, density, size, animated/u);
+		// Inline comments after a value parse like YAML.
+		const commented = generateRoadmap(
+			"---\nroadmap:\n  legend: false # hide it\n---\n\n# T\n\n* C\n  * Topic [recommended]\n",
+		);
+		expect(commented.layout.elements.some((element) => element.kind === "legend")).toBe(false);
+	});
+
+	test("invalid tag settings fail with descriptive errors", () => {
+		expect(() =>
+			generateRoadmap("---\nroadmap:\n  tags:\n    bad:\n      icon: nonsense\n---\n\n# T\n"),
+		).toThrow(/icon must be one of/u);
+		expect(() =>
+			generateRoadmap(
+				'---\nroadmap:\n  tags:\n    bad:\n      background: "url(javascript:x)"\n---\n\n# T\n',
+			),
+		).toThrow(/plain CSS color/u);
+	});
+});

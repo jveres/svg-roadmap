@@ -1,4 +1,4 @@
-import type { RoadmapSettings } from "../types.ts";
+import type { RoadmapSettings, RoadmapTagSetting } from "../types.ts";
 
 type FrontmatterScalar = string | number | boolean;
 type FrontmatterValue = FrontmatterScalar | FrontmatterMap;
@@ -9,6 +9,9 @@ interface FrontmatterMap {
 export const defaultRoadmapSettings: RoadmapSettings = {
 	theme: { preset: "fun" },
 	background: { enabled: false, seed: "default", density: 0.55, size: 1, animated: false },
+	tags: {},
+	legend: true,
+	scale: 1,
 };
 
 export class RoadmapFrontmatterError extends Error {
@@ -19,8 +22,14 @@ export class RoadmapFrontmatterError extends Error {
 }
 
 function parseScalar(source: string, line: number): FrontmatterScalar {
-	const value = source.trim();
+	let value = source.trim();
 	if (!value) throw new RoadmapFrontmatterError(`Missing value on front-matter line ${line}.`);
+	// YAML-style inline comments: an unquoted value ends at whitespace + '#'.
+	// A leading '#' (a bare color) is a value, matching quoted-color examples.
+	if (!value.startsWith('"') && !value.startsWith("'")) {
+		const comment = value.search(/\s#/u);
+		if (comment > 0) value = value.slice(0, comment).trim();
+	}
 	if (value.startsWith('"')) {
 		try {
 			const parsed: unknown = JSON.parse(value);
@@ -95,11 +104,20 @@ function isMap(value: FrontmatterValue | undefined): value is FrontmatterMap {
 	return typeof value === "object" && value !== null;
 }
 
+const roadmapLevelKeys = ["theme", "background", "tags", "legend", "scale"] as const;
+
 function assertKnownKeys(value: FrontmatterMap, keys: readonly string[], context: string): void {
 	for (const key of Object.keys(value)) {
-		if (!keys.includes(key)) {
-			throw new RoadmapFrontmatterError(`Unsupported ${context} setting "${key}".`);
+		if (keys.includes(key)) continue;
+		// The usual mistake is one indent level too deep: name the fix.
+		if (context !== "roadmap" && (roadmapLevelKeys as readonly string[]).includes(key)) {
+			throw new RoadmapFrontmatterError(
+				`"${key}" is a roadmap setting, not a ${context} setting — put it directly under "roadmap:" with a two-space indent.`,
+			);
 		}
+		throw new RoadmapFrontmatterError(
+			`Unsupported ${context} setting "${key}". Supported: ${keys.join(", ")}.`,
+		);
 	}
 }
 
@@ -156,6 +174,85 @@ function parseBackground(value: FrontmatterValue | undefined): RoadmapSettings["
 	return { enabled, seed: String(rawSeed), density, size, animated };
 }
 
+const builtInBadgeIcons = ["check", "heart", "star", "x", "question", "cloud", "warning"] as const;
+const shortcodeIconPattern = /^:[a-z0-9_+-]+:$/u;
+// Colors reach SVG attribute values, so only plain CSS color syntax passes.
+const colorPattern = /^[#a-zA-Z0-9(),.%\s-]+$/u;
+
+function parseTagColor(value: FrontmatterValue | undefined, context: string): string | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "string" || !value.trim() || !colorPattern.test(value)) {
+		throw new RoadmapFrontmatterError(`The ${context} must be a plain CSS color.`);
+	}
+	return value;
+}
+
+function parseTag(name: string, value: FrontmatterValue): RoadmapTagSetting {
+	if (!isMap(value)) {
+		throw new RoadmapFrontmatterError(`The tag "${name}" must be a mapping of tag settings.`);
+	}
+	assertKnownKeys(
+		value,
+		["icon", "accent", "label", "legend", "background", "foreground"],
+		`tag "${name}"`,
+	);
+	const icon = value.icon;
+	if (icon !== undefined) {
+		const known =
+			typeof icon === "string" &&
+			((builtInBadgeIcons as readonly string[]).includes(icon) || shortcodeIconPattern.test(icon));
+		if (!known) {
+			throw new RoadmapFrontmatterError(
+				`The tag "${name}" icon must be one of ${builtInBadgeIcons.join(", ")} or an emoji shortcode such as ":rocket:".`,
+			);
+		}
+	}
+	const accent = value.accent;
+	if (
+		accent !== undefined &&
+		(typeof accent !== "string" ||
+			!(/^[a-z][a-z0-9-]*$/u.test(accent) || colorPattern.test(accent)))
+	) {
+		throw new RoadmapFrontmatterError(
+			`The tag "${name}" accent must be an accent slot name or a plain CSS color.`,
+		);
+	}
+	const label = value.label;
+	if (label !== undefined && typeof label !== "string") {
+		throw new RoadmapFrontmatterError(`The tag "${name}" label must be a string.`);
+	}
+	const legend = value.legend;
+	if (legend !== undefined && typeof legend !== "boolean") {
+		throw new RoadmapFrontmatterError(`The tag "${name}" legend setting must be a boolean.`);
+	}
+	return {
+		...(icon !== undefined ? { icon } : {}),
+		...(accent !== undefined ? { accent } : {}),
+		...(label !== undefined ? { label } : {}),
+		...(legend !== undefined ? { legend } : {}),
+		...(() => {
+			const background = parseTagColor(value.background, `tag "${name}" background`);
+			const foreground = parseTagColor(value.foreground, `tag "${name}" foreground`);
+			return {
+				...(background !== undefined ? { background } : {}),
+				...(foreground !== undefined ? { foreground } : {}),
+			};
+		})(),
+	};
+}
+
+function parseTags(value: FrontmatterValue | undefined): RoadmapSettings["tags"] {
+	if (value === undefined) return defaultRoadmapSettings.tags;
+	if (!isMap(value)) {
+		throw new RoadmapFrontmatterError("The roadmap tags must be a mapping of tag definitions.");
+	}
+	const tags: Record<string, RoadmapTagSetting> = {};
+	for (const [name, setting] of Object.entries(value)) {
+		tags[name] = parseTag(name, setting);
+	}
+	return tags;
+}
+
 export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSettings {
 	if (!source?.trim()) return defaultRoadmapSettings;
 	const root = parseMapping(source);
@@ -164,9 +261,20 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 	if (!isMap(roadmap)) {
 		throw new RoadmapFrontmatterError("The roadmap front-matter value must be a mapping.");
 	}
-	assertKnownKeys(roadmap, ["theme", "background"], "roadmap");
+	assertKnownKeys(roadmap, ["theme", "background", "tags", "legend", "scale"], "roadmap");
+	const legend = roadmap.legend ?? defaultRoadmapSettings.legend;
+	if (typeof legend !== "boolean") {
+		throw new RoadmapFrontmatterError("The roadmap legend setting must be a boolean.");
+	}
+	const scale = roadmap.scale ?? defaultRoadmapSettings.scale;
+	if (typeof scale !== "number" || scale < 0.25 || scale > 4) {
+		throw new RoadmapFrontmatterError("The roadmap scale must be a number between 0.25 and 4.");
+	}
 	return {
 		theme: parseTheme(roadmap.theme),
 		background: parseBackground(roadmap.background),
+		tags: parseTags(roadmap.tags),
+		legend,
+		scale,
 	};
 }

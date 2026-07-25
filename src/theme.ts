@@ -1,11 +1,15 @@
+import { canonicalShortcode, emojiArtwork } from "./core/emoji-artwork.ts";
 import { generateFunBackgroundArtifacts } from "./themes/fun/background-artifacts.ts";
 import type {
+	BadgeAccent,
+	BadgeIcon,
 	BadgeStyle,
 	BoardTheme,
 	CardTheme,
 	ConnectorTheme,
 	DeepPartial,
 	LegendTheme,
+	RoadmapTagSetting,
 	RoadmapTheme,
 	RoadmapThemePresetWithModes,
 	TagStyle,
@@ -28,6 +32,20 @@ const warning: BadgeStyle = {
 	icon: "warning",
 	background: "#ffd54f",
 	foreground: "#3f3f3f",
+};
+
+/**
+ * Accent slots offered to document-defined tags. Documents reference these by
+ * name (`accent: violet`) instead of literal colors, so a taxonomy adapts to
+ * every theme and mode; themes may override slots with their own palette.
+ */
+const accents: Readonly<Record<string, BadgeAccent>> = {
+	green: { background: "#76c479", foreground: "#ffffff" },
+	red: { background: "#c75c5c", foreground: "#ffffff" },
+	amber: { background: "#f5a100", foreground: "#ffffff" },
+	blue: { background: "#748ffc", foreground: "#ffffff" },
+	violet: { background: "#8a75e5", foreground: "#ffffff" },
+	neutral: { background: "#777982", foreground: "#ffffff" },
 };
 
 const tags: Readonly<Record<string, TagStyle>> = {
@@ -327,6 +345,7 @@ export const lightTheme: RoadmapTheme = {
 		},
 		unknown: { label: "Other", badges: [question] },
 		tags,
+		accents,
 	},
 };
 
@@ -568,8 +587,13 @@ function mergeConnector(
 }
 
 function mergeBadge(base: BadgeStyle, override: DeepPartial<BadgeStyle> | undefined): BadgeStyle {
+	const icon = override?.icon ?? base.icon;
+	const emoji = override?.emoji ?? base.emoji;
+	const token = override?.token ?? base.token;
 	return {
-		icon: override?.icon ?? base.icon,
+		...(icon !== undefined ? { icon } : {}),
+		...(emoji !== undefined ? { emoji } : {}),
+		...(token !== undefined ? { token } : {}),
 		background: override?.background ?? base.background,
 		foreground: override?.foreground ?? base.foreground,
 	};
@@ -606,6 +630,7 @@ export function createTheme(
 	const shadowPattern = override.shadow?.pattern ?? base.shadow.pattern;
 	const textPainting = override.textPainting ?? base.textPainting;
 	const unknown = mergeTag(base.badges.unknown, override.badges?.unknown);
+	const mergedAccents = mergeAccents(base.badges.accents, override.badges?.accents);
 	const tagNames = new Set([
 		...Object.keys(base.badges.tags),
 		...Object.keys(override.badges?.tags ?? {}),
@@ -690,6 +715,97 @@ export function createTheme(
 			},
 			unknown,
 			tags: normalizedTags,
+			...(mergedAccents !== undefined ? { accents: mergedAccents } : {}),
 		},
+	};
+}
+
+function mergeAccents(
+	base: Readonly<Record<string, BadgeAccent>> | undefined,
+	override: DeepPartial<Readonly<Record<string, BadgeAccent>>> | undefined,
+): Readonly<Record<string, BadgeAccent>> | undefined {
+	if (base === undefined && override === undefined) return undefined;
+	const merged: Record<string, BadgeAccent> = { ...base };
+	for (const [name, accent] of Object.entries(override ?? {})) {
+		if (accent?.background !== undefined && accent.foreground !== undefined) {
+			merged[name] = { background: accent.background, foreground: accent.foreground };
+		}
+	}
+	return merged;
+}
+
+const builtInBadgeIcons: readonly BadgeIcon[] = [
+	"check",
+	"heart",
+	"star",
+	"x",
+	"question",
+	"cloud",
+	"warning",
+];
+
+/** A literal-color accent; hex colors derive a readable foreground. */
+function colorAccent(value: string): BadgeAccent {
+	const hex = value.match(/^#([0-9a-f]{6})$/iu)?.[1];
+	if (!hex) return { background: value, foreground: "#ffffff" };
+	const red = Number.parseInt(hex.slice(0, 2), 16) / 255;
+	const green = Number.parseInt(hex.slice(2, 4), 16) / 255;
+	const blue = Number.parseInt(hex.slice(4, 6), 16) / 255;
+	const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+	return { background: value, foreground: luminance > 0.62 ? "#22242a" : "#ffffff" };
+}
+
+function humanizeTagName(tag: string): string {
+	const spaced = tag.replaceAll("-", " ");
+	return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function documentTagStyle(tag: string, setting: RoadmapTagSetting, theme: RoadmapTheme): TagStyle {
+	const fallback = theme.badges.unknown.badges[0];
+	// Named slots win, so `accent: green` means the theme's green in every
+	// mode; anything else color-like is used literally.
+	const slot = setting.accent ? theme.badges.accents?.[setting.accent] : undefined;
+	const literal = !slot && setting.accent ? colorAccent(setting.accent) : undefined;
+	const accent = slot ?? literal;
+	const background = setting.background ?? accent?.background ?? fallback?.background ?? "#777982";
+	const foreground = setting.foreground ?? accent?.foreground ?? fallback?.foreground ?? "#ffffff";
+	// Per-tag paint token: tags sharing an icon keep independent colors, and
+	// CSS overrides get a semantic handle (--roadmap-badge-tag-<name>-…).
+	const token = `tag-${tag}`;
+	let badge: BadgeStyle;
+	if (setting.icon?.startsWith(":")) {
+		const shortcode = setting.icon.slice(1, -1);
+		badge = emojiArtwork(shortcode)
+			? { emoji: canonicalShortcode(shortcode), background, foreground, token }
+			: { icon: fallback?.icon ?? "question", background, foreground, token };
+	} else {
+		const icon = builtInBadgeIcons.find((name) => name === setting.icon);
+		badge = { icon: icon ?? fallback?.icon ?? "question", background, foreground, token };
+	}
+	return {
+		label: setting.label ?? humanizeTagName(tag),
+		badges: [badge],
+		...(setting.legend !== undefined ? { legend: setting.legend } : {}),
+	};
+}
+
+/**
+ * Extends a theme's tag styles with the document-defined tags from front
+ * matter. Returns the theme unchanged when the document declares none, so
+ * theme identity is preserved for the common case.
+ */
+export function applyDocumentTags(
+	theme: RoadmapTheme,
+	tags: Readonly<Record<string, RoadmapTagSetting>>,
+): RoadmapTheme {
+	const entries = Object.entries(tags);
+	if (entries.length === 0) return theme;
+	const resolved: Record<string, TagStyle> = {};
+	for (const [tag, setting] of entries) {
+		resolved[tag] = documentTagStyle(tag, setting, theme);
+	}
+	return {
+		...theme,
+		badges: { ...theme.badges, tags: { ...theme.badges.tags, ...resolved } },
 	};
 }

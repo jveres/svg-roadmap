@@ -134,9 +134,33 @@ export interface RoadmapBackgroundSettings {
 	readonly animated?: boolean | number;
 }
 
+/**
+ * A document-defined tag from front matter. The document owns the taxonomy
+ * (name, meaning, legend label); the theme owns the palette, referenced
+ * through an abstract accent slot so the tag adapts to every theme and mode.
+ */
+export interface RoadmapTagSetting {
+	/** Built-in badge icon name or an emoji shortcode such as `":rocket:"`. */
+	readonly icon?: string;
+	/** Theme accent slot supplying the badge colors. */
+	readonly accent?: string;
+	/** Legend text; defaults to the humanized tag name. */
+	readonly label?: string;
+	/** Set to `false` to keep the tag out of the legend. */
+	readonly legend?: boolean;
+	/** Explicit colors; escape hatch that does not adapt to themes or modes. */
+	readonly background?: string;
+	readonly foreground?: string;
+}
+
 export interface RoadmapSettings {
 	readonly theme: RoadmapThemeSettings;
 	readonly background: RoadmapBackgroundSettings;
+	readonly tags: Readonly<Record<string, RoadmapTagSetting>>;
+	/** Whether the tag legend renders. Defaults to `true`. */
+	readonly legend: boolean;
+	/** Rendered-size multiplier for the whole SVG. Defaults to `1`. */
+	readonly scale: number;
 }
 
 export interface RoadmapDocument {
@@ -251,7 +275,8 @@ export interface LayoutGroup extends Rect {
 export interface LayoutLegendItem {
 	readonly tag: string;
 	readonly label: string;
-	readonly icons: readonly BadgeIcon[];
+	/** Icon or emoji-shortcode name of each badge, for sizing and styling. */
+	readonly icons: readonly string[];
 }
 
 export interface LayoutLegendMetrics {
@@ -287,6 +312,11 @@ export interface LayoutConnector {
 	readonly from: Point;
 	readonly to: Point;
 	readonly depth: number;
+	/**
+	 * `elbow` routes vertical-then-horizontal into the target's side — the
+	 * tree-gutter look grid nesting uses. Elbow connectors skip lane solving.
+	 */
+	readonly shape?: "elbow";
 }
 
 export interface LayoutBackgroundArtifact {
@@ -331,14 +361,32 @@ export interface RoadmapLayout {
 export type BadgeIcon = "check" | "heart" | "star" | "x" | "question" | "cloud" | "warning";
 
 export interface BadgeStyle {
-	readonly icon: BadgeIcon;
+	/** Built-in glyph; ignored when `emoji` is set. */
+	readonly icon?: BadgeIcon;
+	/** Canonical emoji shortcode painted on a colored disc instead of a glyph. */
+	readonly emoji?: string;
 	readonly background: string;
 	readonly foreground: string;
+	/**
+	 * CSS token key for this badge's paint. Theme badges default to their icon
+	 * name (`--roadmap-badge-check-background`); document-defined tags carry a
+	 * per-tag token (`--roadmap-badge-tag-advanced-background`) so tags that
+	 * share an icon keep independent colors.
+	 */
+	readonly token?: string;
 }
 
 export interface TagStyle {
 	readonly label: string;
 	readonly badges: readonly BadgeStyle[];
+	/** Set to `false` to keep the tag out of the legend. Defaults to `true`. */
+	readonly legend?: boolean;
+}
+
+/** Accent color slot a theme offers to document-defined tags. */
+export interface BadgeAccent {
+	readonly background: string;
+	readonly foreground: string;
 }
 
 export interface TypographyTheme {
@@ -512,6 +560,12 @@ export interface RoadmapTheme {
 		};
 		readonly unknown: TagStyle;
 		readonly tags: Readonly<Record<string, TagStyle>>;
+		/**
+		 * Named color slots offered to document-defined tags. Documents bind
+		 * tags to slots (`accent: violet`) instead of literal colors, so a
+		 * taxonomy keeps working across themes and modes.
+		 */
+		readonly accents?: Readonly<Record<string, BadgeAccent>>;
 	};
 }
 
@@ -565,6 +619,12 @@ export interface RoadmapRenderOptions {
 	 * Defaults to the document's background setting.
 	 */
 	readonly animatedBackground?: boolean | number;
+	/**
+	 * Scales the rendered size: the root width/height multiply by this while
+	 * the viewBox keeps layout coordinates. Defaults to the document's
+	 * `roadmap.scale` front-matter setting.
+	 */
+	readonly scale?: number;
 }
 
 export interface RoadmapThemeSelection {

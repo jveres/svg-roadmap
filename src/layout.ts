@@ -563,8 +563,19 @@ interface GridColumn {
 	readonly width: number;
 }
 
+/** Tree-line indent per nesting level inside a grid column; uncapped, so a
+ * column nests as deep as the author writes — each level costs one gutter. */
+function gridIndent(relativeDepth: number): number {
+	return Math.max(0, relativeDepth - 1) * 16;
+}
+
 function packGridColumn(entries: readonly GridEntry[], itemGap: number): GridColumn {
-	const width = Math.max(1, ...entries.map((entry) => entry.node.width));
+	// The column must fit every entry at its natural width plus its indent;
+	// shrinking cards to make room would overflow their measured text.
+	const width = Math.max(
+		1,
+		...entries.map((entry) => entry.node.width + gridIndent(entry.relativeDepth)),
+	);
 	const rows: GridEntry[][] = [];
 	for (let index = 0; index < entries.length; index += 1) {
 		const entry = entries[index];
@@ -659,6 +670,18 @@ function layoutGridGroup(
 				Math.max(0, chunk.columns.length - 1)) /
 				2;
 		const byId = new Map<string, LayoutNode>();
+		// The first nested child's list marker picks the tree-line side for its
+		// siblings — `-` mirrors lines and indent to the right, `*` keeps the
+		// default left — the same document-level trick `+` uses for grids.
+		const treeSide = new Map<string, -1 | 1>();
+		for (const column of chunk.columns) {
+			for (const entry of column.rows.flat()) {
+				if (!entry.parentId || entry.relativeDepth < 2) continue;
+				if (!treeSide.has(entry.parentId)) {
+					treeSide.set(entry.parentId, entry.topic.marker === "-" ? 1 : -1);
+				}
+			}
+		}
 		for (const column of chunk.columns) {
 			for (const [rowIndex, entries] of column.rows.entries()) {
 				const pairedExtra =
@@ -670,12 +693,15 @@ function layoutGridGroup(
 						: 0;
 				let entryX = x;
 				for (const entry of entries) {
-					const indent = Math.min(20, Math.max(0, entry.relativeDepth - 1) * 7);
-					const width =
-						entries.length === 2
-							? entry.node.width + pairedExtra
-							: Math.max(32, column.width - indent);
-					entry.node.x = entryX + indent;
+					// Nested rows give up their left edge to the tree-line
+					// gutter and stay flush with the column's right edge, so
+					// the hierarchy reads as an indented outline rather than a
+					// floating box. The depth cap keeps grids one honest
+					// nesting level — deeper trees belong in tree groups.
+					const indent = gridIndent(entry.relativeDepth);
+					const side = entry.parentId ? (treeSide.get(entry.parentId) ?? -1) : -1;
+					const width = entries.length === 2 ? entry.node.width + pairedExtra : column.width;
+					entry.node.x = entryX + (side < 0 ? indent : 0);
 					entry.node.y = rowY[rowIndex] ?? grid.y + padding;
 					entry.node.width = Math.max(32, width - indent);
 					entry.node.height = rowHeights[rowIndex] ?? entry.node.height;
@@ -689,17 +715,29 @@ function layoutGridGroup(
 		context.elements.push(grid);
 		context.occupied.push(inflateRectangle(grid, 1));
 		for (const column of chunk.columns) {
+			// Tree-gutter links: a stem drops from the parent through the
+			// indent gutter and elbows into each child's left edge, so nesting
+			// reads as a file-tree hierarchy without widening the balanced
+			// column. Each sibling's stem continues from where the previous
+			// tick branched off — translucent strokes double-darken wherever a
+			// segment is drawn twice.
+			const stemBottom = new Map<string, number>();
 			for (const entry of column.rows.flat()) {
 				if (!entry.parentId || entry.relativeDepth < 2) continue;
 				const parent = byId.get(entry.parentId);
 				if (!parent) continue;
+				const side = treeSide.get(entry.parentId) ?? -1;
+				const gutterX = side < 0 ? entry.node.x - 8 : rectRight(entry.node) + 8;
+				const anchorY = rectCenter(entry.node).y;
 				context.connectors.push({
 					id: `${entry.topic.id}-grid-link`,
 					kind: "topicToChildren",
-					from: { x: rectCenter(parent).x, y: rectBottom(parent) },
-					to: { x: rectCenter(entry.node).x, y: entry.node.y },
+					shape: "elbow",
+					from: { x: gutterX, y: stemBottom.get(entry.parentId) ?? rectBottom(parent) },
+					to: { x: side < 0 ? entry.node.x : rectRight(entry.node), y: anchorY },
 					depth: entry.topic.depth,
 				});
+				stemBottom.set(entry.parentId, anchorY);
 			}
 		}
 		anchors.push({ x: centerX, y: grid.y });
@@ -997,7 +1035,9 @@ function usedTagStyles(document: RoadmapDocument, theme: RoadmapTheme): [string,
 			pending.push(...topic.children);
 		}
 	}
-	const known = Object.entries(theme.badges.tags).filter(([tag]) => used.has(tag));
+	const known = Object.entries(theme.badges.tags).filter(
+		([tag, style]) => used.has(tag) && style.legend !== false,
+	);
 	const unknown = [...used]
 		.filter((tag) => !theme.badges.tags[tag])
 		.map((tag): [string, TagStyle] => [tag, { ...theme.badges.unknown, label: tag }]);
@@ -1073,7 +1113,7 @@ function createLegend(
 		items: styles.map(([tag, style]) => ({
 			tag,
 			label: legendLabel(style.label),
-			icons: style.badges.map((badge) => badge.icon),
+			icons: style.badges.map((badge) => badge.emoji ?? badge.icon ?? "question"),
 		})),
 		metrics,
 	};

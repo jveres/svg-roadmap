@@ -201,6 +201,14 @@ const arialBold = new Map(
 	Array.from(arialCharacters, (character, index) => [character, arialBoldUnits[index] ?? 556]),
 );
 
+/**
+ * Code spans paint at 0.9em of the surrounding text, the ratio prose
+ * typography uses for inline code: monospace glyphs at full size read a
+ * step larger than serif bodies (rose's Palatino most visibly). Measurement
+ * and paint share the constant so textLength never stretches the glyphs.
+ */
+export const codePaintScale = 0.9;
+
 type FontCategory = "monospace" | "serif" | "sans";
 
 const monospaceFontPattern = /\b(?:monospace|courier|consolas|menlo|monaco)\b/iu;
@@ -324,7 +332,7 @@ export function measureText(
 	let width = 0;
 	const category = fontCategory(fontFamily);
 	if (code) {
-		width = Array.from(text).length * fontSize * 0.61;
+		width = Array.from(text).length * fontSize * 0.61 * codePaintScale;
 	} else if (measurementProvider !== undefined && category !== "monospace") {
 		width = providerWidth(measurementProvider, text, {
 			fontSize,

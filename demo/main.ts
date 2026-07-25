@@ -5,8 +5,10 @@ import {
 	type RoadmapColorMode,
 	type RoadmapGenerator,
 	type RoadmapThemeSelection,
+	registerEmojiArtwork,
 } from "../src/index.ts";
 import aiArchitect from "./ai-architect.md?raw";
+import featureTour from "./feature-tour.md?raw";
 import softwareHygiene from "./software-hygiene.md?raw";
 import "./style.css";
 
@@ -26,6 +28,11 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 		label: "AI Architect",
 		source: aiArchitect,
 		preset: "pro",
+	},
+	"feature-tour": {
+		label: "Feature Tour",
+		source: featureTour,
+		preset: "sci-fi",
 	},
 };
 
@@ -294,6 +301,16 @@ try {
 	await installDomMeasurement({ onFontsChanged: () => render() });
 	generator = await createRoadmapGenerator();
 	render();
+	// The full GitHub emoji tier loads lazily so first paint stays light;
+	// shortcodes beyond the core pack upgrade on the next render.
+	import("../src/emoji-github.ts")
+		.then(({ githubEmojiArtwork }) => {
+			registerEmojiArtwork(githubEmojiArtwork);
+			render();
+		})
+		.catch((error: unknown) => {
+			console.warn("GitHub emoji pack failed to load", error);
+		});
 } catch (error) {
 	const message = error instanceof Error ? error.message : String(error);
 	preview.textContent = `Unable to initialize comrak-wasm: ${message}`;

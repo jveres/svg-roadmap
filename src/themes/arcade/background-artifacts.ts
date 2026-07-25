@@ -1,4 +1,5 @@
 import {
+	createMotifCycler,
 	createSeededRandom,
 	intersectsAny,
 	isInOuterVoid,
@@ -176,6 +177,7 @@ export function generateArcadeBackgroundArtifacts({
 	const rows = Math.ceil(height / tileSize);
 	const artifacts: LayoutBackgroundArtifact[] = [];
 	const accepted: Rect[] = [];
+	const nextMotif = createMotifCycler(`arcade:${settings.seed}`, motifs.length);
 
 	for (let row = 0; row < rows; row += 1) {
 		for (let column = 0; column < columns; column += 1) {
@@ -204,8 +206,7 @@ export function generateArcadeBackgroundArtifacts({
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
 			accepted.push(bounds);
-			const motif =
-				motifs[(Math.floor(random() * motifs.length) + column + row * 3) % motifs.length];
+			const motif = motifs[nextMotif()];
 			if (!motif) continue;
 			// Sprites stay upright like they are marching across a screen.
 			const tilt = roundCoordinate((random() - 0.5) * 16);

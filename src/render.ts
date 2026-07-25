@@ -1,4 +1,5 @@
 import { createSeededRandom } from "./core/background-artifacts.ts";
+import { emojiInkCenters } from "./core/emoji/artwork-optics.ts";
 import { canonicalShortcode, emojiArtwork } from "./core/emoji-artwork.ts";
 import { fittedCapsuleFrame, noteBlobGeometry, paintedTextLines } from "./core/frames.ts";
 import {
@@ -11,7 +12,7 @@ import {
 	roundCoordinate,
 	verticalBumpPath,
 } from "./core/geometry.ts";
-import { measureTrackedText } from "./core/inline.ts";
+import { codePaintScale, measureTrackedText } from "./core/inline.ts";
 import { escapeXml, hashNumber, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
 	BadgeStyle,
@@ -96,8 +97,16 @@ function trimConnectorEnd(
 	routing: ConnectorTheme["routing"],
 ): LayoutConnector {
 	const { from, to } = connector;
-	if (routing === "orthogonal") {
-		if (connector.kind === "topicToChildren") {
+	if (routing === "orthogonal" || connector.shape === "elbow") {
+		// The elbow's final leg is always horizontal into the target's side.
+		// For plain routes, children stacked directly below their parent make
+		// the final leg vertical; trimming along x would drag the endpoint
+		// sideways under the card and orient the marker for an approach that
+		// does not exist.
+		const lastLegHorizontal =
+			connector.shape === "elbow" ||
+			(connector.kind === "topicToChildren" && Math.abs(to.x - from.x) >= trim * 2);
+		if (lastLegHorizontal) {
 			const sign = Math.sign(to.x - from.x) || 1;
 			return { ...connector, to: { x: to.x - sign * trim, y: to.y } };
 		}
@@ -238,8 +247,8 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 	for (const style of badgeStyles) {
 		for (const badge of style.badges) {
 			variables.push(
-				[`badge-${badge.icon}-background`, badge.background],
-				[`badge-${badge.icon}-foreground`, badge.foreground],
+				[`badge-${badgePaintToken(badge)}-background`, badge.background],
+				[`badge-${badgePaintToken(badge)}-foreground`, badge.foreground],
 			);
 		}
 	}
@@ -310,13 +319,22 @@ function badgesForTags(tags: readonly string[], theme: RoadmapTheme): BadgeStyle
 	const badges: BadgeStyle[] = [];
 	for (const tag of tags) {
 		for (const badge of badgeStyleForTag(tag, theme).badges) {
-			const key = `${badge.icon}:${badge.background}:${badge.foreground}`;
+			const key = `${badge.emoji ?? badge.icon}:${badge.background}:${badge.foreground}`;
 			if (seen.has(key)) continue;
 			seen.add(key);
 			badges.push(badge);
 		}
 	}
 	return badges;
+}
+
+/**
+ * CSS token key for a badge's paint. Theme badges stay keyed by icon name for
+ * compatibility; document-defined tags carry a per-tag token so tags sharing
+ * an icon keep independent colors.
+ */
+function badgePaintToken(badge: BadgeStyle): string {
+	return safeId(badge.token ?? badge.emoji ?? badge.icon ?? "unknown");
 }
 
 function badgeSize(node: LayoutNode, theme: RoadmapTheme): number {
@@ -343,7 +361,20 @@ function renderBadge(
 	size: number,
 	prefix: string,
 ): string {
-	return `<g class="roadmap__badge roadmap__badge--${escapeXml(badge.icon)}" transform="translate(${x} ${y})" data-roadmap-element="badge"><use href="#${prefix}-icon-${escapeXml(badge.icon)}" x="0" y="0" width="${size}" height="${size}" fill="${cssToken(`badge-${badge.icon}-background`)}" color="${cssToken(`badge-${badge.icon}-foreground`)}"/></g>`;
+	const paint = badgePaintToken(badge);
+	if (badge.emoji) {
+		// Emoji badges paint the artwork on a colored disc, shifted so the
+		// glyph's measured ink center (not its viewBox center) sits on the
+		// disc center.
+		const inset = size * 0.14;
+		const inner = size - inset * 2;
+		const [inkX, inkY] = emojiInkCenters[badge.emoji] ?? [0.5, 0.5];
+		const useX = roundCoordinate(inset + (0.5 - inkX) * inner);
+		const useY = roundCoordinate(inset + (0.5 - inkY) * inner);
+		return `<g class="roadmap__badge roadmap__badge--${paint}" transform="translate(${x} ${y})" data-roadmap-element="badge"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="${cssToken(`badge-${paint}-background`)}"/><use href="#${prefix}-emoji-${safeId(badge.emoji)}" x="${useX}" y="${useY}" width="${inner}" height="${inner}"/></g>`;
+	}
+	const icon = badge.icon ?? "question";
+	return `<g class="roadmap__badge roadmap__badge--${paint}" transform="translate(${x} ${y})" data-roadmap-element="badge"><use href="#${prefix}-icon-${escapeXml(icon)}" x="0" y="0" width="${size}" height="${size}" fill="${cssToken(`badge-${paint}-background`)}" color="${cssToken(`badge-${paint}-foreground`)}"/></g>`;
 }
 
 function renderNodeBadges(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
@@ -369,8 +400,12 @@ function markAttributes(segment: TextLineSegment, node: LayoutNode, fontSize: nu
 	const marks = new Set(segment.marks);
 	if (marks.has("strong")) attributes.push('font-weight="700"');
 	if (marks.has("emphasis")) attributes.push('font-style="italic"');
-	if (marks.has("code"))
-		attributes.push('font-family="ui-monospace, SFMono-Regular, Menlo, monospace"');
+	if (marks.has("code")) {
+		attributes.push(
+			'font-family="ui-monospace, SFMono-Regular, Menlo, monospace"',
+			`font-size="${roundCoordinate(fontSize * codePaintScale)}"`,
+		);
+	}
 	if (marks.has("highlight")) classes.push("roadmap__inline", "roadmap__inline--highlight");
 	if (marks.has("insert")) classes.push("roadmap__inline", "roadmap__inline--insert");
 	// Link underlines are painted rects (see segmentBackground); only the
@@ -416,8 +451,9 @@ function segmentBackground(
 			`<rect class="roadmap__insert-underline" x="${x}" y="${baseline + offset}" width="${width}" height="${thickness}" fill="${cssToken("inline-insert-underline")}"/>`,
 		);
 	} else if (segment.marks.includes("code")) {
+		const codeFontSize = fontSize * codePaintScale;
 		parts.push(
-			`<rect class="roadmap__code-background" x="${x - 2}" y="${baseline - fontSize * 0.82}" width="${width + 4}" height="${fontSize}" rx="2" fill="${cssToken("inline-code-background")}"/>`,
+			`<rect class="roadmap__code-background" x="${x - 2}" y="${baseline - codeFontSize * 0.82}" width="${width + 4}" height="${codeFontSize}" rx="2" fill="${cssToken("inline-code-background")}"/>`,
 		);
 	}
 	if (segment.abbreviation && !segment.destination && !segment.abbreviationIndicator) {
@@ -962,11 +998,21 @@ function renderGroup(
 }
 
 export function orthogonalConnectorPath(connector: LayoutConnector, laneOffset = 0): string {
+	// Tree-gutter elbow: straight down the gutter, then into the target side.
+	if (connector.shape === "elbow") {
+		return `M ${connector.from.x} ${connector.from.y} L ${connector.from.x} ${connector.to.y} L ${connector.to.x} ${connector.to.y}`;
+	}
 	const middleY = (connector.from.y + connector.to.y) / 2;
 	const middleX = (connector.from.x + connector.to.x) / 2 + laneOffset;
-	return connector.kind === "topicToChildren"
-		? `M ${connector.from.x} ${connector.from.y} L ${middleX} ${connector.from.y} L ${middleX} ${connector.to.y} L ${connector.to.x} ${connector.to.y}`
-		: `M ${connector.from.x} ${connector.from.y} L ${connector.from.x} ${middleY} L ${connector.to.x} ${middleY} L ${connector.to.x} ${connector.to.y}`;
+	if (connector.kind === "topicToChildren") {
+		// A child stacked directly below its parent gets a straight drop; a
+		// few-pixel stair step reads as a rendering defect, not a route.
+		if (Math.abs(connector.to.x - connector.from.x) < 6) {
+			return `M ${connector.from.x} ${connector.from.y} L ${connector.from.x} ${connector.to.y}`;
+		}
+		return `M ${connector.from.x} ${connector.from.y} L ${middleX} ${connector.from.y} L ${middleX} ${connector.to.y} L ${connector.to.x} ${connector.to.y}`;
+	}
+	return `M ${connector.from.x} ${connector.from.y} L ${connector.from.x} ${middleY} L ${connector.to.x} ${middleY} L ${connector.to.x} ${connector.to.y}`;
 }
 
 export function orthogonalLaneOffsets(
@@ -991,7 +1037,8 @@ export function orthogonalLaneOffsets(
 	};
 	const sides = new Map<number, LayoutConnector[]>();
 	for (const connector of connectors) {
-		if (connector.kind !== "topicToChildren") continue;
+		// Elbow links route through their own gutter; lanes would drag them out.
+		if (connector.kind !== "topicToChildren" || connector.shape === "elbow") continue;
 		const side = Math.sign(connector.to.x - connector.from.x);
 		const group = sides.get(side) ?? [];
 		group.push(connector);
@@ -1053,6 +1100,14 @@ function renderConnector(
 ): string {
 	const token = kebabToken(connector.kind);
 	const connectorTheme = theme.connectors[connector.kind];
+	// Tree-gutter elbows are outline furniture, not routes: a solid hairline
+	// in the branch color, unmarked and undashed. Inheriting the branch
+	// connector's full costume (width, dash, markers) makes a five-pixel
+	// joiner read as a broken connector instead of a tree line.
+	if (connector.shape === "elbow") {
+		const path = orthogonalConnectorPath(connector);
+		return `<path id="${prefix}-${safeId(connector.id)}" class="roadmap__connector roadmap__connector--tree-line" data-roadmap-element="tree-line" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="1" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-linecap="butt"/>`;
+	}
 	const endShape = connectorTheme.endShape ?? "none";
 	const trim =
 		endShape !== "none" && connectorTheme.routing !== "braided"
@@ -1064,14 +1119,18 @@ function renderConnector(
 	// to the trimmed geometry so the lane stays exactly where clearing put it.
 	const laneAnchorShift =
 		(connector.from.x + connector.to.x) / 2 - (routed.from.x + routed.to.x) / 2;
+	// Elbow links keep their tree-gutter shape under every routing style: a
+	// curve or straight line out of the gutter would cut across the parent.
 	const path =
-		connectorTheme.routing === "orthogonal"
-			? orthogonalConnectorPath(routed, laneOffset + laneAnchorShift)
-			: connectorTheme.routing === "straight"
-				? `M ${routed.from.x} ${routed.from.y} L ${routed.to.x} ${routed.to.y}`
-				: routed.kind === "topicToChildren"
-					? bundledCurvePath(routed.from, routed.to)
-					: verticalBumpPath(routed.from, routed.to);
+		routed.shape === "elbow"
+			? orthogonalConnectorPath(routed)
+			: connectorTheme.routing === "orthogonal"
+				? orthogonalConnectorPath(routed, laneOffset + laneAnchorShift)
+				: connectorTheme.routing === "straight"
+					? `M ${routed.from.x} ${routed.from.y} L ${routed.to.x} ${routed.to.y}`
+					: routed.kind === "topicToChildren"
+						? bundledCurvePath(routed.from, routed.to)
+						: verticalBumpPath(routed.from, routed.to);
 	const marker =
 		endShape !== "none" && connectorTheme.routing !== "braided"
 			? ` marker-end="url(#${prefix}-marker-${token}-${endShape})"`
@@ -1179,9 +1238,24 @@ function renderBoardPattern(id: string, token: string, board: BoardTheme): strin
 }
 
 /** Canonical shortcodes used anywhere in the layout, for defs emission. */
-function usedEmojiShortcodes(layout: RoadmapLayout): ReadonlySet<string> {
+function usedEmojiShortcodes(layout: RoadmapLayout, theme: RoadmapTheme): ReadonlySet<string> {
 	const used = new Set<string>();
 	for (const element of layout.elements) {
+		if ("tags" in element) {
+			// Emoji badges reference artwork too, for tagged nodes and the legend.
+			for (const tag of element.tags) {
+				for (const badge of badgeStyleForTag(tag, theme).badges) {
+					if (badge.emoji) used.add(badge.emoji);
+				}
+			}
+		}
+		if ("items" in element && element.kind === "legend") {
+			for (const item of element.items) {
+				for (const badge of badgeStyleForTag(item.tag, theme).badges) {
+					if (badge.emoji) used.add(badge.emoji);
+				}
+			}
+		}
 		if (!("text" in element)) continue;
 		for (const line of element.text.lines) {
 			for (const segment of line.segments) {
@@ -1262,9 +1336,9 @@ function renderDefinitions(
 		${symbol("heart", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M50 31c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 45.7 50 31.6V31z" opacity=".2"/><path fill="currentColor" d="M50 29c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 43.7 50 29.6V29z"/>')}
 		${symbol("star", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M52.9 28.1c-.3-1-1.1-1.6-2.1-1.8l-11.3-1.6-5.1-10.3c-.4-.9-1.4-1.5-2.4-1.5s-1.9.6-2.4 1.5l-5.1 10.3-11.3 1.6c-1 .1-1.8.8-2.1 1.8s-.1 2 .7 2.7l8.2 8L18.1 50c-.2 1 .2 2 1 2.6.5.3 1 .5 1.5.5.4 0 .8-.1 1.2-.3L32 47.5l10.1 5.3c.4.2.8.3 1.2.3.5 0 1.1-.2 1.5-.5.8-.6 1.2-1.6 1-2.6L44 38.7l8.2-8c.7-.6 1-1.7.7-2.6z" opacity=".2"/><path fill="currentColor" d="M52.9 26.1c-.3-1-1.1-1.6-2.1-1.8l-11.3-1.6-5.1-10.3c-.4-.9-1.4-1.5-2.4-1.5s-1.9.6-2.4 1.5l-5.1 10.3-11.3 1.6c-1 .1-1.8.8-2.1 1.8s-.1 2 .7 2.7l8.2 8L18.1 48c-.2 1 .2 2 1 2.6.5.3 1 .5 1.5.5.4 0 .8-.1 1.2-.3L32 45.5l10.1 5.3c.4.2.8.3 1.2.3.5 0 1.1-.2 1.5-.5.8-.6 1.2-1.6 1-2.6L44 36.7l8.2-8c.7-.6 1-1.7.7-2.6z"/>')}
 		${symbol("x", "0 0 512 512", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M256 0C113.6 0 0 113.6 0 256s113.6 256 256 256 256-113.6 256-256S398.4 0 256 0zm128.5 348.2-35.4 35.4-93.1-92.2-92.2 92.2-36.3-35.4 92.2-92.2-92.2-92.2 36.3-35.4 92.2 92.2 92.2-92.2 35.4 35.4-92.2 92.2z"/>')}
-		${symbol("question", "0 0 416.979 416.979", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M356.004 61.156C274.634-20.314 142.627-20.395 61.156 60.974c-81.47 81.371-81.552 213.379-.181 294.85 81.369 81.47 213.378 81.551 294.849.181 81.469-81.369 81.551-213.379.18-294.849zM208.554 334.794c-11.028 0-19.968-8.939-19.968-19.968s8.939-19.969 19.968-19.969 19.968 8.939 19.968 19.969c-.001 11.028-8.94 19.968-19.968 19.968zm32.464-120.228c-11.406 6.668-12.381 14.871-12.43 38.508l-.017 4.726c-.071 11.172-9.147 20.18-20.304 20.18h-.131c-11.215-.071-20.248-9.22-20.178-20.436l.016-4.552c.05-24.293.111-54.524 32.547-73.484 26.026-15.214 29.306-25.208 26.254-38.322-3.586-15.404-17.653-19.396-28.63-18.141-3.686.423-22.069 3.456-22.069 21.642 0 11.213-9.092 20.306-20.307 20.306s-20.306-9.093-20.306-20.306c0-32.574 23.87-58.065 58.048-61.989 35.2-4.038 65.125 16.226 72.816 49.282 11.497 49.381-29.772 73.505-45.309 82.586z"/>')}
+		${symbol("question", "0 0 24 24", '<circle cx="12" cy="12" r="12"/><path d="M 8.7 9.1 C 8.7 5.2 15.3 5.2 15.3 9.2 C 15.3 12.1 12 11.9 12 14.7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="18.3" r="1.5" fill="currentColor"/>')}
 		${symbol("cloud", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" opacity=".2" d="M48 32c0-8.8-7.2-16-16-16-7.5 0-13.8 5.2-15.5 12.1C11.7 28.9 8 33 8 38c0 5.5 4.5 10 10 10h30c4.4 0 8-3.6 8-8s-3.6-8-8-8z"/><path fill="currentColor" d="M48 30c0-8.8-7.2-16-16-16-7.5 0-13.8 5.2-15.5 12.1C11.7 26.9 8 31 8 36c0 5.5 4.5 10 10 10h30c4.4 0 8-3.6 8-8s-3.6-8-8-8z"/>')}
-		${symbol("warning", "0 0 24 24", '<path d="M12 2.25 22 20.75H2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M12 7v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1" fill="currentColor"/>')}
+		${symbol("warning", "0 0 24 24", '<path d="M12 0.9 23.4 22.6H0.6z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M12 6.8v8.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="18.9" r="1.15" fill="currentColor"/>')}
 		${[...usedEmoji]
 			.map((id) => {
 				const artwork = emojiArtwork(id);
@@ -1452,13 +1526,18 @@ export function renderRoadmapSvg(
 		.map((legend) => renderLegend(legend, theme, prefix))
 		.join("");
 	const responsiveStyle = options.responsive === false ? "" : ' style="max-width:100%;height:auto"';
+	// Scale multiplies only the rendered size; the viewBox keeps layout
+	// coordinates, so geometry, ids, and tokens are identical at every scale.
+	const scale = options.scale ?? 1;
+	const renderedWidth = roundCoordinate(layout.width * scale);
+	const renderedHeight = roundCoordinate(layout.height * scale);
 	const userCss = options.css ? `\n${escapeStyleText(options.css)}` : "";
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
+	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${renderedWidth}" height="${renderedHeight}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
 	<title id="${titleId}">${escapeXml(title)}</title>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
 	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>
-	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout))}
+	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout, theme))}
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>
 	<g class="roadmap__connectors">${underlayConnectors}</g>
