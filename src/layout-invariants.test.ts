@@ -26,15 +26,12 @@ const wideWord = "Superlongunbreakablelabelwithoutanyspacesatall";
 const filler = Array.from({ length: 28 }, (_, index) => `word${index}`).join(" ");
 
 const documents: Record<string, string> = {
-	"demo software hygiene": readFileSync(
-		new URL("../demo/software-hygiene.md", import.meta.url),
-		"utf8",
-	),
+	"demo sweep": readFileSync(new URL("../demo/sweep.md", import.meta.url), "utf8"),
 	"demo ai architect": readFileSync(new URL("../demo/ai-architect.md", import.meta.url), "utf8"),
 	// A tall tree-chapter description forces the chapter connectors' mid-runs
 	// to clear it — the run must not graze the note border after marker trim.
-	"demo software hygiene tall description": readFileSync(
-		new URL("../demo/software-hygiene.md", import.meta.url),
+	"demo sweep tall description": readFileSync(
+		new URL("../demo/sweep.md", import.meta.url),
 		"utf8",
 	).replace(
 		/\*:beginner: \[Software Engineers\][^\n]*\*/u,
@@ -400,7 +397,7 @@ describe.each(presets)("layout invariants (%s theme)", (preset) => {
 // reports different advances for every font. Flat metrics scaled well past
 // the realistic range stand in for that whole family of oracles.
 describe("layout invariants under provider metrics", () => {
-	const stressDocuments = ["demo software hygiene", "tall tree description", "wide grid"] as const;
+	const stressDocuments = ["demo sweep", "tall tree description", "wide grid"] as const;
 	describe.each([0.8, 1.2] as const)("flat metrics x%s", (scale) => {
 		test.each(
 			presets.flatMap((preset) => stressDocuments.map((label) => [preset, label] as const)),

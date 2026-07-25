@@ -4,15 +4,15 @@ roadmap:
     preset: fun
   background:
     enabled: true
-    seed: software-hygiene
+    seed: sweep
     density: 0.55
     size: 0.8
     animated: 1.5
 ---
 
-# Software Engineering ++_Hygiene_++ :soap:
+# Sweep — Software Engineering ++_Essential Practices_++ :broom:
 
-:boom: **SwEH** is a practical engineering approach for delivering better ++**quality**++ at ++**higher speed**++. It all starts with ++**learning**++ and ++**critical thinking**++.
+:boom: **SWEEP** keeps your engineering clean: a practical path to better ++**quality**++ at ++**higher speed**++. It all starts with ++**learning**++ and ++**critical thinking**++.
 
 * :one: Discovery & Design
 *:beginner: [Product discovery](https://www.svpg.com/product-discovery/) is **crucial** to success. Involve your customers and key stakeholders — discovery decides ==_what_== to create.*
@@ -251,7 +251,7 @@ roadmap:
       > OpenTelemetry logs: structured events correlated with the traces and metrics around
       > them.
 
-## Keep ++**improving**++ :recycle:
+## Keep ++**sweeping**++ :sparkles:
 
 *[Technology scouting]: Technology scouting identifies and evaluates emerging technologies.
 *[Psychological safety]: A shared belief that the team is safe for interpersonal risk-taking.

@@ -14,7 +14,7 @@ import {
 } from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
-import softwareHygiene from "./software-hygiene.md?raw";
+import sweep from "./sweep.md?raw";
 import "./style.css";
 
 interface WorkbenchSample {
@@ -24,9 +24,9 @@ interface WorkbenchSample {
 }
 
 const samples: Readonly<Record<string, WorkbenchSample>> = {
-	"software-hygiene": {
-		label: "Software Hygiene",
-		source: softwareHygiene,
+	sweep: {
+		label: "Sweep",
+		source: sweep,
 		preset: "fun",
 	},
 	"ai-architect": {
