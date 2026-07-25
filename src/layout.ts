@@ -137,6 +137,11 @@ function layoutText(
 	};
 }
 
+function topicNote(topic: RoadmapTopic): readonly InlineNode[] | undefined {
+	if (!topic.note || topic.note.length === 0) return undefined;
+	return inlineToPlainText(topic.note).trim() ? topic.note : undefined;
+}
+
 function contentWithDescription(topic: RoadmapTopic): InlineNode[] {
 	if (topic.description.length === 0) return [...topic.content];
 	return [
@@ -170,6 +175,7 @@ function createCardNode(
 	card: CardTheme,
 	sourceRange?: SourceRange,
 	abbreviationIndicatorSize = card.typography.fontSize * 0.75,
+	note?: readonly InlineNode[],
 ): LayoutNode {
 	const maxContentWidth = Math.max(16, card.maxWidth - card.paddingX * 2);
 	const minContentWidth = Math.max(16, card.minWidth - card.paddingX * 2);
@@ -196,6 +202,7 @@ function createCardNode(
 		text,
 		tags,
 		frameShape: card.shape,
+		...(note ? { note } : {}),
 		...(sourceRange ? { sourceRange } : {}),
 	};
 }
@@ -260,6 +267,7 @@ function packCluster(
 			nested ? theme.nestedTopic : theme.topic,
 			topic.sourceRange,
 			theme.inline.abbreviationIndicatorSize,
+			topicNote(topic),
 		),
 	);
 	const widest = Math.max(1, ...nodes.map((node) => node.width));
@@ -547,6 +555,7 @@ function flattenGridTopic(
 			parentId ? theme.topic : theme.topicHeader,
 			topic.sourceRange,
 			theme.inline.abbreviationIndicatorSize,
+			topicNote(topic),
 		),
 	};
 	return [

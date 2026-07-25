@@ -304,6 +304,14 @@ function topicFromItem(item: XmlElementNode, depth: number, context: ParseContex
 	const children = childElements(item, "list").flatMap((list) =>
 		listItems(list).map((child) => topicFromItem(child, depth + 1, context)),
 	);
+	// Blockquotes under the topic carry its detail note — learning depth for
+	// host panels, never drawn on the chart.
+	const note = withAbbreviations(
+		paragraphContent(
+			childElements(item, "block_quote").flatMap((quote) => childElements(quote, "paragraph")),
+		),
+		context,
+	);
 	return {
 		type: "topic",
 		id: context.nextId("topic", title),
@@ -312,6 +320,7 @@ function topicFromItem(item: XmlElementNode, depth: number, context: ParseContex
 		content: title,
 		description,
 		tags: parts.tags,
+		...(note.length > 0 ? { note } : {}),
 		children,
 		...(sourceRange ? { sourceRange } : {}),
 	};

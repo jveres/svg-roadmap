@@ -44,8 +44,13 @@ roadmap:
       - Mirrored indent
   * Tree layouts
     * Branching topics [core]
+      > Trees are the right home for real hierarchy: every branch gets its
+      > own board and routed connectors, at any depth.
     * Nested boards [advanced]
       * Deep nesting [advanced]
+        > Click a topic with a note like this one and the detail appears in
+        > the progress panel — authored as a Markdown blockquote, invisible
+        > on the chart itself.
         * No depth limit
       * Lane routing [experimental]
   * Notes
@@ -58,6 +63,8 @@ roadmap:
     * Shortcodes :rocket: [core]
     * GitHub set :joystick: [optional]
   * Term definitions [core]
+    > Definitions get dotted underlines and tooltips; notes like this get a
+    > whole panel. Use definitions for glossary terms, notes for guidance.
   * Footnote markers [optional]
   * Old habits ~~like these~~ [deprecated]
 

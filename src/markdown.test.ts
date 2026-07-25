@@ -150,6 +150,20 @@ roadmap:
 		expect(() => parser.parse("# Three")).toThrow("disposed");
 	});
 
+	test("blockquotes under a topic become its detail note, not card content", () => {
+		const document = parseRoadmapMarkdown(
+			"* Chapter\n  * Topic one *desc*\n    > Why it matters: depth for the panel.\n    > Second note paragraph.\n",
+		);
+		const chapter = document.steps.find((step) => step.type === "chapter");
+		if (chapter?.type !== "chapter") throw new Error("chapter was not parsed");
+		const topic = chapter.groups[0]?.topics[0];
+		expect(inlineToPlainText(topic?.content ?? [])).toBe("Topic one");
+		expect(inlineToPlainText(topic?.description ?? [])).toBe("desc");
+		expect(inlineToPlainText(topic?.note ?? [])).toBe(
+			"Why it matters: depth for the panel. Second note paragraph.",
+		);
+	});
+
 	test("uses Unicode source columns when recognizing star comments", () => {
 		const document = parseRoadmapMarkdown("* Chapter\n  * Topic 😀 *comment*");
 		const chapter = document.steps.find((step) => step.type === "chapter");

@@ -74,6 +74,8 @@ roadmap:
     * [Contract testing](https://docs.pact.io/)
   * [Deployability](https://insights.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [recommended]
   * AI-assisted engineering [insightful]
+    > The defining shift since 2023: agents plan, edit, and verify code under
+    > engineer supervision. Start here after your delivery flow is solid.
     * [Coding agents](https://martinfowler.com/articles/exploring-gen-ai.html) [personal recommendation]
     * [Context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) [recommended]
     * Spec-driven development

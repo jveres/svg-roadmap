@@ -573,6 +573,20 @@ describe("SVG rendering boundaries", () => {
 		expect(generated.svg).toContain('roadmap__badge--check" transform="translate(36 45)"');
 	});
 
+	it("should embed topic notes as escaped desc elements", () => {
+		const svg = generateRoadmapSvgSync(
+			"# T\n\n* Chapter\n  * Noted\n    > Depth & more.\n  * Plain\n",
+			{
+				render: { idPrefix: "note-desc" },
+			},
+		);
+		// The note rides inside the topic group as an escaped <desc>; topics
+		// without notes stay desc-free.
+		expect(svg).toMatch(/<g id="note-desc-topic-\d+-noted"[^>]*><desc>Depth &amp; more\.<\/desc>/u);
+		expect(svg.match(/<desc>/gu)).toHaveLength(1);
+		expect(svg).not.toMatch(/plain"[^>]*><desc>/u);
+	});
+
 	it("should scope insert thickness to heading level", () => {
 		const svg = generateRoadmapSvgSync("# ++Title++\n\n## Keep ++going++", {
 			render: { idPrefix: "insert-levels" },
