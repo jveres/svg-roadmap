@@ -12,21 +12,21 @@ roadmap:
 
 # Software Engineering ++_Hygiene_++ :soap:
 
-:boom: **SwEH** is a practical engineering approach for producing better software ++**quality**++ at ++**faster speed**++. It all starts by ++**learning**++ and ++**critical thinking**++.
+:boom: **SwEH** is a practical engineering approach for delivering better ++**quality**++ at ++**higher speed**++. It all starts with ++**learning**++ and ++**critical thinking**++.
 
 * :one: Discovery & Design
-*:beginner: Product discovery is **crucial** to success. Involve your customers and your key people. [Product Owners](https://www.scrum.org/resources/what-is-a-product-owner) decide about ==_what_== to create.*
+*:beginner: Product discovery is **crucial** to success. Involve your customers and key stakeholders. [Product Owners](https://www.scrum.org/resources/what-is-a-product-owner) decide ==_what_== to create.*
   + [Domain Discovery](https://www.infoq.com/articles/architecture-modernization-domain-driven-discovery/)
     * [Capability mapping](https://microservices.io/patterns/decomposition/decompose-by-business-capability.html) [personal recommendation]
     * [Context mapping](https://www.infoq.com/articles/ddd-contextmapping/) [recommended]
     * [Event storming](https://www.eventstorming.com/) [recommended]
   * Product Design
-    * [UI/UX prototyping](https://figma.com/) [recommended]
-    * [User story mapping](https://www.agilealliance.org/glossary/storymap) [recommended]
+    * [UI/UX prototyping](https://www.figma.com/) [recommended]
+    * [User story mapping](https://www.jpattonassociates.com/story-mapping/) [recommended]
     * [Design Sprint](https://designsprintkit.withgoogle.com)
     * [Accessibility](https://www.w3.org/WAI/standards-guidelines/wcag/) [recommended]
   * Technical Design
-    * [Visual Communication](https://c4model.com/) [recommended]
+    * [Visual communication](https://c4model.com/) [recommended]
     * Technology scouting
     * [API design-first](https://www.infoq.com/articles/design-first-api-development/) [personal recommendation]
     * [ADRs](https://adr.github.io/) [recommended]
@@ -38,13 +38,13 @@ roadmap:
     * [Aligned objectives](https://www.svpg.com/team-objectives-overview/) [personal favourite]
 
 * :two: Development & Delivery
-*:beginner: [Software Engineers](https://en.wikipedia.org/wiki/Software_engineering) strive for better **quality** and favour things like [Software Craftsmanship](https://manifesto.softwarecraftsmanship.org/) and [12factors](https://12factor.net/). Engineering decisions drive ==_how_== to create.*
+*:beginner: [Software Engineers](https://en.wikipedia.org/wiki/Software_engineering) strive for better **quality** and embrace practices like [Software Craftsmanship](https://manifesto.softwarecraftsmanship.org/) and [the 12-Factor App](https://12factor.net/). Engineering decisions drive ==_how_== to create.*
   * [Developer Experience](https://developerexperience.io/articles/good-developer-experience) [personal recommendation]
   * [DevOps](https://martinfowler.com/bliki/DevOpsCulture.html) [recommended]
-  * [QA](https://github.com/jveres/diagen-QA) [insightful]
+  * [QA](https://www.istqb.org/) [insightful]
   * [Code review](https://google.github.io/eng-practices/review/) [recommended]
   * Branching strategy [recommended]
-    * GitFlow
+    * Gitflow
     * Trunk-based [recommended]
   * CI/CD
     * [Commit semantics](https://www.conventionalcommits.org/en/v1.0.0/) [recommended]
@@ -63,7 +63,7 @@ roadmap:
     * Linting
     * Formatting
     * Coding Style
-  * Version Control
+  * Version control
     * [Semver](https://semver.org/) [recommended]
   * Instrumentation [insightful]
     * [OpenTelemetry](https://opentelemetry.io/) :telescope: [personal recommendation]
@@ -72,7 +72,7 @@ roadmap:
   * Testability [recommended]
     * [TDD](https://en.wikipedia.org/wiki/Test-driven_development)
     * [Contract testing](https://docs.pact.io/)
-  * [Deployability](https://insights.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [recommended]
+  * [Deployability](https://www.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [recommended]
   * AI-assisted engineering [insightful]
     > The defining shift since 2023: agents plan, edit, and verify code under
     > engineer supervision. Start here after your delivery flow is solid.
@@ -82,7 +82,7 @@ roadmap:
   * [DORA metrics](https://dora.dev/) [recommended]
 
 * :three: Deployment & Operations
-*:beginner: High quality software can be shipped more frequently. [DevSecOps](https://www.redhat.com/en/topics/devops/what-is-devsecops) provides continuous delivery and deployment capabilities by bringing developers and IT operations close together.*
+*:beginner: High-quality software can ship frequently and safely. [DevSecOps](https://www.redhat.com/en/topics/devops/what-is-devsecops) provides continuous delivery and deployment capabilities by bringing development, security, and operations together.*
   + Infrastructure
     * Monitoring & alerting
     * Infra-as-code [recommended]
@@ -90,11 +90,11 @@ roadmap:
     * [Platform engineering](https://platformengineering.org/) [insightful]
     * Auto-scaling [personal recommendation]
     * FinOps [recommended]
-  * [Reliability](https://learn.microsoft.com/en-us/azure/well-architected/resiliency/reliability-patterns)
+  * [Reliability](https://learn.microsoft.com/en-us/azure/well-architected/reliability/design-patterns)
     * SRE [recommended]
     * [SLOs](https://sre.google/sre-book/service-level-objectives/) [recommended]
     * Self-healing [recommended]
-    * Chaos testing [personal recommendation]
+    * [Chaos engineering](https://principlesofchaos.org/) [personal recommendation]
     * [Blameless postmortems](https://sre.google/sre-book/postmortem-culture/) [recommended]
     * Backup and restore
   * Security
@@ -110,10 +110,10 @@ roadmap:
 
 ## Keep ++**improving**++ :recycle:
 
-*[Technology scouting]: Technology scouting identifies and evaluates emerging technology.
+*[Technology scouting]: Technology scouting identifies and evaluates emerging technologies.
 *[Developer Experience]: The experience developers have while using or working on products.
 *[Instrumentation]: Application code must emit signals such as traces, metrics, and logs.
-*[Progressive delivery]: Progressive delivery allows granular control over software delivery.
+*[Progressive delivery]: Progressive delivery gives granular control over how releases reach users.
 *[Docs-as-Code]: Documentation managed with the same tools and processes as source code.
 *[Testability]: The degree to which a software artifact supports testing.
 *[TDD]: Test-driven development.
@@ -123,9 +123,9 @@ roadmap:
 *[DoR]: Definition of Ready.
 *[DoD]: Definition of Done.
 *[SCM]: Source Code Management.
-*[Branching strategy]: A branching strategy is the strategy that software development teams adopt when writing, merging, and deploying code.
+*[Branching strategy]: How a team organizes, merges, and releases branches of code.
 *[Self-healing]: Systems detecting and remediating issues without human intervention.
-*[Chaos testing]: A disciplined approach to testing system integrity by proactively simulating failures.
+*[Chaos engineering]: Building confidence in a system's resilience by experimenting with injected failures.
 *[SRE]: Site Reliability Engineering.
 *[DevOps]: Collaboration between development and operations.
 *[DevSecOps]: Development, security, and operations.
@@ -140,7 +140,8 @@ roadmap:
 *[Coding agents]: AI agents that plan, edit, run, and verify code changes under engineer supervision.
 *[Context engineering]: Curating the instructions, tools, and knowledge an AI agent works from.
 *[Spec-driven development]: Writing a precise specification that guides and constrains AI-assisted implementation.
-*[DORA metrics]: Deployment frequency, lead time, change-fail rate, and time to restore.
+*[DORA metrics]: Deployment frequency, lead time, change failure rate, and time to restore.
+*[FinOps]: Managing and optimizing cloud spend as a shared engineering discipline.
 *[GitOps]: Operating infrastructure through declarative definitions continuously reconciled from Git.
 *[Platform engineering]: Product-managed internal platforms offering golden paths for delivery teams.
 *[SLOs]: Service Level Objectives, reliability targets backed by error budgets.
