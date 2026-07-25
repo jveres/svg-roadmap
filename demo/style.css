@@ -354,60 +354,6 @@ textarea {
 	position: relative;
 }
 
-.topic-panel {
-	position: relative;
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid var(--_summary-border, var(--panel-heading-border));
-	font-size: 12.5px;
-}
-
-.topic-panel h3 {
-	margin: 0 0 6px;
-	font-size: 13.5px;
-	color: inherit;
-}
-
-.topic-panel__state {
-	display: inline-block;
-	margin: 0 0 8px;
-	padding: 1px 9px;
-	border: 1px solid var(--_summary-border, var(--panel-heading-border));
-	border-radius: 99px;
-	font-size: 11px;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	opacity: 0.85;
-}
-
-.topic-panel__state[data-state="in-progress"] {
-	border-color: var(--_accent, #1289a7);
-	color: var(--_accent, #1289a7);
-	opacity: 1;
-}
-
-.topic-panel__state[data-state="done"] {
-	border-color: var(--_done, #2aa876);
-	color: var(--_done, #2aa876);
-	opacity: 1;
-}
-
-.topic-panel__tags,
-.topic-panel__definition {
-	margin: 0 0 8px;
-	opacity: 0.8;
-}
-
-.topic-panel__definition {
-	font-style: italic;
-}
-
-.topic-panel a {
-	color: var(--_accent, #1289a7);
-	font-weight: 600;
-	text-decoration: none;
-}
-
 .interact-toggle input {
 	accent-color: #1289a7;
 }

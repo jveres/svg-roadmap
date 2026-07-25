@@ -76,6 +76,93 @@ export function contiguousTravel(fractions: readonly number[]): number[] {
 	});
 }
 
+/**
+ * One node of the whitelisted rich-note model embedded by the renderer as
+ * `data-roadmap-note`. Hosts building their own detail UI can render a model
+ * with {@link buildNoteFragment} or walk it directly.
+ */
+export type NoteNode =
+	| { readonly t: "text"; readonly v: string }
+	| { readonly t: "strong" | "em" | "code"; readonly c: readonly NoteNode[] }
+	| { readonly t: "link"; readonly href: string; readonly c: readonly NoteNode[] }
+	| { readonly t: "break" };
+
+function isNoteNode(value: unknown): value is NoteNode {
+	if (typeof value !== "object" || value === null) return false;
+	const node = value as { t?: unknown; v?: unknown; c?: unknown; href?: unknown };
+	if (node.t === "text") return typeof node.v === "string";
+	if (node.t === "break") return true;
+	if (node.t === "strong" || node.t === "em" || node.t === "code") {
+		return Array.isArray(node.c) && node.c.every(isNoteNode);
+	}
+	if (node.t === "link") {
+		return typeof node.href === "string" && Array.isArray(node.c) && node.c.every(isNoteNode);
+	}
+	return false;
+}
+
+/** Parses the whitelisted note model embedded as `data-roadmap-note`. */
+export function parseNoteModel(json: string): readonly NoteNode[] | undefined {
+	try {
+		const parsed: unknown = JSON.parse(json);
+		if (Array.isArray(parsed) && parsed.every(isNoteNode)) return parsed;
+	} catch {
+		// Malformed data falls back to the plain <desc> text.
+	}
+	return undefined;
+}
+
+const safeNoteHref = /^(?:https?:|mailto:|#)/iu;
+
+// GitHub Octicon "link-external" (https://primer.style/octicons, MIT
+// license): fill-based, so it stays crisp and square at small sizes where
+// scaled strokes read distorted.
+const externalLinkIcon =
+	'<svg width="12" height="12" viewBox="0 0 16 16" preserveAspectRatio="xMidYMid meet" fill="currentColor" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"/></svg>';
+
+/**
+ * Renders a parsed note model into a safe DOM fragment (text, strong, em,
+ * code, vetted links, line breaks) — the same rendering the built-in panel
+ * uses, available to custom host panels.
+ */
+export function buildNoteFragment(
+	nodes: readonly NoteNode[],
+	hostDocument: Document,
+): DocumentFragment {
+	const fragment = hostDocument.createDocumentFragment();
+	for (const node of nodes) {
+		switch (node.t) {
+			case "text":
+				fragment.append(hostDocument.createTextNode(node.v));
+				break;
+			case "break":
+				fragment.append(hostDocument.createElement("br"));
+				break;
+			case "link": {
+				if (!safeNoteHref.test(node.href)) {
+					fragment.append(buildNoteFragment(node.c, hostDocument));
+					break;
+				}
+				const anchor = hostDocument.createElement("a");
+				anchor.href = node.href;
+				anchor.target = "_blank";
+				anchor.rel = "noopener noreferrer";
+				anchor.append(buildNoteFragment(node.c, hostDocument));
+				fragment.append(anchor);
+				break;
+			}
+			default: {
+				const tag = node.t === "em" ? "em" : node.t;
+				const element = hostDocument.createElement(tag);
+				element.append(buildNoteFragment(node.c, hostDocument));
+				fragment.append(element);
+				break;
+			}
+		}
+	}
+	return fragment;
+}
+
 /** Strips the render-instance prefix, leaving the stable per-document id. */
 export function stableNodeId(elementId: string, instancePrefix: string): string {
 	return instancePrefix && elementId.startsWith(`${instancePrefix}-`)
@@ -86,10 +173,44 @@ export function stableNodeId(elementId: string, instancePrefix: string): string 
 export interface RoadmapTopicDetail {
 	/** Stable node id, independent of the render instance prefix. */
 	readonly id: string;
+	/**
+	 * `"topic"` for stateful topics; `"grid-header"` for a grid column's
+	 * header, which has no state of its own but reports its column's
+	 * aggregate progress.
+	 */
+	readonly kind: "topic" | "grid-header";
 	readonly title: string;
 	readonly href?: string;
 	readonly tags: readonly string[];
+	/** Authored detail note as plain text, lifted from the embedded `<desc>`. */
+	readonly note?: string;
+	/** Authored detail note as a rich model, when the chart embeds one. */
+	readonly noteModel?: readonly NoteNode[];
+	/** Term definitions carried by the node's `<title>` tooltips. */
+	readonly definitions: readonly string[];
 	readonly state?: RoadmapProgressState;
+	/** Grid headers only: stable ids of the topics in the header's column. */
+	readonly columnIds?: readonly string[];
+	/** Grid headers only: aggregate progress of the column's topics. */
+	readonly columnProgress?: RoadmapProgressSummary;
+}
+
+/** Aggregate progress counts, for hosts drawing their own summary UI. */
+export interface RoadmapProgressSummary {
+	readonly total: number;
+	readonly counts: Readonly<Record<RoadmapProgressState, number>>;
+	/** Completed share of all topics, 0..1. */
+	readonly fraction: number;
+}
+
+/** Pure aggregation of a state map into summary counts. */
+export function summarizeProgress(
+	states: Readonly<Record<string, RoadmapProgressState>>,
+	total: number,
+): RoadmapProgressSummary {
+	const counts: Record<RoadmapProgressState, number> = { "in-progress": 0, done: 0, skipped: 0 };
+	for (const state of Object.values(states)) counts[state] += 1;
+	return { total, counts, fraction: total > 0 ? counts.done / total : 0 };
 }
 
 export type RoadmapSummaryPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
@@ -108,7 +229,8 @@ export interface AttachRoadmapInteractivityOptions {
 	/**
 	 * Paint progress into the chart itself: the spine inks in like a metro
 	 * line, station roundels appear at chapters with progress, a you-are-here
-	 * tip terminates the ink, and fully completed chapters fade to gray.
+	 * ink's rounded end marks the frontier, and fully completed chapters
+	 * fade to gray.
 	 * Untraveled territory stays a plain, undecorated chart. On by default.
 	 */
 	readonly onChart?: boolean;
@@ -127,12 +249,20 @@ export interface AttachRoadmapInteractivityOptions {
 	 * Defaults to `true`; set `false` to keep links navigating.
 	 */
 	readonly interceptLinks?: boolean;
-	/** Fires after every progress change. */
+	/**
+	 * Fires after every progress change, whatever the source — the built-in
+	 * panel's selector or a host UI calling `setState`.
+	 */
 	readonly onChange?: (detail: RoadmapTopicDetail) => void;
 	/** Fires after progress is reset, from the panel button or `reset()`. */
 	readonly onReset?: () => void;
-	/** Fires on every topic click or keyboard activation. */
-	readonly onSelect?: (detail: RoadmapTopicDetail) => void;
+	/**
+	 * Fires when a topic is selected — by click, keyboard, or `select()` —
+	 * and with `undefined` when the selection is cleared. Everything a detail
+	 * UI needs (title, tags, rich note, definitions, link, state) rides on
+	 * the detail object, so a host can render any panel it likes from here.
+	 */
+	readonly onSelect?: (detail: RoadmapTopicDetail | undefined) => void;
 }
 
 export interface RoadmapInteractivityHandle {
@@ -140,8 +270,24 @@ export interface RoadmapInteractivityHandle {
 	 * detail section, for example). `undefined` when the summary is disabled. */
 	readonly summaryElement: HTMLElement | undefined;
 	readonly states: Readonly<Record<string, RoadmapProgressState>>;
+	/** Every topic on the chart, in document order, with current state. */
+	topics(): readonly RoadmapTopicDetail[];
+	/** Every grid column header, with its column's aggregate progress. */
+	headers(): readonly RoadmapTopicDetail[];
+	/** One topic or grid header by stable id, or `undefined` if unknown. */
+	getTopic(id: string): RoadmapTopicDetail | undefined;
+	/** Aggregate counts for custom summary UIs. */
+	getSummary(): RoadmapProgressSummary;
 	getState(id: string): RoadmapProgressState | undefined;
 	setState(id: string, state: RoadmapProgressState | undefined): void;
+	/** Currently selected topic id, if any. */
+	readonly selectedId: string | undefined;
+	/**
+	 * Selects a topic programmatically (highlight ring, built-in detail when
+	 * the summary panel is on, and the `onSelect` callback), or clears the
+	 * selection with `undefined`.
+	 */
+	select(id: string | undefined): void;
 	reset(): void;
 	dispose(): void;
 }
@@ -152,9 +298,12 @@ const styleElementId = "svg-roadmap-interactive-style";
 // properties; the frame stroke wins over presentation attributes without
 // !important because CSS outranks them.
 const interactiveCss = `
-.roadmap--interactive [data-roadmap-element="topic"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
-.roadmap--interactive [data-roadmap-element="topic"]:focus-visible{outline:none}
+.roadmap--interactive [data-roadmap-element="topic"],
+.roadmap--interactive [data-roadmap-element="topic-header"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.roadmap--interactive [data-roadmap-element="topic"]:focus-visible,
+.roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible{outline:none}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible .roadmap__frame,
+.roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible .roadmap__frame,
 .roadmap--interactive .roadmap__node--in-progress .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.4}
 .roadmap--interactive .roadmap__node--done{opacity:var(--roadmap-progress-done-opacity,.55)}
 .roadmap--interactive .roadmap__node--skipped{opacity:var(--roadmap-progress-skipped-opacity,.32)}
@@ -164,19 +313,11 @@ const interactiveCss = `
 .roadmap__progress-ink--glow{opacity:.16}
 .roadmap__progress-ink--core{opacity:.9}
 .roadmap__progress-station{pointer-events:none}
-.roadmap__progress-station .station-casing{fill:#ffffff;stroke:rgba(90,110,125,.45);stroke-width:1.4}
+.roadmap__progress-station .station-casing{fill:var(--roadmap-canvas-background,#ffffff);stroke:rgba(90,110,125,.45);stroke-width:1.4}
 .roadmap__progress-station .station-arc{fill:none;stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.6;stroke-linecap:round;transform:rotate(-90deg);transform-box:fill-box;transform-origin:center}
 .roadmap__progress-station .station-full{fill:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7))}
-.roadmap__progress-station .station-tick{stroke:#ffffff;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.roadmap__progress-tip{pointer-events:none}
-.roadmap__progress-tip .tip-core{fill:#ffffff;stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.6}
-.roadmap__progress-tip .tip-heart{fill:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7))}
-.roadmap__progress-tip .tip-pulse{fill:none;stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:1.6}
+.roadmap__progress-station .station-tick{stroke:var(--roadmap-canvas-background,#ffffff);stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .roadmap--interactive .roadmap__progress-passed{opacity:var(--roadmap-progress-passed-opacity,.6);transition:opacity .5s}
-@media (prefers-reduced-motion: no-preference){
-.roadmap__progress-tip .tip-pulse{animation:roadmap-progress-pulse 2.4s ease-out infinite}
-@keyframes roadmap-progress-pulse{0%{r:6;opacity:.5}70%{r:14;opacity:0}100%{r:14;opacity:0}}
-}
 @media (prefers-reduced-motion: reduce){.roadmap--interactive .roadmap__progress-passed{transition:none}}
 .roadmap-progress-summary-anchor{position:sticky;z-index:5;height:0;display:flex;padding:0 12px;pointer-events:none}
 .roadmap-progress-summary-anchor[data-at^="top"]{top:10px}
@@ -226,10 +367,46 @@ const interactiveCss = `
 .roadmap-progress-summary__swatch--done::after{content:"";position:absolute;left:1px;right:1px;top:50%;
 	height:1.6px;transform:translateY(-50%);background:var(--roadmap-progress-strike,#5c6975)}
 .roadmap-progress-summary__swatch--skipped{border-style:dashed;opacity:.5}
+.roadmap--interactive .roadmap__node--selected .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.2;stroke-dasharray:5 3}
+.roadmap-topic-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--_summary-border);font-size:12.5px}
+.roadmap-topic-detail h3{margin:0 0 8px;font-size:14px;font-weight:700;letter-spacing:.01em;line-height:1.3}
+.roadmap-topic-detail__state{display:block;width:100%;margin:0 0 10px;font:inherit;font-size:12px;color:inherit;
+	padding:5px 8px;border-radius:7px;border:1px solid var(--_summary-border);background:transparent;cursor:pointer}
+.roadmap-topic-detail__state:hover{border-color:var(--_accent)}
+.roadmap-topic-detail__state:focus-visible{outline:2px solid var(--_accent);outline-offset:1px}
+.roadmap-topic-detail__column{margin:0 0 10px}
+.roadmap-topic-detail__column b{font-variant-numeric:tabular-nums}
+.roadmap-topic-detail__column .roadmap-topic-detail__column-bar{display:block;height:5px;margin-top:6px;
+	border-radius:99px;background:var(--_summary-track);overflow:hidden}
+.roadmap-topic-detail__column .roadmap-topic-detail__column-bar i{display:block;height:100%;
+	border-radius:99px;background:var(--_done);transition:width .25s}
+.roadmap-topic-detail__tags{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}
+.roadmap-topic-detail__tag{display:inline-flex;align-items:center;padding:1.5px 8px;border-radius:99px;
+	border:1px solid var(--_summary-border);font-size:10px;font-weight:600;letter-spacing:.06em;
+	text-transform:uppercase;opacity:.85;white-space:nowrap}
+.roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
+.roadmap-topic-detail__note code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;
+	padding:0 4px;border-radius:4px;border:1px solid var(--_summary-border)}
+.roadmap-topic-detail__note a{color:var(--_accent);font-weight:600;text-decoration:none}
+.roadmap-topic-detail__note a:hover{text-decoration:underline}
+.roadmap-topic-detail__definition{margin:0 0 10px;padding-left:9px;font-size:11.5px;line-height:1.5;
+	opacity:.72;border-left:2px solid var(--_summary-border)}
+.roadmap-topic-detail__link{display:inline-flex;align-items:center;gap:5px;margin-top:2px;
+	color:var(--_accent);font-weight:600;font-size:12.5px;text-decoration:none}
+.roadmap-topic-detail__link:hover{text-decoration:underline}
+.roadmap-topic-detail__link:focus-visible{outline:2px solid var(--_accent);outline-offset:2px;border-radius:3px}
+.roadmap-topic-detail__link-icon{display:inline-flex;flex:none}
+.roadmap-topic-detail__link-icon svg{width:12px;height:12px;display:block}
 `;
 
 function ensureStyles(hostDocument: Document): void {
-	if (hostDocument.getElementById(styleElementId)) return;
+	const existing = hostDocument.getElementById(styleElementId);
+	if (existing) {
+		// A stale sheet from an earlier module version must not win: refresh
+		// its content instead of trusting whatever injected it first.
+		if (existing.textContent !== interactiveCss) existing.textContent = interactiveCss;
+		return;
+	}
 	const style = hostDocument.createElement("style");
 	style.id = styleElementId;
 	style.textContent = interactiveCss;
@@ -258,8 +435,9 @@ interface ChartProgress {
 
 /**
  * Paints progress into the chart: accent ink inside the spine casing,
- * station roundels at chapters with progress, a tip roundel terminating the
- * ink, and completed chapters fading to gray. Progress decorates only where
+ * station roundels at chapters with progress, the ink's rounded end marking
+ * the frontier, and completed chapters fading to gray. Progress decorates
+ * only where
  * progress exists — untraveled territory renders as the plain chart.
  */
 function createChartProgress(
@@ -271,7 +449,7 @@ function createChartProgress(
 	const chapters = [...svg.querySelectorAll<SVGGElement>('g[data-roadmap-element="chapter"]')]
 		.map((g) => {
 			const box = g.getBBox();
-			return { centerY: box.y + box.height / 2, bottomY: box.y + box.height };
+			return { centerY: box.y + box.height / 2, topY: box.y, bottomY: box.y + box.height };
 		})
 		.sort((a, b) => a.centerY - b.centerY);
 	if (chapters.length === 0) return undefined;
@@ -379,7 +557,7 @@ function createChartProgress(
 			length: path.getTotalLength(),
 		};
 	});
-	// Stations and the tip mark the line, so they live in the line's layer:
+	// Stations mark the line, so they live in the line's layer:
 	// under cards and visible through translucent boards, exactly like the
 	// spine — never floating above content.
 	let overlayTail: Element | null = inks.at(-1)?.core ?? null;
@@ -402,9 +580,10 @@ function createChartProgress(
 		list.sort((a, b) => a.core.getPointAtLength(0).y - b.core.getPointAtLength(0).y);
 	}
 
-	// Stations sit on the line where it exits the chapter capsule — a
-	// junction roundel at the capsule center would cover the title glyphs.
-	const pointBelow = (path: SVGPathElement, targetY: number): DOMPoint => {
+	// Stations sit on the inbound line above the chapter capsule — a roundel
+	// at the capsule center would cover the title glyphs, and one below would
+	// collide with the ink's rounded end resting on the outbound junction.
+	const pointAtY = (path: SVGPathElement, targetY: number): DOMPoint => {
 		const total = path.getTotalLength();
 		let low = 0;
 		let high = total;
@@ -416,20 +595,20 @@ function createChartProgress(
 		return path.getPointAtLength(Math.min(total, high));
 	};
 	const stations = chapters.map((chapter, index) => {
-		const junctionSegment = inksByGap.get(index + 1)?.[0];
+		const inbound = inksByGap.get(index)?.at(-1);
 		let point: { x: number; y: number } = { x: Number.NaN, y: chapter.centerY };
-		if (junctionSegment) {
-			// Center the roundel in the gap between the capsule and whatever
-			// sits below it on the line (usually the chapter description).
-			const startX = junctionSegment.core.getPointAtLength(0).x;
-			let nextTop = chapter.bottomY + 26;
+		if (inbound) {
+			// Center the roundel in the gap between the capsule top and
+			// whatever sits above it on the line.
+			const endX = inbound.core.getPointAtLength(inbound.length).x;
+			let previousBottom = chapter.topY - 26;
 			for (const node of svg.querySelectorAll<SVGGElement>("g.roadmap__node")) {
 				const box = node.getBBox();
-				if (box.y < chapter.bottomY - 0.5) continue;
-				if (startX < box.x || startX > box.x + box.width) continue;
-				nextTop = Math.min(nextTop, box.y);
+				if (box.y + box.height > chapter.topY + 0.5) continue;
+				if (endX < box.x || endX > box.x + box.width) continue;
+				previousBottom = Math.max(previousBottom, box.y + box.height);
 			}
-			point = pointBelow(junctionSegment.core, (chapter.bottomY + nextTop) / 2);
+			point = pointAtY(inbound.core, (previousBottom + chapter.topY) / 2);
 		}
 		const station = hostDocument.createElementNS(svgNamespace, "g") as SVGGElement;
 		station.setAttribute("class", "roadmap__progress-station");
@@ -456,25 +635,6 @@ function createChartProgress(
 		return { station, full, arc, tick, placeable: !Number.isNaN(point.x) };
 	});
 
-	const tip = hostDocument.createElementNS(svgNamespace, "g") as SVGGElement;
-	tip.setAttribute("class", "roadmap__progress-tip");
-	tip.setAttribute("aria-hidden", "true");
-	tip.style.display = "none";
-	const pulse = hostDocument.createElementNS(svgNamespace, "circle");
-	pulse.setAttribute("class", "tip-pulse");
-	pulse.setAttribute("r", "6");
-	const tipCore = hostDocument.createElementNS(svgNamespace, "circle");
-	tipCore.setAttribute("class", "tip-core");
-	tipCore.setAttribute("r", "5.4");
-	const tipHeart = hostDocument.createElementNS(svgNamespace, "circle");
-	tipHeart.setAttribute("class", "tip-heart");
-	tipHeart.setAttribute("r", "2");
-	tip.appendChild(pulse);
-	tip.appendChild(tipCore);
-	tip.appendChild(tipHeart);
-	addLineOverlay(tip);
-	cleanups.push(() => tip.remove());
-
 	const repaint = (states: Readonly<Record<string, RoadmapProgressState>>): void => {
 		const traveled = chapters.map(() => 0);
 		for (const [id, state] of Object.entries(states)) {
@@ -489,7 +649,6 @@ function createChartProgress(
 		const anyProgress = fractions.some((f) => f > 0);
 		const travel = contiguousTravel(fractions);
 
-		let deepest: { segment: InkSegment; fill: number; gap: number } | undefined;
 		for (const [gap, list] of inksByGap) {
 			const fraction = gap === 0 ? (anyProgress ? 1 : 0) : (travel[gap - 1] ?? 0);
 			const fills = distributeAlongLengths(
@@ -505,9 +664,6 @@ function createChartProgress(
 				segment.core.style.display = visible ? "" : "none";
 				segment.glow.setAttribute("stroke-dasharray", `${fill * 100} 100`);
 				segment.core.setAttribute("stroke-dasharray", `${fill * 100} 100`);
-				if (visible && gap > 0 && (!deepest || gap >= (deepest.gap ?? 0))) {
-					deepest = { segment, fill, gap };
-				}
 			});
 		}
 
@@ -520,19 +676,6 @@ function createChartProgress(
 			station.arc.style.display = complete ? "none" : "";
 			station.arc.setAttribute("stroke-dasharray", `${fraction * 100} 100`);
 		});
-
-		// The tip terminates the contiguous ink whenever the journey is
-		// unfinished — including resting on a junction while the next
-		// chapter is still untouched.
-		const journeyComplete = fractions.every((f) => f >= 0.999);
-		if (deepest && !journeyComplete) {
-			const length = deepest.segment.core.getTotalLength();
-			const point = deepest.segment.core.getPointAtLength(length * Math.min(1, deepest.fill));
-			tip.setAttribute("transform", `translate(${point.x} ${point.y})`);
-			tip.style.display = "";
-		} else {
-			tip.style.display = "none";
-		}
 
 		bandElements.forEach((elements, index) => {
 			const passed = (fractions[index] ?? 0) >= 0.999;
@@ -595,6 +738,11 @@ export function attachRoadmapInteractivity(
 	};
 
 	const groups = new Map<string, SVGGElement>();
+	// Grid column headers: selectable like topics, but stateless — their
+	// detail reports the column's aggregate progress instead.
+	const headerGroups = new Map<string, SVGGElement>();
+	const headerColumns = new Map<string, readonly string[]>();
+	const groupFor = (id: string): SVGGElement | undefined => groups.get(id) ?? headerGroups.get(id);
 	const overlays = new Map<string, SVGGElement>();
 	const disposers: (() => void)[] = [];
 	let repaintChart: ((s: Readonly<Record<string, RoadmapProgressState>>) => void) | undefined;
@@ -706,26 +854,51 @@ export function attachRoadmapInteractivity(
 
 	const updateSummary = (): void => {
 		if (!summaryElements) return;
-		const totals: Record<RoadmapProgressState, number> = { "in-progress": 0, done: 0, skipped: 0 };
-		for (const state of Object.values(states)) totals[state] += 1;
-		const total = groups.size;
-		summaryElements.count.textContent = `${totals.done} / ${total} done`;
-		summaryElements.bar.style.width = total ? `${(100 * totals.done) / total}%` : "0";
+		const { total, counts, fraction } = summarizeProgress(states, groups.size);
+		summaryElements.count.textContent = `${counts.done} / ${total} done`;
+		summaryElements.bar.style.width = `${100 * fraction}%`;
 		for (const state of ["in-progress", "done", "skipped"] as const) {
-			summaryElements.rows[state].textContent = String(totals[state]);
+			summaryElements.rows[state].textContent = String(counts[state]);
 		}
 	};
 
 	const detailFor = (id: string, group: SVGGElement): RoadmapTopicDetail => {
+		const columnIds = headerColumns.get(id);
 		const state = states[id];
+		const note = group.querySelector(":scope > desc")?.textContent?.trim();
+		const noteData = group.getAttribute("data-roadmap-note");
+		const noteModel = noteData ? parseNoteModel(noteData) : undefined;
+		// Term definitions already travel as <title> tooltips in the text.
+		const definitions = [
+			...new Set(
+				[...group.querySelectorAll("title")].map((title) => title.textContent?.trim() ?? ""),
+			),
+		].filter(Boolean);
 		return {
 			id,
+			kind: columnIds ? "grid-header" : "topic",
 			title: topicTitle(group),
 			...(group.querySelector("a")?.getAttribute("href")
 				? { href: group.querySelector("a")?.getAttribute("href") as string }
 				: {}),
 			tags: (group.getAttribute("data-tags") ?? "").split(",").filter(Boolean),
+			...(note ? { note } : {}),
+			...(noteModel ? { noteModel } : {}),
+			definitions,
 			...(state ? { state } : {}),
+			...(columnIds
+				? {
+						columnIds,
+						columnProgress: summarizeProgress(
+							Object.fromEntries(
+								columnIds.flatMap((memberId) =>
+									states[memberId] ? [[memberId, states[memberId]]] : [],
+								),
+							),
+							columnIds.length,
+						),
+					}
+				: {}),
 		};
 	};
 
@@ -774,6 +947,103 @@ export function attachRoadmapInteractivity(
 		syncStrike(id, group);
 	};
 
+	// The detail section lives inside the summary panel: title, a state
+	// selector, tags, the rich note rebuilt from the embedded model, term
+	// definitions, and the resource link.
+	let detailSection: HTMLElement | undefined;
+	const renderDetail = (): void => {
+		if (!summaryPanel || !selectedId) return;
+		const group = groupFor(selectedId);
+		if (!group) return;
+		if (!detailSection) {
+			detailSection = hostDocument.createElement("section");
+			detailSection.className = "roadmap-topic-detail";
+			summaryPanel.append(detailSection);
+		}
+		detailSection.replaceChildren();
+		const detail = detailFor(selectedId, group);
+		const heading = hostDocument.createElement("h3");
+		heading.textContent = detail.title;
+		detailSection.append(heading);
+		if (detail.columnProgress && trackProgress) {
+			const column = hostDocument.createElement("p");
+			column.className = "roadmap-topic-detail__column";
+			const count = hostDocument.createElement("b");
+			count.textContent = `${detail.columnProgress.counts.done} / ${detail.columnProgress.total}`;
+			column.append(count, " done in this column");
+			const bar = hostDocument.createElement("span");
+			bar.className = "roadmap-topic-detail__column-bar";
+			const fill = hostDocument.createElement("i");
+			fill.style.width = `${100 * detail.columnProgress.fraction}%`;
+			bar.append(fill);
+			column.append(bar);
+			detailSection.append(column);
+		} else if (trackProgress) {
+			const select = hostDocument.createElement("select");
+			select.className = "roadmap-topic-detail__state";
+			select.setAttribute("aria-label", `Progress for ${detail.title}`);
+			for (const [value, label] of [
+				["", "not started"],
+				["in-progress", "in progress"],
+				["done", "done"],
+				["skipped", "skipped"],
+			] as const) {
+				const option = hostDocument.createElement("option");
+				option.value = value;
+				option.textContent = label;
+				select.append(option);
+			}
+			select.value = states[selectedId] ?? "";
+			select.addEventListener("change", () => {
+				if (!selectedId) return;
+				const value = select.value as RoadmapProgressState | "";
+				apply(selectedId, value === "" ? undefined : value);
+			});
+			detailSection.append(select);
+		}
+		if (detail.tags.length > 0) {
+			const tags = hostDocument.createElement("div");
+			tags.className = "roadmap-topic-detail__tags";
+			for (const tag of detail.tags) {
+				const chip = hostDocument.createElement("span");
+				chip.className = "roadmap-topic-detail__tag";
+				chip.textContent = tag;
+				tags.append(chip);
+			}
+			detailSection.append(tags);
+		}
+		if (detail.noteModel) {
+			const note = hostDocument.createElement("p");
+			note.className = "roadmap-topic-detail__note";
+			note.append(buildNoteFragment(detail.noteModel, hostDocument));
+			detailSection.append(note);
+		} else if (detail.note) {
+			const note = hostDocument.createElement("p");
+			note.className = "roadmap-topic-detail__note";
+			note.textContent = detail.note;
+			detailSection.append(note);
+		}
+		for (const definition of detail.definitions) {
+			const paragraph = hostDocument.createElement("p");
+			paragraph.className = "roadmap-topic-detail__definition";
+			paragraph.textContent = definition;
+			detailSection.append(paragraph);
+		}
+		if (detail.href) {
+			const link = hostDocument.createElement("a");
+			link.className = "roadmap-topic-detail__link";
+			link.href = detail.href;
+			link.target = "_blank";
+			link.rel = "noopener noreferrer";
+			link.append("Open resource");
+			const icon = hostDocument.createElement("span");
+			icon.className = "roadmap-topic-detail__link-icon";
+			icon.innerHTML = externalLinkIcon;
+			link.append(icon);
+			detailSection.append(link);
+		}
+	};
+
 	const apply = (id: string, state: RoadmapProgressState | undefined): void => {
 		if (state) states[id] = state;
 		else delete states[id];
@@ -781,6 +1051,9 @@ export function attachRoadmapInteractivity(
 		paint(id);
 		updateSummary();
 		repaintChart?.(states);
+		if (selectedId && headerColumns.get(selectedId)?.includes(id)) renderDetail();
+		const group = groups.get(id);
+		if (group) options.onChange?.(detailFor(id, group));
 	};
 
 	const handleReset = (): void => {
@@ -789,32 +1062,43 @@ export function attachRoadmapInteractivity(
 		for (const id of groups.keys()) paint(id);
 		updateSummary();
 		repaintChart?.(states);
+		renderDetail();
 		options.onReset?.();
 	};
 
-	const activate = (id: string, group: SVGGElement): void => {
-		if (trackProgress) {
-			apply(id, nextProgressState(states[id]));
-			options.onChange?.(detailFor(id, group));
+	// Clicking selects; state changes happen in the panel's selector, so a
+	// stray click can never mutate progress.
+	let selectedId: string | undefined;
+	const selectTopic = (id: string, group: SVGGElement): void => {
+		if (selectedId && selectedId !== id) {
+			groupFor(selectedId)?.classList.remove("roadmap__node--selected");
 		}
+		selectedId = id;
+		group.classList.add("roadmap__node--selected");
+		renderDetail();
 		options.onSelect?.(detailFor(id, group));
 	};
+	const clearSelection = (): void => {
+		if (!selectedId) return;
+		groupFor(selectedId)?.classList.remove("roadmap__node--selected");
+		selectedId = undefined;
+		detailSection?.remove();
+		detailSection = undefined;
+		options.onSelect?.(undefined);
+	};
 
-	for (const group of svg.querySelectorAll<SVGGElement>('g[data-roadmap-element="topic"]')) {
-		const id = stableNodeId(group.id, prefix);
-		if (!id) continue;
-		groups.set(id, group);
+	const wire = (id: string, group: SVGGElement): void => {
 		group.setAttribute("tabindex", "0");
 		group.setAttribute("role", "button");
 		const onClick = (event: MouseEvent): void => {
 			if (interceptLinks) event.preventDefault();
 			else if ((event.target as Element | null)?.closest("a")) return;
-			activate(id, group);
+			selectTopic(id, group);
 		};
 		const onKeydown = (event: KeyboardEvent): void => {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			event.preventDefault();
-			activate(id, group);
+			selectTopic(id, group);
 		};
 		group.addEventListener("click", onClick);
 		group.addEventListener("keydown", onKeydown);
@@ -830,8 +1114,34 @@ export function attachRoadmapInteractivity(
 			group.removeAttribute("role");
 			group.removeAttribute("aria-label");
 		});
+	};
+
+	// One document-order pass builds both maps: a header owns every following
+	// grid topic until the next header or the first non-grid topic.
+	let openHeader: { id: string; members: string[] } | undefined;
+	const closeHeader = (): void => {
+		if (openHeader) headerColumns.set(openHeader.id, openHeader.members);
+		openHeader = undefined;
+	};
+	for (const group of svg.querySelectorAll<SVGGElement>(
+		'g[data-roadmap-element="topic"],g[data-roadmap-element="topic-header"]',
+	)) {
+		const id = stableNodeId(group.id, prefix);
+		if (!id) continue;
+		if (group.getAttribute("data-roadmap-element") === "topic-header") {
+			closeHeader();
+			headerGroups.set(id, group);
+			openHeader = { id, members: [] };
+			wire(id, group);
+			continue;
+		}
+		if (group.getAttribute("data-placement") !== "grid-topic") closeHeader();
+		openHeader?.members.push(id);
+		groups.set(id, group);
+		wire(id, group);
 		paint(id);
 	}
+	closeHeader();
 	const chartProgress =
 		options.onChart !== false && trackProgress
 			? createChartProgress(svg, prefix, groups, hostDocument)
@@ -847,9 +1157,27 @@ export function attachRoadmapInteractivity(
 		get states() {
 			return { ...states };
 		},
+		topics: () => [...groups.entries()].map(([id, group]) => detailFor(id, group)),
+		headers: () => [...headerGroups.entries()].map(([id, group]) => detailFor(id, group)),
+		getTopic: (id) => {
+			const group = groupFor(id);
+			return group ? detailFor(id, group) : undefined;
+		},
+		getSummary: () => summarizeProgress(states, groups.size),
 		getState: (id) => states[id],
 		setState: (id, state) => {
 			apply(id, state);
+		},
+		get selectedId() {
+			return selectedId;
+		},
+		select: (id) => {
+			if (id === undefined) {
+				clearSelection();
+				return;
+			}
+			const group = groupFor(id);
+			if (group) selectTopic(id, group);
 		},
 		reset: handleReset,
 		dispose: () => {
@@ -857,7 +1185,11 @@ export function attachRoadmapInteractivity(
 			for (const overlay of overlays.values()) overlay.remove();
 			overlays.clear();
 			chartProgress?.dispose();
+			detailSection?.remove();
+			if (selectedId) groupFor(selectedId)?.classList.remove("roadmap__node--selected");
 			groups.clear();
+			headerGroups.clear();
+			headerColumns.clear();
 			svg.classList.remove("roadmap--interactive");
 		},
 	};

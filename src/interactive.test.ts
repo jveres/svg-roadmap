@@ -3,11 +3,29 @@ import {
 	contiguousTravel,
 	distributeAlongLengths,
 	nextProgressState,
+	parseNoteModel,
 	progressTravelWeight,
 	stableNodeId,
+	summarizeProgress,
 } from "./interactive.ts";
+import { serializeNoteModel } from "./render.ts";
 
 describe("interactive helpers", () => {
+	test("summarizeProgress aggregates counts and completion fraction", () => {
+		const summary = summarizeProgress({ a: "done", b: "done", c: "in-progress", d: "skipped" }, 8);
+		expect(summary.total).toBe(8);
+		expect(summary.counts).toEqual({ "in-progress": 1, done: 2, skipped: 1 });
+		expect(summary.fraction).toBeCloseTo(0.25);
+	});
+
+	test("summarizeProgress of an empty chart reports zero fraction", () => {
+		expect(summarizeProgress({}, 0)).toEqual({
+			total: 0,
+			counts: { "in-progress": 0, done: 0, skipped: 0 },
+			fraction: 0,
+		});
+	});
+
 	test("progress cycles through the three states and back to unset", () => {
 		expect(nextProgressState(undefined)).toBe("in-progress");
 		expect(nextProgressState("in-progress")).toBe("done");
@@ -39,6 +57,35 @@ describe("interactive helpers", () => {
 		expect(progressTravelWeight("skipped")).toBe(1);
 		expect(progressTravelWeight("in-progress")).toBe(0.5);
 		expect(progressTravelWeight(undefined)).toBe(0);
+	});
+
+	test("note models round-trip through the whitelist", () => {
+		const serialized = serializeNoteModel([
+			{ type: "text", value: "Use " },
+			{ type: "strong", children: [{ type: "text", value: "agents" }] },
+			{ type: "code", value: "onChart" },
+			{
+				type: "link",
+				destination: "https://example.com",
+				children: [{ type: "text", value: "docs" }],
+			},
+			{
+				type: "link",
+				destination: "javascript:alert(1)",
+				children: [{ type: "text", value: "x" }],
+			},
+		]);
+		const parsed = parseNoteModel(JSON.stringify(serialized));
+		expect(parsed).toEqual([
+			{ t: "text", v: "Use " },
+			{ t: "strong", c: [{ t: "text", v: "agents" }] },
+			{ t: "code", c: [{ t: "text", v: "onChart" }] },
+			{ t: "link", href: "https://example.com", c: [{ t: "text", v: "docs" }] },
+			// The unsafe link flattened to its text at serialization time.
+			{ t: "text", v: "x" },
+		]);
+		expect(parseNoteModel("not json")).toBeUndefined();
+		expect(parseNoteModel('[{"t":"script"}]')).toBeUndefined();
 	});
 
 	test("stable node ids strip only their own instance prefix", () => {

@@ -177,17 +177,23 @@ CSS classes. A downloaded chart remains a plain image.
 import { attachRoadmapInteractivity } from "svg-roadmap/interactive";
 
 const handle = attachRoadmapInteractivity(svgElement, {
-  onSelect: (topic) => showDetailPanel(topic), // title, href, tags, state
+  onSelect: (topic) => showDetailPanel(topic), // title, href, tags, note, state
 });
 // later: handle.reset(); handle.dispose();
 ```
 
-Clicking a topic cycles in progress → done → skipped → unset: an accent
-ring, a dimmed struck-through card, and a faded dashed frame. Progress also
+Clicking a topic selects it: the sticky panel shows its title, tags, rich
+note, term definitions, resource link, and a state selector — progress
+changes happen in the panel, never by stray clicks on the chart. Grid
+column headers are selectable too; having no state of their own, their
+detail swaps the selector for the column's aggregate progress (`1 / 5 done
+in this column` with a mini bar) that live-updates as members change. States
+paint as an accent ring (in progress), a dimmed struck-through card (done),
+and a faded dashed frame (skipped). Progress also
 paints into the chart itself (`onChart: false` disables it): the spine inks
 in like a metro line in the theme's accent, station roundels appear at
 chapters once they have progress — an arc while partial, solid with a check
-when complete — a you-are-here roundel terminates the ink at the frontier,
+when complete — the ink's rounded end marks the frontier,
 and fully completed chapters fade to gray while the active chapter stays at
 full strength. The line measures travel, not just completion: done and
 skipped topics count as traveled (skipping is deciding to pass by), and
@@ -205,6 +211,41 @@ navigation). Colors follow `--roadmap-progress-accent`,
 `--roadmap-progress-done`, and related custom properties. The workbench's
 Interactive toggle demonstrates the full pattern, including a topic detail
 panel fed by `onSelect`.
+
+### Bring your own panel
+
+The built-in sticky panel is one consumer of a headless data API — the
+module tracks state and paints the chart; how progress is *shown* is an app
+concern. Pass `summary: false` and no module-owned DOM is created; build
+any UI — a sidebar, a split card next to the chart, a dialog — from the
+same data the built-in panel uses:
+
+```ts
+const handle = attachRoadmapInteractivity(svgElement, {
+  summary: false,
+  onSelect: (topic) => renderMyCard(topic), // undefined when deselected
+  onChange: () => renderMyProgressBar(handle.getSummary()),
+});
+
+handle.topics();               // every topic: id, title, href, tags, note,
+                               // rich noteModel, definitions, state
+handle.headers();              // grid column headers: kind "grid-header",
+                               // columnIds plus aggregate columnProgress
+handle.getTopic(id);           // one topic or header by stable id
+handle.getSummary();           // { total, counts, fraction } for summary UIs
+handle.select(id);             // programmatic selection (or undefined to clear)
+handle.setState(id, "done");   // mutate from your own controls;
+                               // chart repaints, onChange fires
+```
+
+`RoadmapTopicDetail` carries everything the built-in panel renders: rich
+notes arrive as a parsed `noteModel` that `buildNoteFragment(model,
+document)` turns into a safe DOM fragment (bold, italics, code, vetted
+links), and term definitions ride along as plain strings. `onChange` fires
+on every mutation regardless of source — the built-in selector, your
+controls, or `reset()` — so a custom panel stays in sync without extra
+wiring. `summarizeProgress(states, total)` is exported as a pure helper for
+server-side or test use.
 
 ## Markdown conventions
 
@@ -225,6 +266,11 @@ SVG Roadmap maps familiar Markdown structure to visual structure.
   alternate around the main spine.
 - A `*[Term]: Definition` line adds an abbreviation tooltip without adding a
   chart node.
+- A `>` blockquote under a topic becomes its detail note: never drawn on
+  the chart, it travels inside the SVG twice — plain text as the node's
+  `<desc>` for assistive tech, and a whitelisted JSON inline model in
+  `data-roadmap-note` from which the interactive layer rebuilds rich text
+  (bold, italics, code, safe links) without any parser in the host.
 
 Comrak extensions enable `++insert++`, `==highlight==`, `~subscript~`,
 `^superscript^`, strikethrough, footnotes, and emoji shortcodes. Every GitHub

@@ -7,11 +7,7 @@ import {
 	type RoadmapThemeSelection,
 	registerEmojiArtwork,
 } from "../src/index.ts";
-import {
-	attachRoadmapInteractivity,
-	type RoadmapInteractivityHandle,
-	type RoadmapTopicDetail,
-} from "../src/interactive.ts";
+import { attachRoadmapInteractivity, type RoadmapInteractivityHandle } from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import softwareHygiene from "./software-hygiene.md?raw";
@@ -140,7 +136,6 @@ const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
 const download = requiredElement<HTMLButtonElement>("#download");
 const workbench = requiredElement<HTMLElement>("#workbench");
 const interactiveToggle = requiredElement<HTMLInputElement>("#interactive");
-let topicPanel: HTMLElement | undefined;
 const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
@@ -249,46 +244,6 @@ function suppressPreviewTitleTooltip(): void {
 }
 
 let interactivity: RoadmapInteractivityHandle | undefined;
-let abbreviations: Readonly<Record<string, string>> = {};
-
-/**
- * The floating detail panel pairs with click-to-track: the same click that
- * cycles a topic's progress shows its resource link, tags, and definition.
- */
-function showTopicDetail(detail: RoadmapTopicDetail): void {
-	if (!topicPanel) return;
-	topicPanel.hidden = false;
-	topicPanel.replaceChildren();
-	const heading = document.createElement("h3");
-	heading.textContent = detail.title;
-	topicPanel.append(heading);
-	const state = document.createElement("p");
-	state.className = "topic-panel__state";
-	state.dataset.state = detail.state ?? "none";
-	state.textContent = detail.state ? detail.state.replace("-", " ") : "not started";
-	topicPanel.append(state);
-	if (detail.tags.length > 0) {
-		const tags = document.createElement("p");
-		tags.className = "topic-panel__tags";
-		tags.textContent = detail.tags.join(" · ");
-		topicPanel.append(tags);
-	}
-	const definition = abbreviations[detail.title];
-	if (definition) {
-		const paragraph = document.createElement("p");
-		paragraph.className = "topic-panel__definition";
-		paragraph.textContent = definition;
-		topicPanel.append(paragraph);
-	}
-	if (detail.href) {
-		const link = document.createElement("a");
-		link.href = detail.href;
-		link.target = "_blank";
-		link.rel = "noopener noreferrer";
-		link.textContent = "Open resource ↗";
-		topicPanel.append(link);
-	}
-}
 
 function syncInteractivity(): void {
 	interactivity?.dispose();
@@ -298,22 +253,7 @@ function syncInteractivity(): void {
 	if (!previewSvg) return;
 	interactivity = attachRoadmapInteractivity(previewSvg, {
 		storageKey: `workbench-progress:${sampleSelect.value}`,
-		onSelect: showTopicDetail,
-		// A reset clears the tracking context, so the last selection's detail
-		// section disappears with it.
-		onReset: () => {
-			if (topicPanel) topicPanel.hidden = true;
-		},
 	});
-	// One panel, not two: the topic detail lives inside the module's sticky
-	// summary card instead of floating separately.
-	topicPanel = undefined;
-	if (interactivity.summaryElement) {
-		topicPanel = document.createElement("section");
-		topicPanel.className = "topic-panel";
-		topicPanel.hidden = true;
-		interactivity.summaryElement.append(topicPanel);
-	}
 }
 
 function render(): void {
@@ -332,7 +272,6 @@ function render(): void {
 		preview.dataset.mode = result.theme.mode;
 		stats.textContent = `${result.document.stats.chapters} chapters · ${result.document.stats.topics} topics · depth ${result.document.stats.maxDepth}`;
 		dimensions.textContent = `${result.layout.width} × ${result.layout.height}`;
-		abbreviations = result.document.abbreviations;
 		syncInteractivity();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
