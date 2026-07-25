@@ -302,6 +302,19 @@ const interactiveCss = `
 .roadmap--interactive [data-roadmap-element="topic-header"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible{outline:none}
+.roadmap--spotlight .roadmap__node{transition:opacity .18s}
+.roadmap--spotlight [data-roadmap-element="topic"] .roadmap__frame,
+.roadmap--spotlight [data-roadmap-element="topic-header"] .roadmap__frame,
+.roadmap--spotlight [data-roadmap-element="nested-topic"] .roadmap__frame{transition:stroke .15s,stroke-width .15s}
+.roadmap--spotlight [data-roadmap-element="topic"]:hover:not(.roadmap__node--in-progress):not(.roadmap__node--selected) .roadmap__frame,
+.roadmap--spotlight [data-roadmap-element="topic-header"]:hover:not(.roadmap__node--selected) .roadmap__frame,
+.roadmap--spotlight [data-roadmap-element="nested-topic"]:hover:not(.roadmap__node--in-progress):not(.roadmap__node--selected) .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:1.7}
+.roadmap--spotlight .roadmap__node--done:hover{opacity:.8}
+.roadmap--spotlight .roadmap__node--skipped:hover{opacity:.55}
+.roadmap--spotlight-lit .roadmap__node:not(.roadmap__node--lit){opacity:.4}
+@media (prefers-reduced-motion: reduce){
+.roadmap--spotlight .roadmap__node,
+.roadmap--spotlight .roadmap__node .roadmap__frame{transition:none}}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible .roadmap__frame,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible .roadmap__frame,
 .roadmap--interactive .roadmap__node--in-progress .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.4}
@@ -381,9 +394,9 @@ const interactiveCss = `
 .roadmap-topic-detail__column .roadmap-topic-detail__column-bar i{display:block;height:100%;
 	border-radius:99px;background:var(--_done);transition:width .25s}
 .roadmap-topic-detail__tags{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}
-.roadmap-topic-detail__tag{display:inline-flex;align-items:center;padding:1.5px 8px;border-radius:99px;
-	border:1px solid var(--_summary-border);font-size:10px;font-weight:600;letter-spacing:.06em;
-	text-transform:uppercase;opacity:.85;white-space:nowrap}
+.roadmap-topic-detail__tag{display:inline-flex;align-items:center;max-width:100%;padding:1.5px 8px;
+	border-radius:99px;border:1px solid var(--_summary-border);font-size:10px;font-weight:600;
+	letter-spacing:.06em;text-transform:uppercase;opacity:.85;line-height:1.35;text-align:left}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
 .roadmap-topic-detail__note code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;
 	padding:0 4px;border-radius:4px;border:1px solid var(--_summary-border)}
@@ -692,6 +705,86 @@ function createChartProgress(
 		dispose: () => {
 			for (const cleanup of cleanups) cleanup();
 		},
+	};
+}
+
+const spotlightSources =
+	'g[data-roadmap-element="chapter"],g[data-roadmap-element="chapter-description"],g[data-roadmap-element="topic"],g[data-roadmap-element="topic-header"],g[data-roadmap-element="nested-topic"]';
+
+/**
+ * Hover spotlight, independent of interactivity: pointing at a node lights
+ * its whole structural scope while the rest of the chart recedes. A grid
+ * header lights its column, a chapter lights itself plus every topic and
+ * subtopic it owns, a topic lights itself plus its subtopics — recursively,
+ * following the `data-parent` structure the renderer embeds. Composes with
+ * {@link attachRoadmapInteractivity} but requires neither it nor progress
+ * tracking. Returns a dispose function.
+ */
+export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
+	ensureStyles(svg.ownerDocument);
+	svg.classList.add("roadmap--spotlight");
+	const prefix = svg.getAttribute("data-roadmap-instance") ?? "";
+	const nodes = [...svg.querySelectorAll<SVGGElement>("g.roadmap__node")];
+	const byId = new Map(nodes.map((node) => [stableNodeId(node.id, prefix), node]));
+	const children = new Map<string, string[]>();
+	for (const node of nodes) {
+		const parent = node.getAttribute("data-parent");
+		if (!parent) continue;
+		const siblings = children.get(parent) ?? [];
+		siblings.push(stableNodeId(node.id, prefix));
+		children.set(parent, siblings);
+	}
+
+	let litRoot: string | undefined;
+	let lit: SVGGElement[] = [];
+	const clear = (): void => {
+		for (const element of lit) element.classList.remove("roadmap__node--lit");
+		lit = [];
+		litRoot = undefined;
+		svg.classList.remove("roadmap--spotlight-lit");
+	};
+	const light = (rootId: string): void => {
+		if (litRoot === rootId) return;
+		clear();
+		litRoot = rootId;
+		const stack = [rootId];
+		while (stack.length > 0) {
+			const id = stack.pop();
+			if (!id) continue;
+			const element = byId.get(id);
+			if (element) {
+				element.classList.add("roadmap__node--lit");
+				lit.push(element);
+			}
+			stack.push(...(children.get(id) ?? []));
+		}
+		svg.classList.add("roadmap--spotlight-lit");
+	};
+	const onOver = (event: PointerEvent): void => {
+		const source = (event.target as Element | null)?.closest(spotlightSources);
+		if (!source) {
+			clear();
+			return;
+		}
+		// The chapter comment has no scope of its own — hovering it spotlights
+		// the chapter it describes.
+		const rootId =
+			source.getAttribute("data-roadmap-element") === "chapter-description"
+				? (source.getAttribute("data-parent") ?? stableNodeId(source.id, prefix))
+				: stableNodeId(source.id, prefix);
+		light(rootId);
+	};
+	const onOut = (event: PointerEvent): void => {
+		const next = event.relatedTarget as Element | null;
+		if (!next?.closest(spotlightSources)) clear();
+	};
+	svg.addEventListener("pointerover", onOver);
+	svg.addEventListener("pointerout", onOut);
+	return () => {
+		clear();
+		svg.removeEventListener("pointerover", onOver);
+		svg.removeEventListener("pointerout", onOut);
+		svg.classList.remove("roadmap--spotlight");
 	};
 }
 

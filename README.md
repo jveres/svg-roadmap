@@ -212,6 +212,20 @@ navigation). Colors follow `--roadmap-progress-accent`,
 Interactive toggle demonstrates the full pattern, including a topic detail
 panel fed by `onSelect`.
 
+Spotlight is a separate, composable feature:
+`attachRoadmapSpotlight(svgElement)` lights the structural scope under the
+pointer while the rest of the chart recedes. Scope follows the hierarchy —
+a grid header lights its whole column, a chapter lights itself plus every
+topic and subtopic it owns, a topic lights itself plus its subtopics, and
+so on down the tree. The hovered card also gets an accent outline, and
+progress-dimmed cards ease back up for reading. The hierarchy rides inside
+the SVG as `data-parent` attributes emitted by the renderer, so any host
+can walk the same structure. Spotlight needs neither interactivity nor
+progress tracking — use it alone on a plain chart, or together with
+`attachRoadmapInteractivity` (stronger in-progress and selection rings
+always win over the hover outline). It returns a dispose function. The
+workbench exposes it as its own Spotlight toggle.
+
 ### Bring your own panel
 
 The built-in sticky panel is one consumer of a headless data API — the

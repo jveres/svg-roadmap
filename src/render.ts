@@ -13,7 +13,7 @@ import {
 	verticalBumpPath,
 } from "./core/geometry.ts";
 import { codePaintScale, inlineToPlainText, measureTrackedText } from "./core/inline.ts";
-import { escapeXml, hashNumber, hashString, safeId, safeLinkDestination } from "./core/strings.ts";
+import { escapeXml, hashNumber, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
 	BadgeStyle,
 	BoardTheme,
@@ -938,7 +938,7 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
-	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${noteData}>${description}${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
+	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${noteData}>${description}${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {

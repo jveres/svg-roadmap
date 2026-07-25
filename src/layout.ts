@@ -176,6 +176,7 @@ function createCardNode(
 	sourceRange?: SourceRange,
 	abbreviationIndicatorSize = card.typography.fontSize * 0.75,
 	note?: readonly InlineNode[],
+	parentId?: string,
 ): LayoutNode {
 	const maxContentWidth = Math.max(16, card.maxWidth - card.paddingX * 2);
 	const minContentWidth = Math.max(16, card.minWidth - card.paddingX * 2);
@@ -203,6 +204,7 @@ function createCardNode(
 		tags,
 		frameShape: card.shape,
 		...(note ? { note } : {}),
+		...(parentId ? { parentId } : {}),
 		...(sourceRange ? { sourceRange } : {}),
 	};
 }
@@ -252,6 +254,7 @@ function packCluster(
 	layout: "tree" | "nested",
 	theme: RoadmapTheme,
 	options: RequiredLayoutOptions,
+	parentId?: string,
 ): PackedCluster {
 	const nested = layout === "nested";
 	const padding = nested ? theme.boards.nested.padding : theme.boards.topic.padding;
@@ -268,6 +271,7 @@ function packCluster(
 			topic.sourceRange,
 			theme.inline.abbreviationIndicatorSize,
 			topicNote(topic),
+			parentId,
 		),
 	);
 	const widest = Math.max(1, ...nodes.map((node) => node.width));
@@ -456,6 +460,7 @@ function attachTopicChildren(
 		"nested",
 		context.theme,
 		context.options,
+		topic.id,
 	);
 	// Like the reference renderer, children never avoid the spine corridor:
 	// blocking it would force every full-width topic's children onto one side
@@ -556,6 +561,7 @@ function flattenGridTopic(
 			topic.sourceRange,
 			theme.inline.abbreviationIndicatorSize,
 			topicNote(topic),
+			parentId,
 		),
 	};
 	return [
@@ -1329,6 +1335,7 @@ export function layoutRoadmap(
 		chapterNode.x = centerX - chapterNode.width / 2;
 		chapterNode.y = y;
 		elements.push(chapterNode);
+		const chapterElementsStart = elements.length;
 		occupied.push(inflateRectangle(chapterNode, options.overlapPadding));
 		spineAnchors.push(rectCenter(chapterNode));
 
@@ -1411,6 +1418,14 @@ export function layoutRoadmap(
 					descriptionObstacle,
 				),
 			);
+		}
+		// Everything the chapter placed that has no closer structural owner —
+		// column headers, top-level tree topics, the description — belongs to
+		// the chapter itself.
+		for (const element of elements.slice(chapterElementsStart)) {
+			if ("role" in element && element.role !== "chapter" && !element.parentId) {
+				element.parentId = step.id;
+			}
 		}
 		y =
 			bottom +

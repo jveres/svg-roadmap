@@ -264,6 +264,14 @@ export interface LayoutNode extends Rect {
 	readonly tags: readonly string[];
 	readonly sourceRange?: SourceRange;
 	/**
+	 * Structural owner emitted as `data-parent`: a nested topic points at its
+	 * parent topic, a grid topic at its column, a column header and top-level
+	 * topic at their chapter. Hosts walk this to scope whole subtrees
+	 * (spotlight, column progress) without re-parsing the Markdown.
+	 * Mutable: chapter ownership is backfilled after chapter layout.
+	 */
+	parentId?: string;
+	/**
 	 * Detail-note inline model. Rendered twice into the SVG: plain text as
 	 * the node's `<desc>` for assistive tech, and a whitelisted JSON model in
 	 * `data-roadmap-note` so hosts can rebuild rich text without a parser.

@@ -7,7 +7,11 @@ import {
 	type RoadmapThemeSelection,
 	registerEmojiArtwork,
 } from "../src/index.ts";
-import { attachRoadmapInteractivity, type RoadmapInteractivityHandle } from "../src/interactive.ts";
+import {
+	attachRoadmapInteractivity,
+	attachRoadmapSpotlight,
+	type RoadmapInteractivityHandle,
+} from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import softwareHygiene from "./software-hygiene.md?raw";
@@ -90,6 +94,9 @@ app.innerHTML = `
 			<label class="theme-picker interact-toggle">Interactive
 				<input id="interactive" type="checkbox" />
 			</label>
+			<label class="theme-picker interact-toggle">Spotlight
+				<input id="spotlight" type="checkbox" />
+			</label>
 			<button id="download" type="button">Download SVG</button>
 		</div>
 	</header>
@@ -136,6 +143,7 @@ const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
 const download = requiredElement<HTMLButtonElement>("#download");
 const workbench = requiredElement<HTMLElement>("#workbench");
 const interactiveToggle = requiredElement<HTMLInputElement>("#interactive");
+const spotlightToggle = requiredElement<HTMLInputElement>("#spotlight");
 const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
@@ -157,6 +165,7 @@ interface WorkbenchSettings {
 	readonly mode?: string;
 	readonly editorHidden?: boolean;
 	readonly interactive?: boolean;
+	readonly spotlight?: boolean;
 }
 
 function loadStoredSettings(): WorkbenchSettings {
@@ -177,6 +186,7 @@ function saveSettings(): void {
 				mode: colorModeSelect.value,
 				editorHidden,
 				interactive: interactiveToggle.checked,
+				spotlight: spotlightToggle.checked,
 			} satisfies WorkbenchSettings),
 		);
 	} catch {
@@ -212,6 +222,7 @@ applyStoredValue(themePresetSelect, storedSettings.theme);
 applyStoredValue(colorModeSelect, storedSettings.mode);
 setEditorHidden(storedSettings.editorHidden === true);
 interactiveToggle.checked = storedSettings.interactive === true;
+spotlightToggle.checked = storedSettings.spotlight === true;
 let svg = "";
 let renderTimer: number | undefined;
 let generator: RoadmapGenerator | undefined;
@@ -244,6 +255,15 @@ function suppressPreviewTitleTooltip(): void {
 }
 
 let interactivity: RoadmapInteractivityHandle | undefined;
+let detachSpotlight: (() => void) | undefined;
+
+function syncSpotlight(): void {
+	detachSpotlight?.();
+	detachSpotlight = undefined;
+	if (!spotlightToggle.checked) return;
+	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
+	if (previewSvg) detachSpotlight = attachRoadmapSpotlight(previewSvg);
+}
 
 function syncInteractivity(): void {
 	interactivity?.dispose();
@@ -273,6 +293,7 @@ function render(): void {
 		stats.textContent = `${result.document.stats.chapters} chapters · ${result.document.stats.topics} topics · depth ${result.document.stats.maxDepth}`;
 		dimensions.textContent = `${result.layout.width} × ${result.layout.height}`;
 		syncInteractivity();
+		syncSpotlight();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		preview.innerHTML = `<p class="error" role="alert"></p>`;
@@ -310,6 +331,10 @@ toggleEditor.addEventListener("click", () => {
 });
 interactiveToggle.addEventListener("change", () => {
 	syncInteractivity();
+	saveSettings();
+});
+spotlightToggle.addEventListener("change", () => {
+	syncSpotlight();
 	saveSettings();
 });
 download.addEventListener("click", () => {
