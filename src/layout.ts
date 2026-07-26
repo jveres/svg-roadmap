@@ -153,16 +153,33 @@ export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapL
 }
 
 function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
-	const resolved = { ...defaults, ...options };
+	const resolved: RequiredLayoutOptions = { ...defaults, ...options };
 	if (options?.branchGap !== undefined) {
-		return {
-			...resolved,
+		Object.assign(resolved, {
 			branchGapLeftOuter: options.branchGapLeftOuter ?? options.branchGap,
 			branchGapLeftInner: options.branchGapLeftInner ?? options.branchGap,
 			branchGapRightOuter: options.branchGapRightOuter ?? options.branchGap,
 			branchGapRightInner: options.branchGapRightInner ?? options.branchGap,
-		};
+		});
 	}
+	// Non-finite numbers (NaN, Infinity) would hang placement and artifact
+	// loops; a broken knob falls back to its default instead of spinning.
+	const sanitized = resolved as Record<keyof RequiredLayoutOptions, number | boolean>;
+	for (const key of Object.keys(defaults) as (keyof RequiredLayoutOptions)[]) {
+		const value = sanitized[key];
+		const fallback = defaults[key];
+		if (typeof fallback !== "number") continue;
+		if (typeof value !== "number" || !Number.isFinite(value)) sanitized[key] = fallback;
+	}
+	if (resolved.clusterColumns !== 1 && resolved.clusterColumns !== 2) {
+		Object.assign(resolved, { clusterColumns: 1 });
+	}
+	// canvasScale multiplies the finished canvas; cap it so an absurd host
+	// value cannot allocate a practically unbounded artifact field.
+	Object.assign(resolved, {
+		canvasScale: Math.min(10, Math.max(1, resolved.canvasScale)),
+		maxGridColumns: Math.max(1, resolved.maxGridColumns),
+	});
 	return resolved;
 }
 

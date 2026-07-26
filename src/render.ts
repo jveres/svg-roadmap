@@ -41,8 +41,19 @@ function scopedPaint(value: string, prefix: string): string {
 }
 
 function escapeStyleText(value: string): string {
-	return value.replaceAll("&", "\\26 ").replaceAll("<", "\\3c ");
+	// `<` and `&` guard the surrounding SVG <style> element; `{`, `}`, and
+	// `;` guard the CSS grammar itself — an unescaped `}` would end the rule
+	// block and let a theme- or document-supplied value write arbitrary CSS.
+	return value
+		.replaceAll("&", "\\26 ")
+		.replaceAll("<", "\\3c ")
+		.replaceAll("{", "\\7b ")
+		.replaceAll("}", "\\7d ")
+		.replaceAll(";", "\\3b ");
 }
+
+/** Custom-property name suffixes must stay CSS identifiers. */
+const safeCssVariableName = /^[a-zA-Z0-9-]+$/u;
 
 function cssToken(name: string): string {
 	return `var(--roadmap-${name})`;
@@ -123,7 +134,8 @@ function trimConnectorEnd(
 }
 
 function boardOutline(board: BoardTheme): string {
-	return board.stroke ? ` stroke="${board.stroke}" stroke-width="${board.strokeWidth ?? 1}"` : "";
+	if (!board.stroke) return "";
+	return ` stroke="${escapeXml(board.stroke)}" stroke-width="${escapeXml(String(board.strokeWidth ?? 1))}"`;
 }
 
 function cardTokenPrefix(node: LayoutNode): string {
@@ -253,6 +265,7 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 		}
 	}
 	const declarations = variables
+		.filter(([name]) => safeCssVariableName.test(name))
 		.map(([name, value]) => `--roadmap-${name}:${escapeStyleText(String(value))}`)
 		.join(";");
 	return `.roadmap[data-roadmap-instance="${prefix}"]{${declarations}}`;
@@ -1445,7 +1458,7 @@ function renderBackgroundArtifact(
 		.map((shape) => {
 			const blink =
 				animated && shape.animation === "blink" ? ` class="roadmap__artifact-blink"` : "";
-			const paint = `${blink}${shape.fill ? ` fill="${escapeXml(shape.fill)}"` : ""}${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth === undefined ? "" : ` stroke-width="${shape.strokeWidth}"`}`;
+			const paint = `${blink}${shape.fill ? ` fill="${escapeXml(shape.fill)}"` : ""}${shape.stroke ? ` stroke="${escapeXml(shape.stroke)}"` : ""}${shape.strokeWidth === undefined ? "" : ` stroke-width="${escapeXml(String(shape.strokeWidth))}"`}`;
 			return shape.kind === "circle"
 				? `<circle cx="${shape.cx}" cy="${shape.cy}" r="${shape.radius}"${paint}/>`
 				: `<path d="${escapeXml(shape.d)}"${paint}/>`;
