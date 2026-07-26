@@ -882,7 +882,14 @@ export function attachRoadmapInteractivity(
 	const storageKey = options.storageKey ?? `svg-roadmap-progress:${chartTitle}`;
 	const storage =
 		options.storage === undefined
-			? ((globalThis as { localStorage?: Storage }).localStorage ?? null)
+			? (() => {
+					// Touching localStorage can itself throw in sandboxed frames.
+					try {
+						return (globalThis as { localStorage?: Storage }).localStorage ?? null;
+					} catch {
+						return null;
+					}
+				})()
 			: options.storage;
 	const trackProgress = options.progress !== false;
 	const interceptLinks = options.interceptLinks !== false;
@@ -1324,6 +1331,17 @@ export function attachRoadmapInteractivity(
 		paint(id);
 	}
 	closeHeader();
+	// Stored progress is only meaningful for topics this chart still has:
+	// stale ids (edited documents, colliding titles) would otherwise keep
+	// counting toward totals — progress could exceed 100%.
+	let prunedStale = false;
+	for (const id of Object.keys(states)) {
+		if (!groups.has(id)) {
+			delete states[id];
+			prunedStale = true;
+		}
+	}
+	if (prunedStale) persist();
 	const chartProgress =
 		options.onChart !== false && trackProgress
 			? createChartProgress(svg, prefix, groups, hostDocument)
@@ -1348,6 +1366,9 @@ export function attachRoadmapInteractivity(
 		getSummary: () => summarizeProgress(states, groups.size),
 		getState: (id) => states[id],
 		setState: (id, state) => {
+			// Headers are stateless by design and unknown ids must not leak
+			// into totals or storage.
+			if (!groups.has(id)) return;
 			apply(id, state);
 		},
 		get selectedId() {
