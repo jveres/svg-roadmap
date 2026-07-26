@@ -60,7 +60,10 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 	if (lines.length === 0) return node;
 	const scale = node.text.fontSize / 16;
 	const { lowerInset, upperInset, upperShoulderInset, upperShoulderRatio } = noteBlobMetrics(node);
-	const padding = 5 * scale;
+	// The card's paddingY token is the contract; the blob's own constant is
+	// only a floor so token-less nodes keep their look. Without this the
+	// bubble's vertical air ran at half its horizontal air.
+	const padding = Math.max(5 * scale, node.paddingY ?? 0);
 	const safety = 2 * scale;
 	const minY = Math.min(...lines.map((line) => line.y));
 	const maxY = Math.max(...lines.map((line) => line.y + line.height));
@@ -106,8 +109,11 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 	// pixels, and never leaking paint.
 	expandToContain();
 	for (let pass = 0; pass < 2; pass += 1) {
-		const topAir = minY - top;
-		const bottomAir = bottom - maxY;
+		// The eye reads the painted edges, not the rectangle: the blob carves
+		// upward from the rect bottom by lowerInset and downward from the top
+		// by upperInset, so balance the air against the carved edges.
+		const topAir = minY - (top + upperInset);
+		const bottomAir = bottom - lowerInset - maxY;
 		if (topAir > bottomAir) bottom += topAir - bottomAir;
 		else top -= bottomAir - topAir;
 		expandToContain();
