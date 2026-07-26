@@ -679,6 +679,37 @@ Standalone note.
 		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
+	test("note markers are opt-in and only mark noted nodes", () => {
+		const markdown = (frontmatter: string) => `${frontmatter}* Chapter
+  * Noted topic
+    > A detail note behind the click.
+  * Plain topic
+`;
+		// Default: off, even when notes exist.
+		expect(generateRoadmapSvgSync(markdown(""))).not.toContain("roadmap__note-marker");
+		// Front matter turns it on; only the noted topic is marked.
+		const enabled = generateRoadmapSvgSync(markdown("---\nroadmap:\n  noteMarkers: true\n---\n\n"));
+		expect(enabled.match(/roadmap__note-marker/gu)).toHaveLength(1);
+		expect(enabled).toMatch(
+			/data-roadmap-note="[^"]+"[^>]*>.*?<path class="roadmap__note-marker"/u,
+		);
+		// The render option overrides the document in both directions.
+		expect(generateRoadmapSvgSync(markdown(""), { render: { noteMarkers: true } })).toContain(
+			"roadmap__note-marker",
+		);
+		expect(
+			generateRoadmapSvgSync(markdown("---\nroadmap:\n  noteMarkers: true\n---\n\n"), {
+				render: { noteMarkers: false },
+			}),
+		).not.toContain("roadmap__note-marker");
+		// Themes may restyle the mark: rose trades the fold for a printer's dot.
+		const rose = generateRoadmapSvgSync(
+			markdown("---\nroadmap:\n  noteMarkers: true\n  theme: rose\n---\n\n"),
+		);
+		expect(rose).toContain('<circle class="roadmap__note-marker"');
+		expect(rose).toContain("--roadmap-note-marker-color:#b06f76");
+	});
+
 	test("heading levels keep shrinking through h6", () => {
 		const generated = generateRoadmap(
 			["# One", "## Two", "### Three", "#### Four", "##### Five", "###### Six"].join("\n\n"),

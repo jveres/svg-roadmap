@@ -116,6 +116,9 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 			shadow: true,
 			detailInset: 3,
 			paddingX: 14,
+			// The double border eats the inset on both sides; extra vertical
+			// padding keeps the text from crowding the inner rule.
+			paddingY: 9,
 			typography: {
 				color: ink,
 				fontFamily: monoFontFamily,

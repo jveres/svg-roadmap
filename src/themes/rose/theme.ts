@@ -24,6 +24,9 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 		// Display serifs need natural shaping and tracking, so lines paint as
 		// one flowing run wherever no decoration forces exact positioning.
 		textPainting: "flowing",
+		// A sharp paper fold fights the engraved plate; a small old-rose dot
+		// reads as a printer's mark instead.
+		noteMarker: { shape: "dot", size: 5, inset: 8, color: oldRose, opacity: 0.6 },
 		cssVariables: {
 			"chapter-gradient-start": "#fdf9f0",
 			"chapter-gradient-end": "#f5e7dc",

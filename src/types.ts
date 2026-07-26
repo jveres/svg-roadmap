@@ -208,6 +208,11 @@ export interface RoadmapSettings {
 	readonly tags: Readonly<Record<string, RoadmapTagSetting>>;
 	/** Whether the tag legend renders. Defaults to `true`. */
 	readonly legend: boolean;
+	/**
+	 * Paint a folded-corner mark on nodes that carry a detail note, so the
+	 * content behind a click is discoverable. Defaults to `false`.
+	 */
+	readonly noteMarkers: boolean;
 	readonly layout: RoadmapLayoutSettings;
 	/** Accessible chart title; defaults to the document's H1. */
 	readonly title?: string;
@@ -599,11 +604,34 @@ export interface BackgroundArtifactTheme {
  */
 export type TextPainting = "positioned" | "flowing";
 
+/**
+ * Optional theme styling for the note dog-ear, so the mark adapts to the
+ * theme's box geometry. Paint defaults to the node's text color at low
+ * opacity; a custom color is exposed as `--roadmap-note-marker-color`.
+ */
+export interface NoteMarkerTheme {
+	/**
+	 * `fold` (default) tucks a triangle inside the corner; `dot` suits
+	 * curved frames; `notch` sets a wedge along a chamfered card's cut so
+	 * the mark shares the frame geometry (non-chamfered cards fall back to
+	 * the fold).
+	 */
+	readonly shape?: "fold" | "dot" | "notch";
+	/** Mark size in px; the fold defaults to scale with the node height. */
+	readonly size?: number;
+	/** Distance from the frame's corner; defaults follow the card radius. */
+	readonly inset?: number;
+	readonly color?: string;
+	readonly opacity?: number;
+}
+
 export interface RoadmapTheme {
 	readonly name: string;
 	readonly mode: RoadmapColorMode;
 	/** Defaults to `positioned`. */
 	readonly textPainting?: TextPainting;
+	/** Styling for the opt-in note markers; omitted uses the built-in fold. */
+	readonly noteMarker?: NoteMarkerTheme;
 	readonly cssVariables: Readonly<Record<string, string | number>>;
 	readonly canvas: {
 		readonly background: string;
@@ -732,6 +760,11 @@ export interface RoadmapRenderOptions {
 	 * outlines). Defaults to the document's `theme.gradients` setting.
 	 */
 	readonly gradients?: boolean;
+	/**
+	 * Paint a folded-corner mark on nodes carrying a detail note. Defaults
+	 * to the document's `noteMarkers` setting.
+	 */
+	readonly noteMarkers?: boolean;
 }
 
 export interface RoadmapThemeSelection {

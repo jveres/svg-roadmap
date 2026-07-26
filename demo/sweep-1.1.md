@@ -1,5 +1,6 @@
 ---
 roadmap:
+  noteMarkers: true
   theme:
     preset: fun
   background:

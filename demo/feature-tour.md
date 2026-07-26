@@ -2,7 +2,14 @@
 roadmap:
   theme:
     preset: sci-fi
+    gradients: true  # themes that define gradient capabilities paint them
+  noteMarkers: true  # folded corner on boxes that carry a detail note
   # legend: false  # uncomment to hide the tag legend
+  # layout:
+  #   canvas: 1.5        # grow the canvas; the chart stays centered
+  #   columns: 4         # wrap wide grids after this many columns
+  #   clusterColumns: 2  # two-column tree clusters
+  #   spacing: roomy     # compact | cozy | roomy
   background:
     enabled: true
     seed: feature-tour
@@ -56,9 +63,12 @@ roadmap:
   * Notes
     * Chapter descriptions [core]
     * Floating comments [optional]
+    * Note markers [core]
+      > The folded corner on this box is the opt-in `noteMarkers` mark — it
+      > shows a detail note is waiting behind the click, like this one.
 
 * :two: Inline styling
-*:beginner: Emphasis works everywhere: **strong**, _emphasis_, ==highlight==, ++insert++, `inline code`, and ~~strikethrough~~. Term definitions get dotted underlines.*
+*:beginner: Emphasis works everywhere: **strong**, _emphasis_, ==highlight==, ++insert++, `inline code`, and ~~strikethrough~~. Term definitions get dotted underlines.^[Footnotes render as small superscript markers.]*
   * Emoji :tada:
     * Shortcodes :rocket: [core]
     * GitHub set :joystick: [optional]
@@ -69,7 +79,7 @@ roadmap:
   * Old habits ~~like these~~ [deprecated]
 
 * :three: Tags & badges
-*:beginner: The tags on this chart are **defined in front matter**: a name, an icon or emoji, and a theme ==accent slot== — so they restyle with every theme and mode. Undeclared tags like [mystery] fall back automatically.*
+*:beginner: The tags on this chart are **defined in front matter**: a name, an icon or emoji, and a theme ==accent slot== — so they restyle with every theme and mode. In prose a declared tag renders as its chip — [core], [experimental] — while undeclared ones like [mystery] stay plain text.*
   * Built-in icons [core]
   * Emoji badges [experimental]
   * Accent slots [advanced]
@@ -85,6 +95,7 @@ roadmap:
 *[Term definitions]: Defined with a `*[Term]: explanation` line and shown as a dotted underline with a tooltip.
 *[Chapter descriptions]: The italic paragraph right under a chapter bullet.
 *[Floating comments]: Standalone italic paragraphs between chapters.
+*[Note markers]: An opt-in folded-corner mark on any box that carries a detail note.
 *[Accent slots]: Named theme colors (green, red, amber, blue, violet, neutral) that custom tags reference instead of hex codes.
 *[Emoji badges]: Tag badges can paint any emoji shortcode on a colored disc.
 *[Fallback badges]: Tags without a definition use the theme's unknown-tag style.

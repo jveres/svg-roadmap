@@ -200,6 +200,9 @@ function themeCssVariables(theme: RoadmapTheme, prefix: string): string {
 		["soft-shadow-offset-y", theme.shadow.softOffsetY],
 		["soft-shadow-saturation", theme.shadow.softSaturation],
 	];
+	if (theme.noteMarker?.color) {
+		variables.push(["note-marker-color", theme.noteMarker.color]);
+	}
 	for (const [name, value] of Object.entries(theme.cssVariables)) {
 		variables.push([name, value]);
 	}
@@ -978,7 +981,47 @@ function boardPath(
 	return scallopedRectanglePath(enclosure, board.padding);
 }
 
-function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+/**
+ * Folded-corner mark for nodes carrying a detail note: a small triangle
+ * tucked into the frame's bottom-right corner, painted with the node's text
+ * color at low opacity so it adapts to every theme and mode. Opt-in via the
+ * document's `noteMarkers` setting or the render option.
+ */
+function renderNoteMarker(node: LayoutNode, theme: RoadmapTheme): string {
+	const style = theme.noteMarker ?? {};
+	const card = cardTheme(node, theme);
+	// Rounded and curved frames pull the mark inward so it stays on paint.
+	const inset = style.inset ?? 1.5 + Math.min(5, (card?.radius ?? 0) * 0.35);
+	const fill = style.color ? cssToken("note-marker-color") : cssToken(textToken(node));
+	const opacity = style.opacity ?? 0.32;
+	const x = roundCoordinate(node.x + node.width - inset);
+	const y = roundCoordinate(node.y + node.height - inset);
+	if (style.shape === "dot") {
+		const radius = (style.size ?? 5) / 2;
+		return `<circle class="roadmap__note-marker" cx="${roundCoordinate(x - radius)}" cy="${roundCoordinate(y - radius)}" r="${radius}" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
+	}
+	if (style.shape === "notch" && card?.shape === "chamfered") {
+		// A wedge inside the frame whose hypotenuse runs parallel to the
+		// chamfer cut, so the mark shares the box geometry instead of
+		// floating in the cut-away corner outside it.
+		const cut = style.size ?? Math.max(4, card.radius);
+		const gap = 1.6;
+		const cornerX = roundCoordinate(node.x + node.width - gap);
+		const cornerY = roundCoordinate(node.y + node.height - gap);
+		const innerX = roundCoordinate(node.x + node.width - gap - cut);
+		const innerY = roundCoordinate(node.y + node.height - gap - cut);
+		return `<path class="roadmap__note-marker" d="M ${innerX} ${cornerY} L ${cornerX} ${innerY} L ${innerX} ${innerY} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
+	}
+	const fold = style.size ?? Math.min(9, Math.max(6, Math.round(node.height * 0.28)));
+	return `<path class="roadmap__note-marker" d="M ${roundCoordinate(x - fold)} ${y} L ${x} ${roundCoordinate(y - fold)} L ${x} ${y} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
+}
+
+function renderNode(
+	node: LayoutNode,
+	theme: RoadmapTheme,
+	prefix: string,
+	noteMarkers = false,
+): string {
 	const role = elementRole(node);
 	const tags = node.tags.join(",");
 	const source = node.sourceRange
@@ -995,7 +1038,7 @@ function renderNode(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 		node.kind === "heading"
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
-	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}</g>`;
+	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}${noteMarkers && node.note ? renderNoteMarker(node, theme) : ""}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {
@@ -1670,7 +1713,7 @@ export function renderRoadmapSvg(
 		.filter(
 			(element): element is LayoutNode => element.kind !== "group" && element.kind !== "legend",
 		)
-		.map((node) => renderNode(node, theme, prefix))
+		.map((node) => renderNode(node, theme, prefix, options.noteMarkers === true))
 		.join("");
 	const legends = layout.elements
 		.filter((element): element is LayoutLegend => element.kind === "legend")

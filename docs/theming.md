@@ -144,6 +144,17 @@ Badges anchor to a node's top-right corner — except on capsule cards, where
 the anchor moves onto the cap's 45° shoulder so the badge overlaps the
 painted edge instead of floating in the recessed corner.
 
+### Note markers
+
+Documents opt into note markers (`noteMarkers: true`) to make detail notes
+discoverable: nodes carrying a note get a small folded corner. A theme may
+restyle the mark through `noteMarker` so it suits its box geometry — `fold`
+(default), `dot`, or `notch` (a wedge along a chamfered card's cut), with
+`size`, `inset`, `color`, and `opacity`; paint
+defaults to the node's text color at low opacity, and a custom color is
+exposed as the `--roadmap-note-marker-color` token. Rose, for example,
+replaces the paper fold with a small old-rose printer's dot.
+
 ## Boards
 
 Topic, nested-topic, and legend boards select `organic`, `rounded`,

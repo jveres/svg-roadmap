@@ -695,6 +695,9 @@ export function createTheme(
 		name: override.name ?? base.name,
 		mode: override.mode ?? base.mode,
 		...(textPainting !== undefined ? { textPainting } : {}),
+		...(base.noteMarker || override.noteMarker
+			? { noteMarker: { ...base.noteMarker, ...override.noteMarker } }
+			: {}),
 		cssVariables: mergeCssVariables(base.cssVariables, override.cssVariables),
 		canvas: { background: override.canvas?.background ?? base.canvas.background },
 		heading: {

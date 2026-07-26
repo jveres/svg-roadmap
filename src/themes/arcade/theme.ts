@@ -13,6 +13,9 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 	{
 		name: "arcade",
 		mode: "light",
+		// An insert-coin corner: the chamfered boxes take a neon-pink wedge
+		// along the cut, like a lit cabinet bezel.
+		noteMarker: { shape: "notch", color: neonPink, opacity: 0.75 },
 		cssVariables: {
 			"chapter-gradient-start": "#ff2d78",
 			"chapter-gradient-end": "#7b2ff7",
@@ -117,6 +120,10 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 			shadowOpacity: 0.25,
 			detailInset: 2,
 			paddingX: 16,
+			// The smaller header face plus the inner detail rule left headers
+			// shorter than their cells; extra leading keeps them at least
+			// cell-height.
+			paddingY: 8,
 			typography: {
 				color: "#0b4b58",
 				fontFamily: monoFontFamily,
@@ -238,6 +245,7 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 export const arcadeDarkTheme: RoadmapTheme = createTheme(
 	{
 		mode: "dark",
+		noteMarker: { color: "#ff4d94", opacity: 0.85 },
 		cssVariables: {
 			"chapter-gradient-start": "#ff2d78",
 			"chapter-gradient-end": "#7b2ff7",

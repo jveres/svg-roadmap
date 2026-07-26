@@ -23,6 +23,9 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 		// Wide-tracked display type shapes better as one flowing run; lines
 		// carrying decorations still fall back to positioned painting.
 		textPainting: "flowing",
+		// A HUD indicator: the chamfer's cut corner fills in signal cyan, so
+		// the mark is part of the frame geometry rather than a sticker on it.
+		noteMarker: { shape: "notch", color: "#4ccbe4", opacity: 0.85 },
 		cssVariables: {
 			"chapter-gradient-start": "#d8fbff",
 			"chapter-gradient-end": "#dcd8ff",
@@ -104,6 +107,9 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			detailInset: 2,
 			shadowColor: "#8b7ee8",
 			shadowOpacity: 0.2,
+			// The inner detail rule crowds the tracked uppercase; extra leading
+			// keeps headers at least cell-height.
+			paddingY: 8,
 			typography: {
 				color: "#17364d",
 				fontFamily: displayFontFamily,
@@ -202,6 +208,7 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 export const sciFiDarkTheme: RoadmapTheme = createTheme(
 	{
 		mode: "dark",
+		noteMarker: { color: "#58e1f5" },
 		cssVariables: {
 			"chapter-gradient-start": "#113951",
 			"chapter-gradient-end": "#29275b",

@@ -34,6 +34,7 @@ roadmap:
 			},
 			tags: {},
 			legend: true,
+			noteMarkers: false,
 			layout: {},
 		});
 		expect(document.steps).toHaveLength(1);

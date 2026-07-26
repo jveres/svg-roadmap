@@ -356,7 +356,10 @@ Beyond the built-in tags, a document can declare its own taxonomy in front
 matter. The document owns the names, meanings, and legend labels; the theme
 owns the palette, referenced through named accent slots (`green`, `red`,
 `amber`, `blue`, `violet`, `neutral`) so a taxonomy adapts to every theme and
-mode. `legend: false` at the roadmap level hides the tag legend entirely.
+mode. `legend: false` at the roadmap level hides the tag legend entirely, and
+`noteMarkers: true` paints a small folded corner on every box that carries a
+detail note, so readers can see where a click has content waiting (hosts can
+override per render with `render.noteMarkers`).
 
 ```yaml
 ---
