@@ -255,8 +255,60 @@ function expandedRectangleHull(rectangles: readonly Rect[], padding: number): Po
 	});
 }
 
+/**
+ * The pillow hull's Catmull-Rom control offsets grow with neighbor edge
+ * length, so a tall hull's long sides balloon the arc over its short caps:
+ * top and bottom read several times as padded as the sides. This variant
+ * clamps only the outward-normal component of each control point to a
+ * bulge allowance — anchors stay put, side billows and corner roundness
+ * (the tangential component) are untouched, and edges already within the
+ * allowance render byte-identically to the classic pillow.
+ */
+function clampedPillowPath(points: readonly Point[], tension: number, maxBulge: number): string {
+	if (points.length < 3) return smoothClosedPath(points, tension);
+	const size = points.length;
+	const at = (index: number): Point => points[(index + size) % size] as Point;
+	const centroid = {
+		x: points.reduce((sum, point) => sum + point.x, 0) / size,
+		y: points.reduce((sum, point) => sum + point.y, 0) / size,
+	};
+	// A cubic with both controls offset outward by d peaks at ~0.75 d.
+	const controlLimit = maxBulge / 0.75;
+	let path = `M ${roundCoordinate(at(0).x)} ${roundCoordinate(at(0).y)}`;
+	for (let index = 0; index < size; index += 1) {
+		const previous = at(index - 1);
+		const current = at(index);
+		const next = at(index + 1);
+		const after = at(index + 2);
+		const edge = { x: next.x - current.x, y: next.y - current.y };
+		const length = Math.hypot(edge.x, edge.y) || 1;
+		let normal = { x: edge.y / length, y: -edge.x / length };
+		const mid = { x: (current.x + next.x) / 2, y: (current.y + next.y) / 2 };
+		if ((mid.x - centroid.x) * normal.x + (mid.y - centroid.y) * normal.y < 0) {
+			normal = { x: -normal.x, y: -normal.y };
+		}
+		const clampOutward = (offset: { x: number; y: number }): { x: number; y: number } => {
+			const outward = offset.x * normal.x + offset.y * normal.y;
+			if (outward <= controlLimit) return offset;
+			const trim = outward - controlLimit;
+			return { x: offset.x - normal.x * trim, y: offset.y - normal.y * trim };
+		};
+		const first = clampOutward({
+			x: ((next.x - previous.x) / 6) * tension,
+			y: ((next.y - previous.y) / 6) * tension,
+		});
+		const second = clampOutward({
+			x: ((current.x - after.x) / 6) * tension,
+			y: ((current.y - after.y) / 6) * tension,
+		});
+		path += ` C ${roundCoordinate(current.x + first.x)} ${roundCoordinate(current.y + first.y)} ${roundCoordinate(next.x + second.x)} ${roundCoordinate(next.y + second.y)} ${roundCoordinate(next.x)} ${roundCoordinate(next.y)}`;
+	}
+	return `${path} Z`;
+}
+
 export function blobPath(rectangles: readonly Rect[], padding: number): string {
-	return smoothClosedPath(expandedRectangleHull(rectangles, padding), 0.5);
+	const hull = expandedRectangleHull(rectangles, padding);
+	return clampedPillowPath(hull, 0.5, Math.max(14, padding * 1.6));
 }
 
 export function boundedBlobPath(rectangles: readonly Rect[], padding: number): string {
