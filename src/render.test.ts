@@ -468,6 +468,37 @@ describe("SVG rendering boundaries", () => {
 		expect(svg).not.toContain(".roadmap__connector{vector-effect:non-scaling-stroke}");
 	});
 
+	it("should paint document-tag references in notes as inline chips", () => {
+		const svg = generateRoadmapSvgSync(
+			`---
+roadmap:
+  tags:
+    foundation:
+      icon: check
+      accent: green
+      label: Foundation
+---
+
+Start with [foundation] first.
+
+* Chapter
+  * Topic [foundation]
+`,
+			{ render: { idPrefix: "tag-chip" } },
+		);
+
+		const chip = svg.match(/<g class="roadmap__tag-chip"[^>]*>.*?<\/g><\/g>/su)?.[0] ?? "";
+		expect(chip).toContain('data-tag="foundation"');
+		// Pill, badge disc, and accent label all paint through the tag's token.
+		expect(chip).toContain(
+			'fill="var(--roadmap-badge-tag-foundation-background)" fill-opacity="0.14"',
+		);
+		expect(chip).toContain('href="#tag-chip-icon-check"');
+		expect(chip).toMatch(/<text [^>]*font-weight="600"[^>]*>foundation<\/text>/u);
+		// The chip never merges into neighbouring prose segments.
+		expect(svg).toContain(">Start with </text>");
+	});
+
 	it("should paint Fun card shadows as cross-browser SVG geometry", () => {
 		const svg = generateRoadmapSvgSync("* Chapter\n  * Topic", {
 			render: { idPrefix: "fun-shadow" },

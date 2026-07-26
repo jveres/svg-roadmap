@@ -387,6 +387,11 @@ overrides. Explicit `background`/`foreground` colors are accepted as an escape
 hatch, with the caveat that literal colors do not adapt across themes or
 modes.
 
+Prose can reference declared tags too: `[advanced]` inside a note or
+description renders as an inline chip — the tag's badge disc plus its name on
+a soft accent pill — so an intro card can show the legend's marks in place.
+Names that match no declared tag stay literal text.
+
 ## Emoji
 
 Emoji handling is tiered so documents render identically on every platform

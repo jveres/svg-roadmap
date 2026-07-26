@@ -8,7 +8,12 @@ import initComrak, {
 	type SyncInitInput,
 } from "comrak-wasm";
 import { parseRoadmapFrontmatter, RoadmapFrontmatterError } from "./core/frontmatter.ts";
-import { applyAbbreviations, inlineToPlainText, shortcodeToEmoji } from "./core/inline.ts";
+import {
+	applyAbbreviations,
+	applyTagChips,
+	inlineToPlainText,
+	shortcodeToEmoji,
+} from "./core/inline.ts";
 import { childElements, decodeXml, type XmlElementNode, xmlText } from "./core/xml.ts";
 import type {
 	FootnoteDefinition,
@@ -288,11 +293,24 @@ function itemMarker(item: XmlElementNode, lines: readonly string[]): RoadmapTopi
 interface ParseContext {
 	readonly lines: readonly string[];
 	readonly abbreviations: Readonly<Record<string, string>>;
+	readonly tagNames: ReadonlySet<string>;
 	nextId(prefix: string, content: readonly InlineNode[]): string;
 }
 
 function withAbbreviations(nodes: readonly InlineNode[], context: ParseContext): InlineNode[] {
 	return applyAbbreviations(trimInline(nodes), context.abbreviations);
+}
+
+/**
+ * Prose surfaces — notes and descriptions — additionally resolve `[name]`
+ * references to document-defined tags into inline chips. Titles keep the
+ * plain pass: their trailing tag tokens are structural, already extracted.
+ */
+function withProseInline(nodes: readonly InlineNode[], context: ParseContext): InlineNode[] {
+	return applyAbbreviations(
+		applyTagChips(trimInline(nodes), context.tagNames),
+		context.abbreviations,
+	);
 }
 
 /**
@@ -313,7 +331,7 @@ function topicFromItem(item: XmlElementNode, depth: number, context: ParseContex
 	const parts = paragraphParts(paragraphs[0], context.lines);
 	const title = withAbbreviations(parts.title, context);
 	const extraDescription = paragraphContent(paragraphs.slice(1));
-	const description = withAbbreviations(
+	const description = withProseInline(
 		joinInlineSections([parts.description, extraDescription]),
 		context,
 	);
@@ -387,10 +405,7 @@ function chapterFromItem(item: XmlElementNode, context: ParseContext): RoadmapCh
 	const parts = paragraphParts(paragraphs[0], context.lines);
 	const content = withAbbreviations(parts.title, context);
 	const additional = paragraphContent(paragraphs.slice(1));
-	const description = withAbbreviations(
-		joinInlineSections([parts.description, additional]),
-		context,
-	);
+	const description = withProseInline(joinInlineSections([parts.description, additional]), context);
 	const items = childElements(item, "list").flatMap(listItems);
 	return {
 		type: "chapter",
@@ -417,7 +432,7 @@ function headingFromElement(node: XmlElementNode, context: ParseContext): Roadma
 
 function noteFromElement(node: XmlElementNode, context: ParseContext): RoadmapNote {
 	const sourceRange = nodeRange(node);
-	const content = withAbbreviations(
+	const content = withProseInline(
 		node.name === "block_quote" ? blockContent(node) : inlineFromXml(node),
 		context,
 	);
@@ -458,6 +473,7 @@ function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): Roadmap
 	const context: ParseContext = {
 		lines: prepared.lines,
 		abbreviations: prepared.abbreviations,
+		tagNames: new Set(Object.keys(prepared.settings.tags)),
 		nextId(prefix, content) {
 			sequence += 1;
 			return `${prefix}-${sequence}-${slug(inlineToPlainText(content)) || "untitled"}`;

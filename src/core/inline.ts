@@ -15,6 +15,7 @@ export interface InlineRun {
 	readonly abbreviation?: string;
 	readonly abbreviationIndicator?: boolean;
 	readonly shortcode?: string;
+	readonly tag?: string;
 }
 
 export function shortcodeToEmoji(id: string): string {
@@ -91,7 +92,8 @@ export function applyAbbreviations(
 			node.type === "code" ||
 			node.type === "softBreak" ||
 			node.type === "lineBreak" ||
-			node.type === "footnoteReference"
+			node.type === "footnoteReference" ||
+			node.type === "tagChip"
 		) {
 			return [node];
 		}
@@ -99,6 +101,43 @@ export function applyAbbreviations(
 			return [{ ...node, children: applyAbbreviations(node.children, definitions) }];
 		}
 		return [node];
+	});
+}
+
+const tagReferencePattern = /\[([\p{Letter}\p{Number}][\p{Letter}\p{Number}_-]*)\]/gu;
+
+/**
+ * Replaces `[name]` references to document-defined tags with inline chip
+ * nodes. Unknown names stay literal text, so prose that happens to use
+ * brackets is untouched; link and code content is never rewritten (links
+ * resolve before this pass, code is a value node).
+ */
+export function applyTagChips(
+	nodes: readonly InlineNode[],
+	tags: ReadonlySet<string>,
+): InlineNode[] {
+	if (tags.size === 0) return [...nodes];
+	return nodes.flatMap((node): InlineNode[] => {
+		if (node.type === "text") {
+			const result: InlineNode[] = [];
+			let start = 0;
+			for (const match of node.value.matchAll(tagReferencePattern)) {
+				const name = match[1] ?? "";
+				if (!tags.has(name)) continue;
+				if (match.index > start) {
+					result.push({ type: "text", value: node.value.slice(start, match.index) });
+				}
+				result.push({ type: "tagChip", tag: name, children: [{ type: "text", value: name }] });
+				start = match.index + match[0].length;
+			}
+			if (start === 0) return [node];
+			if (start < node.value.length) {
+				result.push({ type: "text", value: node.value.slice(start) });
+			}
+			return result;
+		}
+		if (node.type === "link" || node.type === "tagChip" || !("children" in node)) return [node];
+		return [{ ...node, children: applyTagChips(node.children, tags) }];
 	});
 }
 
@@ -136,6 +175,11 @@ function visitInline(nodes: readonly InlineNode[], state: RunState, runs: Inline
 				break;
 			case "footnoteReference":
 				runs.push({ text: `[${node.label}]`, marks: [...state.marks, "superscript"] });
+				break;
+			case "tagChip":
+				// The chip is atomic: one run carrying the tag name; wrapping and
+				// painting size it through tagChipMetrics, never per character.
+				runs.push({ text: node.tag, marks: state.marks, tag: node.tag });
 				break;
 			case "link":
 				visitInline(
@@ -388,6 +432,9 @@ export function measureTrackedText(
 function sameRunStyle(left: TextLineSegment | undefined, right: TextLineSegment): boolean {
 	return (
 		left !== undefined &&
+		// Chips never merge: each is one atomic painted unit.
+		left.tag === undefined &&
+		right.tag === undefined &&
 		left.destination === right.destination &&
 		left.linkTitle === right.linkTitle &&
 		left.abbreviation === right.abbreviation &&
@@ -395,6 +442,42 @@ function sameRunStyle(left: TextLineSegment | undefined, right: TextLineSegment)
 		left.shortcode === right.shortcode &&
 		left.marks.join("|") === right.marks.join("|")
 	);
+}
+
+/**
+ * Shared measurement/paint contract for inline tag chips: a badge disc, the
+ * tag name in a smaller semibold cut, and a pill of air around both. Layout
+ * and rendering must agree on every one of these numbers, or textLength
+ * would stretch the label to cover the difference.
+ */
+export interface TagChipMetrics {
+	readonly width: number;
+	readonly disc: number;
+	readonly discX: number;
+	readonly labelX: number;
+	readonly labelWidth: number;
+	readonly labelFontSize: number;
+	readonly labelFontWeight: number;
+	readonly pillHeight: number;
+}
+
+export function tagChipMetrics(tag: string, fontSize: number, fontFamily: string): TagChipMetrics {
+	const disc = fontSize * 1.05;
+	const discX = fontSize * 0.15;
+	const labelFontSize = fontSize * 0.9;
+	const labelFontWeight = 600;
+	const labelWidth = measureText(tag, labelFontSize, [], labelFontWeight, fontFamily);
+	const labelX = discX + disc + fontSize * 0.25;
+	return {
+		width: labelX + labelWidth + fontSize * 0.4,
+		disc,
+		discX,
+		labelX,
+		labelWidth,
+		labelFontSize,
+		labelFontWeight,
+		pillHeight: fontSize * 1.35,
+	};
 }
 
 export function wrapInline(
@@ -426,6 +509,21 @@ export function wrapInline(
 		letterSpacing * textGraphemes(text).length;
 
 	for (const run of runs) {
+		if (run.tag) {
+			// A chip wraps as one atomic unit at its measured pill width; the
+			// tag name inside never splits or merges with neighbouring text.
+			const chipWidth = tagChipMetrics(run.tag, typography.fontSize, typography.fontFamily).width;
+			let line = lines.at(-1);
+			if (!line) continue;
+			if (line.width + chipWidth > widthFor(lines.length - 1) && line.segments.length > 0) {
+				pushLine();
+				line = lines.at(-1);
+				if (!line) continue;
+			}
+			line.segments.push({ text: run.text, width: chipWidth, marks: run.marks, tag: run.tag });
+			line.width += chipWidth;
+			continue;
+		}
 		const runText = typography.textTransform === "uppercase" ? run.text.toUpperCase() : run.text;
 		const tokens = runText.split(/(\n|\s+)/u).filter(Boolean);
 		for (const token of tokens) {

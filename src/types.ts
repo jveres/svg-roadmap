@@ -56,6 +56,17 @@ export interface FootnoteReferenceInline {
 	readonly label: string;
 }
 
+/**
+ * A `[name]` reference to a document-defined tag inside prose, painted as an
+ * inline chip: the tag's badge disc plus its name in the accent color. The
+ * children carry the plain name so text extraction reads naturally.
+ */
+export interface TagChipInline {
+	readonly type: "tagChip";
+	readonly tag: string;
+	readonly children: readonly InlineNode[];
+}
+
 export type InlineNode =
 	| TextInline
 	| CodeInline
@@ -63,7 +74,8 @@ export type InlineNode =
 	| LinkInline
 	| AbbreviationInline
 	| BreakInline
-	| FootnoteReferenceInline;
+	| FootnoteReferenceInline
+	| TagChipInline;
 
 export interface RoadmapHeading {
 	readonly type: "heading";
@@ -240,6 +252,8 @@ export interface TextLineSegment {
 	readonly abbreviation?: string;
 	readonly abbreviationIndicator?: boolean;
 	readonly shortcode?: string;
+	/** Document tag painted as an inline chip instead of plain text. */
+	readonly tag?: string;
 }
 
 export interface TextLine {

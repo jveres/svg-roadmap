@@ -12,7 +12,7 @@ import {
 	roundCoordinate,
 	verticalBumpPath,
 } from "./core/geometry.ts";
-import { codePaintScale, measureTrackedText } from "./core/inline.ts";
+import { codePaintScale, measureTrackedText, tagChipMetrics } from "./core/inline.ts";
 import { escapeXml, hashNumber, safeId, safeLinkDestination } from "./core/strings.ts";
 import type {
 	BadgeStyle,
@@ -390,6 +390,41 @@ function renderBadge(
 	return `<g class="roadmap__badge roadmap__badge--${paint}" transform="translate(${x} ${y})" data-roadmap-element="badge"><use href="#${prefix}-icon-${escapeXml(icon)}" x="0" y="0" width="${size}" height="${size}" fill="${cssToken(`badge-${paint}-background`)}" color="${cssToken(`badge-${paint}-foreground`)}"/></g>`;
 }
 
+/**
+ * Inline tag chip: the tag's badge disc and its name in the accent color on
+ * a soft accent pill, sized by the shared tagChipMetrics contract so the
+ * painted chip fills exactly the advance the wrapper reserved.
+ */
+function renderTagChip(
+	tag: string,
+	node: LayoutNode,
+	theme: RoadmapTheme,
+	prefix: string,
+	x: number,
+	baseline: number,
+	fontSize: number,
+	segmentWidth: number,
+): string {
+	const badge = badgeStyleForTag(tag, theme).badges[0];
+	if (!badge) return "";
+	const metrics = tagChipMetrics(tag, fontSize, node.text.fontFamily);
+	const paint = badgePaintToken(badge);
+	const background = cssToken(`badge-${paint}-background`);
+	const pillY = baseline - fontSize * 0.93;
+	const pill = `<rect x="${roundCoordinate(x)}" y="${roundCoordinate(pillY)}" width="${roundCoordinate(segmentWidth)}" height="${roundCoordinate(metrics.pillHeight)}" rx="${roundCoordinate(metrics.pillHeight / 2)}" fill="${background}" fill-opacity="0.14"/>`;
+	const discY = pillY + (metrics.pillHeight - metrics.disc) / 2;
+	const disc = renderBadge(
+		badge,
+		roundCoordinate(x + metrics.discX),
+		roundCoordinate(discY),
+		metrics.disc,
+		prefix,
+	);
+	const labelLength = segmentWidth - metrics.labelX - fontSize * 0.4;
+	const label = `<text x="${roundCoordinate(x + metrics.labelX)}" y="${roundCoordinate(baseline)}" textLength="${roundCoordinate(labelLength)}" lengthAdjust="spacingAndGlyphs" xml:space="preserve" font-size="${roundCoordinate(metrics.labelFontSize)}" font-weight="${metrics.labelFontWeight}" letter-spacing="0" fill="${background}">${escapeXml(tag)}</text>`;
+	return `<g class="roadmap__tag-chip" data-tag="${escapeXml(tag)}">${pill}${disc}${label}</g>`;
+}
+
 function renderNodeBadges(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	const badges = badgesForTags(node.tags, theme);
 	if (badges.length === 0) return "";
@@ -566,7 +601,7 @@ function segmentTitle(segment: TextLineSegment): string {
 	return title ? `<title>${escapeXml(title)}</title>` : "";
 }
 
-function renderPositionedText(node: LayoutNode, prefix: string): string {
+function renderPositionedText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	const scale = node.text.renderScale;
 	const renderScaleX = node.text.renderScaleX ?? 1;
 	const renderScaleY = node.text.renderScaleY ?? 1;
@@ -582,6 +617,13 @@ function renderPositionedText(node: LayoutNode, prefix: string): string {
 		let x = paintedLine.x;
 		for (const segment of line.segments) {
 			const segmentWidth = segment.width * scale * renderScaleX;
+			if (segment.tag) {
+				text.push(
+					renderTagChip(segment.tag, node, theme, prefix, x, baseline, fontSize, segmentWidth),
+				);
+				x += segmentWidth;
+				continue;
+			}
 			backgrounds.push(segmentBackground(segment, node, x, baseline, fontSize, segmentWidth));
 			const segmentFontSize = segment.abbreviationIndicator
 				? node.text.abbreviationIndicatorSize * scale
@@ -696,7 +738,7 @@ function renderFlowingText(node: LayoutNode): string {
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	if ((theme.textPainting ?? "positioned") === "positioned") {
-		return renderPositionedText(node, prefix);
+		return renderPositionedText(node, theme, prefix);
 	}
 	// Painted decoration rects must line up with glyphs exactly. WebKit
 	// distributes textLength across a flowing line differently from other
@@ -708,6 +750,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 	const requiresPositionedText = (line: TextLine): boolean =>
 		line.segments.some(
 			(segment) =>
+				segment.tag !== undefined ||
 				(segment.shortcode !== undefined && emojiArtwork(segment.shortcode) !== undefined) ||
 				segment.marks.includes("code") ||
 				(segment.abbreviation !== undefined && !segment.abbreviationIndicator) ||
@@ -729,7 +772,7 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 				text: { ...node.text, lines: [line] },
 			};
 			return requiresPositionedText(line)
-				? renderPositionedText(lineNode, prefix)
+				? renderPositionedText(lineNode, theme, prefix)
 				: renderFlowingText(lineNode);
 		})
 		.join("");
@@ -1295,6 +1338,10 @@ function usedEmojiShortcodes(layout: RoadmapLayout, theme: RoadmapTheme): Readon
 		for (const line of element.text.lines) {
 			for (const segment of line.segments) {
 				if (segment.shortcode) used.add(canonicalShortcode(segment.shortcode));
+				if (!segment.tag) continue;
+				for (const badge of badgeStyleForTag(segment.tag, theme).badges) {
+					if (badge.emoji) used.add(badge.emoji);
+				}
 			}
 		}
 	}

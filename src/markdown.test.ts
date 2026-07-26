@@ -292,4 +292,47 @@ Reference[^note]
 		expect(document.steps).toHaveLength(2);
 		expect(document.steps.every((step) => step.type === "note")).toBe(true);
 	});
+
+	test("resolves document-tag references in prose to inline chips", () => {
+		const document = parseRoadmapMarkdown(`---
+roadmap:
+  tags:
+    foundation:
+      icon: check
+      accent: green
+      label: Foundation
+---
+
+# Chips
+
+Start with [foundation], skip [unknown] and [foundation]s glued to a word.
+
+* Chapter one
+*Adopt [foundation] when ready.*
+  + Topic [foundation]
+`);
+
+		const note = document.steps.find((step) => step.type === "note");
+		expect(note?.type).toBe("note");
+		const chips = note?.type === "note" ? note.content.filter((n) => n.type === "tagChip") : [];
+		// Both bracketed references become chips (the glued suffix keeps its
+		// trailing text); the unknown name stays literal prose.
+		expect(chips).toHaveLength(2);
+		expect(chips[0]).toMatchObject({ tag: "foundation" });
+		expect(note?.type === "note" ? inlineToPlainText(note.content) : "").toBe(
+			"Start with foundation, skip [unknown] and foundations glued to a word.",
+		);
+
+		// Title tags stay structural: the topic keeps its tag, no chip in the title.
+		const chapter = document.steps.find((step) => step.type === "chapter");
+		const topic = chapter?.type === "chapter" ? chapter.groups[0]?.topics[0] : undefined;
+		expect(topic?.tags).toEqual(["foundation"]);
+		expect(topic?.content.some((n) => n.type === "tagChip")).toBe(false);
+		// The chapter comment is prose, so its reference becomes a chip.
+		expect(chapter?.type === "chapter" ? chapter.description : []).toContainEqual({
+			type: "tagChip",
+			tag: "foundation",
+			children: [{ type: "text", value: "foundation" }],
+		});
+	});
 });

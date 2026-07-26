@@ -212,6 +212,12 @@ Document-defined tags emit per-tag CSS paint tokens
 (`--roadmap-badge-tag-<name>-background`/`-foreground`), while theme badges
 keep their icon-keyed tokens.
 
+Prose may reference a document-defined tag with `[name]`; the reference
+paints as an inline chip (badge disc, accent-colored name, soft accent
+pill) through the same paint tokens, so chips restyle with the theme and
+mode automatically. Chips are atomic in wrapping and force positioned text
+painting for their line.
+
 ## Inline decoration tokens
 
 `inline` supplies the link color, highlight fill, insert-underline color,
