@@ -679,6 +679,19 @@ Standalone note.
 		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
+	test("heading levels keep shrinking through h6", () => {
+		const generated = generateRoadmap(
+			["# One", "## Two", "### Three", "#### Four", "##### Five", "###### Six"].join("\n\n"),
+		);
+		const sizes = generated.layout.elements
+			.filter((element): element is LayoutNode => element.kind === "heading")
+			.map((element) => element.text.fontSize);
+		expect(sizes).toHaveLength(6);
+		for (let index = 1; index < sizes.length; index += 1) {
+			expect(sizes[index] ?? 0).toBeLessThan(sizes[index - 1] ?? 0);
+		}
+	});
+
 	test("keeps a grid parent on its own row so its child rail starts under it", () => {
 		const generated = generateRoadmap(`* 1️⃣ Operations
   + Reliability

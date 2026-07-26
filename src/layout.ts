@@ -350,7 +350,13 @@ function createHeadingNode(
 function headingTypography(level: number, theme: RoadmapTheme): TypographyTheme {
 	if (level === 1) return theme.heading.title;
 	if (level === 2) return theme.heading.section;
-	return theme.heading.minor;
+	if (level === 3) return theme.heading.minor;
+	// Themes style three tiers; deeper headings keep shrinking on a ramp
+	// derived from the minor tier, so h4–h6 stay distinguishable without
+	// widening every theme's surface.
+	const minor = theme.heading.minor;
+	const scale = [0.85, 0.74, 0.65][Math.min(level, 6) - 4] ?? 0.65;
+	return { ...minor, fontSize: Math.max(10, Math.round(minor.fontSize * scale)) };
 }
 
 interface PackedCluster {

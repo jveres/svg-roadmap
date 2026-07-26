@@ -429,9 +429,7 @@ roadmap:
 
 ## Keep ++**sweeping**++ :sparkles:
 
-Use these definitions as a shared vocabulary, and adapt each practice to the
-product's risk, scale, and operating context.
-© János Veres · [MIT License](https://opensource.org/license/mit)
+#### Use these definitions as a shared vocabulary, and adapt each practice to the product's risk, scale, and operating context. © János Veres · [MIT License](https://opensource.org/license/mit)
 
 *[Technology scouting]: Technology scouting identifies and evaluates emerging technologies.
 *[Psychological safety]: A shared belief that the team is safe for interpersonal risk-taking.
