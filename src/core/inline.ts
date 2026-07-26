@@ -332,7 +332,7 @@ export function measureText(
 	let width = 0;
 	const category = fontCategory(fontFamily);
 	if (code) {
-		width = Array.from(text).length * fontSize * 0.61 * codePaintScale;
+		width = textGraphemes(text).length * fontSize * 0.61 * codePaintScale;
 	} else if (measurementProvider !== undefined && category !== "monospace") {
 		width = providerWidth(measurementProvider, text, {
 			fontSize,
@@ -372,7 +372,7 @@ export function measureTrackedText(
 ): number {
 	return (
 		measureText(text, fontSize, [], fontWeight, fontFamily) +
-		letterSpacing * Array.from(text).length
+		letterSpacing * textGraphemes(text).length
 	);
 }
 
@@ -409,7 +409,7 @@ export function wrapInline(
 			typography.fontFamily,
 			typography.fontStyle ?? "normal",
 		) +
-		letterSpacing * Array.from(text).length;
+		letterSpacing * textGraphemes(text).length;
 
 	for (const run of runs) {
 		const runText = typography.textTransform === "uppercase" ? run.text.toUpperCase() : run.text;
@@ -445,8 +445,8 @@ export function wrapInline(
 				if (!line) continue;
 			}
 
-			while (tokenWidth > maxWidth && Array.from(value).length > 1) {
-				const characters = Array.from(value);
+			while (tokenWidth > maxWidth && textGraphemes(value).length > 1) {
+				const characters = [...textGraphemes(value)];
 				let split = 1;
 				while (
 					split < characters.length &&

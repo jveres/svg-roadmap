@@ -7,6 +7,33 @@ import type { TypographyTheme } from "./types.ts";
 
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
 
+describe("grapheme integrity", () => {
+	const typography = {
+		color: "#000",
+		fontFamily: "Arial",
+		fontSize: 16,
+		fontWeight: 400,
+		fontStyle: "normal",
+		lineHeight: 1.2,
+	} as unknown as TypographyTheme;
+
+	test("ZWJ emoji survive hard wrapping as a single grapheme", () => {
+		const family = "\u{1F469}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}";
+		const content = [{ type: "text" as const, value: family.repeat(6) }];
+		// A width narrow enough to force hard splits inside the run.
+		const lines = wrapInline(content, 40, typography, 12);
+		for (const line of lines) {
+			for (const segment of line.segments) {
+				// Every split point respects grapheme boundaries: each piece
+				// contains only whole family sequences.
+				const text = segment.text.trim();
+				if (!text) continue;
+				expect(text.length % family.length).toBe(0);
+			}
+		}
+	});
+});
+
 describe("document layout settings", () => {
 	const grid =
 		"# T\n\n* Chapter\n  + Col one\n    * A\n  * Col two\n    * B\n  * Col three\n    * C\n";

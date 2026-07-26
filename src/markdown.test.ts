@@ -151,6 +151,39 @@ roadmap:
 		expect(() => parser.parse("# Three")).toThrow("disposed");
 	});
 
+	test("abbreviation definitions inside code blocks stay literal", () => {
+		const document = parseRoadmapMarkdown(
+			[
+				"* Chapter",
+				"  * Topic",
+				"",
+				"```",
+				"*[Fenced]: stays literal",
+				"```",
+				"",
+				"    *[Indented]: also literal",
+				"",
+				"*[Real]: extracted definition",
+			].join("\n"),
+		);
+		expect(document.abbreviations).toEqual({ Real: "extracted definition" });
+	});
+
+	test("fence-looking lines inside an open fence are not validated as fences", () => {
+		const source = ["* Chapter", "", "````", '```js "quoted info"', "````", ""].join("\n");
+		expect(() => parseRoadmapMarkdown(source)).not.toThrow();
+	});
+
+	test("topic nesting past the supported depth fails with a clear error", () => {
+		const lines = ["* Chapter"];
+		for (let depth = 0; depth < 600; depth += 1) {
+			lines.push(`${"  ".repeat(depth + 1)}* T${depth}`);
+		}
+		expect(() => parseRoadmapMarkdown(lines.join("\n"))).toThrowError(
+			/exceeds the supported depth of 512/u,
+		);
+	});
+
 	test("blockquotes under a topic become its detail note, not card content", () => {
 		const document = parseRoadmapMarkdown(
 			"* Chapter\n  * Topic one *desc*\n    > Why it matters: depth for the panel.\n    > Second note paragraph.\n",

@@ -85,8 +85,12 @@ function prepareSource(source: string, frontmatter: string | undefined): Prepare
 	const lines = source.split("\n");
 	const parsedLines = [...lines];
 	const abbreviations: Record<string, string> = {};
-	const definition = /^\s*\*\[([^\]\n]+)\]:\s*(.+?)\s*$/u;
+	// Up to three leading spaces, per CommonMark: four or more is indented
+	// code, where a definition-looking line is literal content.
+	const definition = /^ {0,3}\*\[([^\]\n]+)\]:\s*(.+?)\s*$/u;
+	const inFence = fencedContentMask(lines);
 	for (const [index, line] of lines.entries()) {
+		if (inFence[index]) continue;
 		const match = line.match(definition);
 		if (!match?.[1] || !match[2]) continue;
 		abbreviations[match[1].trim()] = match[2].trim();
@@ -291,7 +295,19 @@ function withAbbreviations(nodes: readonly InlineNode[], context: ParseContext):
 	return applyAbbreviations(trimInline(nodes), context.abbreviations);
 }
 
+/**
+ * Recursive construction bounds the topic depth explicitly: past this the
+ * call stack becomes the limit, and a stack overflow would surface as a
+ * misleading generic parse failure.
+ */
+const maxTopicDepth = 512;
+
 function topicFromItem(item: XmlElementNode, depth: number, context: ParseContext): RoadmapTopic {
+	if (depth > maxTopicDepth) {
+		throw new RoadmapMarkdownError(
+			`Topic nesting exceeds the supported depth of ${maxTopicDepth} levels.`,
+		);
+	}
 	const sourceRange = nodeRange(item);
 	const paragraphs = childElements(item, "paragraph");
 	const parts = paragraphParts(paragraphs[0], context.lines);
@@ -498,7 +514,12 @@ function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): Roadmap
 	};
 }
 
-function fenceInfo(line: string): string | undefined {
+interface FenceLine {
+	readonly marker: string;
+	readonly info: string;
+}
+
+function fenceLine(line: string): FenceLine | undefined {
 	let candidate = line.endsWith("\r") ? line.slice(0, -1) : line;
 	const containerPrefix = /^[\t ]*(?:>[\t ]?|(?:[*+-]|\d{1,9}[.)])[\t ]+)/u;
 	while (true) {
@@ -512,12 +533,41 @@ function fenceInfo(line: string): string | undefined {
 	const marker = match[1] ?? "";
 	const info = match[2] ?? "";
 	if (marker.startsWith("`") && info.includes("`")) return undefined;
-	return info;
+	return { marker, info };
+}
+
+/**
+ * Marks lines inside fenced code (content and closing fence). Opening lines
+ * stay unmarked so callers can inspect their info strings; everything the
+ * fence swallows is plain text and must not be treated as roadmap syntax.
+ */
+function fencedContentMask(lines: readonly string[]): boolean[] {
+	const mask = new Array<boolean>(lines.length).fill(false);
+	let open: { readonly character: string; readonly length: number } | undefined;
+	for (const [index, line] of lines.entries()) {
+		const fence = fenceLine(line);
+		if (open) {
+			mask[index] = true;
+			const closes =
+				fence !== undefined &&
+				fence.marker.startsWith(open.character) &&
+				fence.marker.length >= open.length &&
+				fence.info.trim() === "";
+			if (closes) open = undefined;
+		} else if (fence) {
+			open = { character: fence.marker[0] ?? "`", length: fence.marker.length };
+		}
+	}
+	return mask;
 }
 
 function validateFences(source: string): void {
-	for (const [index, line] of source.split("\n").entries()) {
-		const info = fenceInfo(line);
+	const lines = source.split("\n");
+	const inFence = fencedContentMask(lines);
+	for (const [index, line] of lines.entries()) {
+		// Fence-looking lines inside an open fence are literal content.
+		if (inFence[index]) continue;
+		const info = fenceLine(line)?.info;
 		if (info && /["&<>]/u.test(info)) {
 			throw new RoadmapMarkdownError(
 				`Code-fence info strings cannot contain quotes, ampersands, or angle brackets (line ${index + 1}).`,
@@ -543,8 +593,14 @@ export function parseRoadmapMarkdown(
 				cause: error,
 			});
 		}
+		// Only a missing WASM initialization earns the initialization hint;
+		// other causes (stack overflow, malformed XML) keep their own story.
+		const message = error instanceof Error ? error.message : String(error);
+		const uninitialized = /not (?:been )?initiali[sz]ed|initialize/iu.test(message);
 		throw new RoadmapMarkdownError(
-			"Unable to parse roadmap Markdown. Initialize comrak-wasm before using the synchronous parser.",
+			uninitialized
+				? "Unable to parse roadmap Markdown. Initialize comrak-wasm before using the synchronous parser."
+				: `Unable to parse roadmap Markdown: ${message}`,
 			{ cause: error },
 		);
 	}
