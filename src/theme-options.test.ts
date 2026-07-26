@@ -7,6 +7,41 @@ import type { TypographyTheme } from "./types.ts";
 
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
 
+describe("theme merging fidelity", () => {
+	test("TagStyle.legend survives theme merging", () => {
+		const generated = generateRoadmap(
+			`${source.replace("[recommended]", "[hidden] [recommended]")}`,
+			{
+				theme: {
+					badges: {
+						tags: {
+							hidden: { label: "Hidden", badges: [{ icon: "x" }], legend: false },
+						},
+					},
+				},
+			},
+		);
+		const legend = generated.layout.elements.find((element) => element.kind === "legend");
+		const rows = legend && "items" in legend ? legend.items.map((item) => item.tag) : [];
+		expect(rows).not.toContain("hidden");
+		expect(rows).toContain("recommended");
+	});
+
+	test("partial accent overrides merge with the base accent", () => {
+		const generated = generateRoadmap(
+			`---\nroadmap:\n  tags:\n    custom:\n      accent: green\n---\n${source.replace("[recommended]", "[custom]")}`,
+			{
+				theme: {
+					badges: { accents: { green: { background: "#123456" } } },
+				},
+			},
+		);
+		// The base green accent supplies the foreground; the override only
+		// replaced the background — the accent still resolves.
+		expect(generated.svg).toContain("#123456");
+	});
+});
+
 describe("grapheme integrity", () => {
 	const typography = {
 		color: "#000",

@@ -1,5 +1,8 @@
 import { type MeasurementProvider, setMeasurementProvider } from "./inline.ts";
 
+/** The provider whose installation currently owns the global slot. */
+let currentMeasurementOwner: MeasurementProvider | undefined;
+
 /**
  * Hidden-DOM measurement oracle: measures text with the browser's real font
  * resolution instead of the built-in metric tables. Layout then reflects the
@@ -110,15 +113,24 @@ export async function installDomMeasurement(
 	}
 	const handle = createDomMeasurementProvider(hostDocument);
 	setMeasurementProvider(handle.provider);
+	currentMeasurementOwner = handle.provider;
 	const handleLoadingDone = (): void => {
-		// Re-installing the same provider flushes the measurement cache.
-		setMeasurementProvider(handle.provider);
+		// Re-installing the same provider flushes the measurement cache —
+		// but only while this installation still owns the global slot.
+		if (currentMeasurementOwner === handle.provider) {
+			setMeasurementProvider(handle.provider);
+		}
 		options.onFontsChanged?.();
 	};
 	fontFaceSet?.addEventListener("loadingdone", handleLoadingDone);
 	return () => {
 		fontFaceSet?.removeEventListener("loadingdone", handleLoadingDone);
-		setMeasurementProvider(undefined);
+		// Ownership guard: installing A then B and disposing A must not tear
+		// down B's provider. Only the current owner may clear the slot.
+		if (currentMeasurementOwner === handle.provider) {
+			currentMeasurementOwner = undefined;
+			setMeasurementProvider(undefined);
+		}
 		handle.dispose();
 	};
 }

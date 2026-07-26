@@ -332,7 +332,7 @@ function badgesForTags(tags: readonly string[], theme: RoadmapTheme): BadgeStyle
 	const badges: BadgeStyle[] = [];
 	for (const tag of tags) {
 		for (const badge of badgeStyleForTag(tag, theme).badges) {
-			const key = `${badge.emoji ?? badge.icon}:${badge.background}:${badge.foreground}`;
+			const key = `${badge.emoji ?? badge.icon}:${badge.token ?? ""}:${badge.background}:${badge.foreground}`;
 			if (seen.has(key)) continue;
 			seen.add(key);
 			badges.push(badge);

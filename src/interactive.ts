@@ -178,12 +178,18 @@ export interface AttachRoadmapInteractivityOptions {
 	readonly storageKey?: string;
 	/** Storage backend; defaults to `localStorage`. `null` disables persistence. */
 	readonly storage?: Storage | null;
-	/** Enable click-to-cycle progress. Defaults to `true`. */
+	/**
+	 * Enable progress tracking: state painting, persistence, the summary
+	 * panel, and the detail panel's state selector. Clicking never mutates
+	 * state — it selects; changes happen through the panel or `setState`.
+	 * Defaults to `true`.
+	 */
 	readonly progress?: boolean;
 	/**
-	 * Intercept topic links so a click toggles progress instead of
-	 * navigating; the destination stays available on the selection detail.
-	 * Defaults to `true`; set `false` to keep links navigating.
+	 * Intercept topic links so activating a linked topic selects it instead
+	 * of navigating; the destination stays available on the selection
+	 * detail. Defaults to `true`; set `false` to keep links navigating —
+	 * by mouse and keyboard alike.
 	 */
 	readonly interceptLinks?: boolean;
 	/**
@@ -1287,6 +1293,15 @@ export function attachRoadmapInteractivity(
 		const onKeydown = (event: KeyboardEvent): void => {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			event.preventDefault();
+			// Keyboard parity with the mouse: when links are not intercepted,
+			// Enter on a linked topic follows the link like a click would.
+			if (!interceptLinks && event.key === "Enter") {
+				const anchor = group.querySelector("a");
+				if (anchor) {
+					anchor.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+					return;
+				}
+			}
 			selectTopic(id, group);
 		};
 		group.addEventListener("click", onClick);

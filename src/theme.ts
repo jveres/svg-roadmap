@@ -614,7 +614,12 @@ function mergeTag(base: TagStyle, override: DeepPartial<TagStyle> | undefined): 
 					mergeBadge(base.badges[index] ?? base.badges[0] ?? question, badge),
 				)
 			: base.badges;
-	return { label: override?.label ?? base.label, badges };
+	const legend = override?.legend ?? base.legend;
+	return {
+		label: override?.label ?? base.label,
+		badges,
+		...(legend !== undefined ? { legend } : {}),
+	};
 }
 
 export function createTheme(
@@ -735,8 +740,13 @@ function mergeAccents(
 	if (base === undefined && override === undefined) return undefined;
 	const merged: Record<string, BadgeAccent> = { ...base };
 	for (const [name, accent] of Object.entries(override ?? {})) {
-		if (accent?.background !== undefined && accent.foreground !== undefined) {
-			merged[name] = { background: accent.background, foreground: accent.foreground };
+		// Partial overrides merge with the base accent; a brand-new accent
+		// still needs both colors to be usable.
+		const fallback = merged[name];
+		const background = accent?.background ?? fallback?.background;
+		const foreground = accent?.foreground ?? fallback?.foreground;
+		if (background !== undefined && foreground !== undefined) {
+			merged[name] = { background, foreground };
 		}
 	}
 	return merged;

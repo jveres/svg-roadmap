@@ -6,6 +6,18 @@ import { generateRoadmap } from "./index.ts";
 const document = (line: string): string => `# Emoji\n\n* Chapter ${line}\n  * Topic\n`;
 
 describe("emoji tiers", () => {
+	test("artwork registered under an alias is reachable via its canonical name", () => {
+		registerEmojiArtwork({
+			poop: { viewBox: "0 0 16 16", content: '<circle cx="8" cy="8" r="8" fill="#654321"/>' },
+		});
+		// :hankey: is the canonical shortcode; :poop: is the alias the pack
+		// registered under — both must resolve to the registered artwork.
+		const viaAlias = generateRoadmap(document(":poop:"));
+		const viaCanonical = generateRoadmap(document(":hankey:"));
+		expect(viaAlias.svg).toContain("#654321");
+		expect(viaCanonical.svg).toContain("#654321");
+	});
+
 	test("core-pack shortcodes render as vendored symbols", () => {
 		const generated = generateRoadmap(document(":rocket:"));
 		expect(generated.svg).toContain('<symbol id="');

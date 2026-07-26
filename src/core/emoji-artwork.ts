@@ -137,7 +137,12 @@ export function canonicalShortcode(shortcode: string): string {
 
 /** Registers additional artwork (for example the opt-in GitHub pack). */
 export function registerEmojiArtwork(pack: Readonly<Record<string, EmojiArtwork>>): void {
-	Object.assign(registry, pack);
+	// Lookup resolves aliases to canonical names, so registration must too:
+	// artwork registered under an alias (`poop`) would otherwise be silently
+	// unreachable behind its canonical shortcode (`hankey`).
+	for (const [shortcode, artwork] of Object.entries(pack)) {
+		registry[canonicalShortcode(shortcode)] = artwork;
+	}
 }
 
 /** Looks up artwork for a shortcode, resolving aliases to canonical names. */

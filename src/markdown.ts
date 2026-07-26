@@ -549,8 +549,7 @@ function fencedContentMask(lines: readonly string[]): boolean[] {
 		if (open) {
 			mask[index] = true;
 			const closes =
-				fence !== undefined &&
-				fence.marker.startsWith(open.character) &&
+				fence?.marker.startsWith(open.character) &&
 				fence.marker.length >= open.length &&
 				fence.info.trim() === "";
 			if (closes) open = undefined;
