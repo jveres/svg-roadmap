@@ -514,7 +514,7 @@ describe("SVG rendering boundaries", () => {
 		});
 		expect({ width: legend.width, height: legend.height }).toEqual({ width: 175, height: 42 });
 		expect(generated.svg).toContain(
-			'<path d="M 32.46 15.46 C 46.77 12.21 189.74 13.59 204.09 15.46 C 218.43 17.34 209.09 34.59 204.58 37.96 C 200.07 41.34 164.28 54.56 149.94 55.94 C 135.6 57.32 42.25 57.91 32.46 54.54 C 22.67 51.16 18.16 18.72 32.46 15.46 Z"',
+			'<path d="M 32.46 15.46 C 46.77 12.21 189.74 13.59 204.09 15.46 C 217.46 17.36 209.09 34.59 204.58 37.96 C 200.07 41.34 164.28 54.56 149.94 55.94 C 135.6 57.32 42.25 57.91 32.46 54.54 C 22.67 51.16 19.13 18.72 32.46 15.46 Z"',
 		);
 		expect(generated.svg).toContain('transform="matrix(1.01 0 0 1 -1.12 1.5)"');
 		expect(textElement(generated.svg, "Personal recommendation")).toBe(

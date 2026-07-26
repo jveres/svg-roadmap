@@ -308,7 +308,9 @@ function clampedPillowPath(points: readonly Point[], tension: number, maxBulge: 
 
 export function blobPath(rectangles: readonly Rect[], padding: number): string {
 	const hull = expandedRectangleHull(rectangles, padding);
-	return clampedPillowPath(hull, 0.5, Math.max(14, padding * 1.6));
+	// Allowance of one padding puts the cap air in the same band as the
+	// side air; the pillow keeps its curvature, just without the balloon.
+	return clampedPillowPath(hull, 0.5, Math.max(10, padding));
 }
 
 export function boundedBlobPath(rectangles: readonly Rect[], padding: number): string {
