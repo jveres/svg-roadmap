@@ -14,7 +14,9 @@ import {
 	type RoadmapInteractivityHandle,
 } from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
+import elektromosGitar from "./elektromos-gitar.md?raw";
 import featureTour from "./feature-tour.md?raw";
+import linearFunctions from "./linear-functions.md?raw";
 import sweep10 from "./sweep-1.0.md?raw";
 import sweep from "./sweep-1.1.md?raw";
 import "./style.css";
@@ -40,6 +42,16 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 		label: "AI Architect",
 		source: aiArchitect,
 		preset: "pro",
+	},
+	"linear-functions": {
+		label: "Linear Functions",
+		source: linearFunctions,
+		preset: "fun",
+	},
+	"elektromos-gitar": {
+		label: "Elektromos gitár",
+		source: elektromosGitar,
+		preset: "fun",
 	},
 	"feature-tour": {
 		label: "Feature Tour",

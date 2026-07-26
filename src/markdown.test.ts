@@ -293,6 +293,32 @@ Reference[^note]
 		expect(document.steps.every((step) => step.type === "note")).toBe(true);
 	});
 
+	test("accepts non-ASCII tag names in front matter and prose chips", () => {
+		const document = parseRoadmapMarkdown(`---
+roadmap:
+  tags:
+    gyakorlás:
+      icon: check
+      accent: blue
+      label: Gyakorlás eszközzel
+---
+
+Kezdd a [gyakorlás] eszközökkel.
+
+* Fejezet
+  * Hangolás [gyakorlás]
+`);
+
+		expect(Object.keys(document.settings.tags)).toEqual(["gyakorlás"]);
+		const note = document.steps.find((step) => step.type === "note");
+		expect(note?.type === "note" ? note.content.some((n) => n.type === "tagChip") : false).toBe(
+			true,
+		);
+		const chapter = document.steps.find((step) => step.type === "chapter");
+		const topic = chapter?.type === "chapter" ? chapter.groups[0]?.topics[0] : undefined;
+		expect(topic?.tags).toEqual(["gyakorlás"]);
+	});
+
 	test("resolves document-tag references in prose to inline chips", () => {
 		const document = parseRoadmapMarkdown(`---
 roadmap:

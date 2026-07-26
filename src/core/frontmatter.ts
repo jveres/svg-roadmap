@@ -82,7 +82,11 @@ function parseMapping(source: string): FrontmatterMap {
 			throw new RoadmapFrontmatterError(`Expected a key and value on line ${lineNumber}.`);
 		}
 		const key = content.slice(0, separator).trim();
-		if (!/^[a-z][a-zA-Z0-9-]*$/u.test(key)) {
+		// Author-defined map keys (tag names) may be written in any language;
+		// lowercase or caseless letters keep the original a-z spirit while
+		// admitting accented and non-Latin scripts. Structural keys are still
+		// checked against their allow-lists after lexing.
+		if (!/^[\p{Ll}\p{Lo}][\p{Letter}\p{Number}-]*$/u.test(key)) {
 			throw new RoadmapFrontmatterError(`Invalid key "${key}" on line ${lineNumber}.`);
 		}
 		if (Object.hasOwn(parent.value, key)) {
