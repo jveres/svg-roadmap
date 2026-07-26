@@ -8,8 +8,18 @@ import type { TypographyTheme } from "./types.ts";
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
 
 describe("connector gradients", () => {
+	test("gradients are a capability: nothing renders without the opt-in", () => {
+		const generated = generateRoadmap(source, { render: { idPrefix: "off" } });
+		expect(generated.svg).not.toContain("off-connector-spine-gradient");
+		expect(generated.svg).toMatch(
+			/roadmap__connector--spine[^>]*stroke="var\(--roadmap-connector-spine-color\)"/u,
+		);
+	});
+
 	test("the fun spine wears the reference rainbow as a user-space gradient", () => {
-		const generated = generateRoadmap(source, { render: { idPrefix: "grad" } });
+		const generated = generateRoadmap(source, {
+			render: { idPrefix: "grad", gradients: true },
+		});
 		expect(generated.svg).toContain(
 			'<linearGradient id="grad-connector-spine-gradient" gradientUnits="userSpaceOnUse"',
 		);
@@ -19,10 +29,27 @@ describe("connector gradients", () => {
 		expect(generated.svg).toContain('stop-color="#8ed246"');
 	});
 
+	test("fun hulls outline in the journey ramp, subtle by default", () => {
+		const generated = generateRoadmap(source, {
+			render: { idPrefix: "hull", gradients: true },
+		});
+		expect(generated.svg).toMatch(
+			/roadmap__group--topic[^>]*stroke="url\(#hull-connector-spine-gradient\)"[^>]*stroke-width="1.5"[^>]*stroke-opacity="0.7"/u,
+		);
+	});
+
+	test("the document can opt in through theme.gradients front matter", () => {
+		const generated = generateRoadmap(
+			`---\nroadmap:\n  theme:\n    preset: fun\n    gradients: true\n---\n${source}`,
+			{ render: { idPrefix: "doc" } },
+		);
+		expect(generated.svg).toContain("doc-connector-spine-gradient");
+	});
+
 	test("themes without a gradient keep the plain color stroke", () => {
 		const generated = generateRoadmap(source, {
 			theme: { preset: "sci-fi" },
-			render: { idPrefix: "plain" },
+			render: { idPrefix: "plain", gradients: true },
 		});
 		expect(generated.svg).not.toContain("plain-connector-spine-gradient");
 		expect(generated.svg).toMatch(
@@ -32,6 +59,7 @@ describe("connector gradients", () => {
 
 	test("gradient stop colors are escaped in the def", () => {
 		const generated = generateRoadmap(source, {
+			render: { gradients: true },
 			theme: {
 				connectors: {
 					spine: {

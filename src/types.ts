@@ -126,6 +126,11 @@ export type RoadmapColorMode = "light" | "dark";
 export interface RoadmapThemeSettings {
 	readonly preset: string;
 	readonly mode?: RoadmapColorMode;
+	/**
+	 * Renders the theme's gradient capabilities (spine journey ramp, hull
+	 * outlines) when the theme defines them. Off by default.
+	 */
+	readonly gradients?: boolean;
 }
 
 export interface RoadmapBackgroundSettings {
@@ -508,6 +513,17 @@ export interface BoardTheme {
 		| "halftone"
 		| "none";
 	readonly background: string;
+	/**
+	 * Outline the hull with a connector kind's journey gradient instead of a
+	 * plain stroke. The gradient lives in user space, so every hull picks up
+	 * the ramp color at its own elevation — clusters read as color-coded by
+	 * their position along the journey. Subtle by default (hairline, 70%).
+	 */
+	readonly strokeGradient?: {
+		readonly connector: "spine" | "chapterToTopics" | "topicToChildren";
+		readonly width?: number;
+		readonly opacity?: number;
+	};
 	readonly hatch: string;
 	readonly hatchOpacity: number;
 	/** Optional ruled outline around the board; boards are borderless by default. */
@@ -697,6 +713,11 @@ export interface RoadmapRenderOptions {
 	 * Defaults to the document's background setting.
 	 */
 	readonly animatedBackground?: boolean | number;
+	/**
+	 * Render the theme's gradient capabilities (spine journey ramp, hull
+	 * outlines). Defaults to the document's `theme.gradients` setting.
+	 */
+	readonly gradients?: boolean;
 }
 
 export interface RoadmapThemeSelection {

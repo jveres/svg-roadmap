@@ -776,7 +776,12 @@ function renderCardFrame(
 			return `<rect ${paint} x="${capsule.x}" y="${capsule.y}" width="${capsule.width}" height="${capsule.height}" rx="${capsule.height / 2}"/>`;
 		}
 		if (card.shape !== "organic" || node.kind !== "note") {
-			return `<rect ${paint} x="${node.x}" y="${node.y}" width="${node.width}" height="${height}" rx="${cssToken(`${token}-corner-radius`)}"/>`;
+			// rx is an SVG geometry attribute: WebKit's attribute parser
+			// rejects var() there (unlike presentation attributes), logging a
+			// console error per card and squaring the corners. Emit the
+			// resolved radius; the corner-radius custom property stays
+			// available for hosts styling via the CSS `rx` property.
+			return `<rect ${paint} x="${node.x}" y="${node.y}" width="${node.width}" height="${height}" rx="${card.radius}"/>`;
 		}
 
 		const geometry = noteBlobGeometry(node);
@@ -1011,7 +1016,14 @@ function renderGroup(
 				? ""
 				: ` transform="matrix(${scaleX} 0 0 ${scaleY} ${translateX} ${translateY})"`;
 	const role = nested ? "nested" : "topic";
-	const outline = boardOutline(board);
+	// A hull may outline itself with a connector's journey gradient: the
+	// user-space ramp colors each cluster by its elevation on the chart.
+	const hullGradient = board.strokeGradient;
+	const gradientOutline =
+		hullGradient && theme.connectors[hullGradient.connector].gradient?.length
+			? ` stroke="url(#${prefix}-connector-${kebabToken(hullGradient.connector)}-gradient)" stroke-width="${escapeXml(String(hullGradient.width ?? 1.5))}" stroke-opacity="${escapeXml(String(hullGradient.opacity ?? 0.7))}"`
+			: undefined;
+	const outline = gradientOutline ?? boardOutline(board);
 	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"${outline}/>`;
 }
 
@@ -1516,11 +1528,44 @@ function renderBackgroundArtifact(
 	return `<g id="${prefix}-${safeId(artifact.id)}" class="roadmap__background-artifact"${transform}>${content}</g>`;
 }
 
+/**
+ * Gradient paints are theme capabilities the document or host opts into;
+ * without the opt-in the theme renders exactly as if it never defined them.
+ */
+function withoutGradientCapabilities(theme: RoadmapTheme): RoadmapTheme {
+	const stripConnector = (connector: ConnectorTheme): ConnectorTheme => {
+		if (!connector.gradient) return connector;
+		const { gradient, ...rest } = connector;
+		void gradient;
+		return rest;
+	};
+	const stripBoard = (board: BoardTheme): BoardTheme => {
+		if (!board.strokeGradient) return board;
+		const { strokeGradient, ...rest } = board;
+		void strokeGradient;
+		return rest;
+	};
+	return {
+		...theme,
+		connectors: {
+			spine: stripConnector(theme.connectors.spine),
+			chapterToTopics: stripConnector(theme.connectors.chapterToTopics),
+			topicToChildren: stripConnector(theme.connectors.topicToChildren),
+		},
+		boards: {
+			topic: stripBoard(theme.boards.topic),
+			nested: stripBoard(theme.boards.nested),
+			legend: stripBoard(theme.boards.legend),
+		},
+	};
+}
+
 export function renderRoadmapSvg(
 	layout: RoadmapLayout,
-	theme: RoadmapTheme,
+	inputTheme: RoadmapTheme,
 	options: RoadmapRenderOptions = {},
 ): string {
+	const theme = options.gradients ? inputTheme : withoutGradientCapabilities(inputTheme);
 	const title = options.title ?? layout.title;
 	const description =
 		options.description ?? `A visual roadmap with topic depth ${layout.maxDepth}.`;

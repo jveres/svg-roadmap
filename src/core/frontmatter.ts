@@ -127,7 +127,11 @@ function parseTheme(value: FrontmatterValue | undefined): RoadmapSettings["theme
 	if (!isMap(value)) {
 		throw new RoadmapFrontmatterError("The roadmap theme must be a name or a mapping.");
 	}
-	assertKnownKeys(value, ["preset", "mode"], "theme");
+	assertKnownKeys(value, ["preset", "mode", "gradients"], "theme");
+	const gradients = value.gradients;
+	if (gradients !== undefined && typeof gradients !== "boolean") {
+		throw new RoadmapFrontmatterError("The theme gradients setting must be a boolean.");
+	}
 	const preset = value.preset ?? "fun";
 	if (typeof preset !== "string" || !/^[a-z][a-z0-9-]*$/u.test(preset)) {
 		throw new RoadmapFrontmatterError("The roadmap theme preset must be a valid name.");
@@ -136,7 +140,11 @@ function parseTheme(value: FrontmatterValue | undefined): RoadmapSettings["theme
 	if (mode !== undefined && mode !== "light" && mode !== "dark") {
 		throw new RoadmapFrontmatterError('The theme mode must be "light" or "dark".');
 	}
-	return mode ? { preset, mode } : { preset };
+	return {
+		preset,
+		...(mode !== undefined ? { mode } : {}),
+		...(gradients !== undefined ? { gradients } : {}),
+	};
 }
 
 function parseBackground(value: FrontmatterValue | undefined): RoadmapSettings["background"] {

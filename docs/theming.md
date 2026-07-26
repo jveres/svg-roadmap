@@ -155,14 +155,20 @@ Each connector kind (`spine`, `chapterToTopics`, `topicToChildren`) selects
 `curved`, `orthogonal`, `straight`, or `braided` routing, with width, dash,
 opacity, and an optional end shape (`arrow`, `circle`, `diamond`, `dot`).
 
-A connector may carry a typed multi-stop `gradient` instead of its plain
+A connector may carry a typed multi-stop `gradient` alongside its plain
 `color`: the stroke is painted with a user-space gradient spanning the
 kind's full vertical extent, so the spine wears a color journey from the
-chart's first anchor to its last. Gradient and color are alternate paints —
-a theme overriding `color` repaints plainly and drops the inherited
-gradient. The Fun preset ships the reference project's prototype rainbow
-on its spine, and the interactive progress ink adopts the same gradient
-automatically, revealing the traveled segment of the ramp.
+chart's first anchor to its last. Gradients are capabilities, not
+defaults — they render only when the document opts in with
+`theme.gradients: true` (or the host passes `render.gradients`); without
+the opt-in the theme paints exactly as if it never defined them. Gradient
+and color are alternate paints in merges — a theme overriding `color`
+repaints plainly and drops the inherited gradient. Boards may join in
+with `strokeGradient`, outlining each hull with the ramp color at its own
+elevation (subtle by default: hairline at 70%). The Fun preset ships the
+reference project's prototype rainbow on its spine and hulls, and the
+interactive progress ink adopts the spine gradient automatically,
+revealing the traveled segment of the ramp.
 
 - `endShapeJoin: "overlap"` (default) runs the stroke under the marker;
   `"detached"` places the marker wholly ahead of the trimmed stroke. The

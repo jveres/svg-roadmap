@@ -62,6 +62,17 @@ const tags: Readonly<Record<string, TagStyle>> = {
 	warning: { label: "Warning", badges: [warning] },
 };
 
+/** The reference project's prototype rainbow: warm start, done-green end. */
+const journeyRainbow: readonly ConnectorGradientStop[] = [
+	{ offset: 0, color: "#fed509" },
+	{ offset: 0.16, color: "#fea501" },
+	{ offset: 0.33, color: "#fe654a" },
+	{ offset: 0.5, color: "#e16f86" },
+	{ offset: 0.66, color: "#2499bd" },
+	{ offset: 0.83, color: "#00a586" },
+	{ offset: 1, color: "#8ed246" },
+];
+
 export const lightTheme: RoadmapTheme = {
 	name: "fun",
 	mode: "light",
@@ -265,6 +276,10 @@ export const lightTheme: RoadmapTheme = {
 			shape: "organic",
 			pattern: "crosshatch",
 			background: "#ffffff",
+			// Hulls borrow the spine's journey ramp at their own elevation —
+			// clusters read as color-coded by chart position. Renders only
+			// under the opt-in `gradients` setting, subtle by default.
+			strokeGradient: { connector: "spine" },
 			hatch: "#d8d4f4",
 			hatchOpacity: 80 / 255,
 			padding: 15,
@@ -293,15 +308,9 @@ export const lightTheme: RoadmapTheme = {
 			color: "#c0c0c0",
 			// The reference project's prototype rainbow, shipped at last: the
 			// spine runs the color journey from warm start to done-green end.
-			gradient: [
-				{ offset: 0, color: "#fed509" },
-				{ offset: 0.16, color: "#fea501" },
-				{ offset: 0.33, color: "#fe654a" },
-				{ offset: 0.5, color: "#e16f86" },
-				{ offset: 0.66, color: "#2499bd" },
-				{ offset: 0.83, color: "#00a586" },
-				{ offset: 1, color: "#8ed246" },
-			],
+			// A capability, not a default — it renders only when the document
+			// or host opts in with the `gradients` setting.
+			gradient: journeyRainbow,
 			width: 6,
 			dash: "",
 			opacity: 1,
@@ -447,7 +456,7 @@ export const darkTheme: RoadmapTheme = {
 		},
 	},
 	connectors: {
-		spine: { ...lightTheme.connectors.spine, color: "#696b75" },
+		spine: { ...lightTheme.connectors.spine, color: "#696b75", gradient: journeyRainbow },
 		chapterToTopics: { ...lightTheme.connectors.chapterToTopics, color: "#928eae", opacity: 0.75 },
 		topicToChildren: {
 			...lightTheme.connectors.topicToChildren,
@@ -576,6 +585,9 @@ function mergeCard(base: CardTheme, override: DeepPartial<CardTheme> | undefined
 function mergeBoard(base: BoardTheme, override: DeepPartial<BoardTheme> | undefined): BoardTheme {
 	const stroke = override?.stroke ?? base.stroke;
 	const strokeWidth = override?.strokeWidth ?? base.strokeWidth;
+	const strokeGradient = (override?.strokeGradient ?? base.strokeGradient) as
+		| BoardTheme["strokeGradient"]
+		| undefined;
 	return {
 		shape: override?.shape ?? base.shape,
 		pattern: override?.pattern ?? base.pattern,
@@ -584,6 +596,7 @@ function mergeBoard(base: BoardTheme, override: DeepPartial<BoardTheme> | undefi
 		hatchOpacity: override?.hatchOpacity ?? base.hatchOpacity,
 		...(stroke !== undefined ? { stroke } : {}),
 		...(strokeWidth !== undefined ? { strokeWidth } : {}),
+		...(strokeGradient !== undefined ? { strokeGradient } : {}),
 		padding: override?.padding ?? base.padding,
 	};
 }

@@ -307,6 +307,7 @@ roadmap:
   theme:
     preset: sci-fi
     mode: dark
+    # gradients: true  # render the theme's gradient capabilities (fun: rainbow spine + hulls)
   title: Engineering roadmap 2026     # accessible <title>; defaults to the H1
   description: Our path to production # accessible <desc>
   layout:

@@ -73,11 +73,13 @@ function generateFromDocument(
 	});
 	const animatedBackground =
 		options.render?.animatedBackground ?? document.settings.background.animated;
+	const gradients = options.render?.gradients ?? document.settings.theme.gradients;
 	const title = options.render?.title ?? document.settings.title;
 	const description = options.render?.description ?? document.settings.description;
 	const svg = renderRoadmapSvg(layout, theme, {
 		...options.render,
 		...(animatedBackground !== undefined ? { animatedBackground } : {}),
+		...(gradients !== undefined ? { gradients } : {}),
 		...(title !== undefined ? { title } : {}),
 		...(description !== undefined ? { description } : {}),
 	});
