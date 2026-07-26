@@ -319,6 +319,21 @@ textarea:focus-visible {
 	background: var(--panel-heading-background);
 }
 
+.zoom-controls {
+	display: flex;
+	flex: none;
+	gap: 4px;
+}
+
+.zoom-controls .zoom-button {
+	min-width: 24px;
+}
+
+.zoom-controls .zoom-level {
+	min-width: 46px;
+	font-variant-numeric: tabular-nums;
+}
+
 .panel-heading h2 {
 	display: flex;
 	align-items: center;

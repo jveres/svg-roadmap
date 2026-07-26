@@ -145,6 +145,11 @@ app.innerHTML = `
 		<section class="preview-panel" aria-labelledby="preview-title">
 			<div class="panel-heading">
 				<h2 id="preview-title">SVG preview</h2>
+				<div class="zoom-controls" role="group" aria-label="Canvas zoom">
+					<button id="zoom-out" class="panel-reset zoom-button" type="button" aria-label="Zoom out">−</button>
+					<button id="zoom-reset" class="panel-reset zoom-button zoom-level" type="button" title="Reset zoom">100%</button>
+					<button id="zoom-in" class="panel-reset zoom-button" type="button" aria-label="Zoom in">+</button>
+				</div>
 				<span id="dimensions"></span>
 			</div>
 			<div id="preview" class="preview" aria-live="polite"></div>
@@ -172,6 +177,9 @@ const workbench = requiredElement<HTMLElement>("#workbench");
 const interactiveToggle = requiredElement<HTMLInputElement>("#interactive");
 const spotlightToggle = requiredElement<HTMLInputElement>("#spotlight");
 const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
+const zoomIn = requiredElement<HTMLButtonElement>("#zoom-in");
+const zoomOut = requiredElement<HTMLButtonElement>("#zoom-out");
+const zoomReset = requiredElement<HTMLButtonElement>("#zoom-reset");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
 
@@ -311,6 +319,35 @@ function suppressPreviewTitleTooltip(): void {
 	title.remove();
 }
 
+/**
+ * Canvas zoom: 1 fits the preview width (the SVG's natural responsive
+ * behavior); other factors widen or shrink the canvas and the pane scrolls.
+ * The factor survives re-renders, so theme and source edits keep the view.
+ */
+let zoom = 1;
+
+function applyZoom(): void {
+	zoomReset.textContent = `${Math.round(zoom * 100)}%`;
+	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
+	if (!previewSvg) return;
+	if (zoom === 1) {
+		previewSvg.style.maxWidth = "100%";
+		previewSvg.style.width = "";
+	} else {
+		previewSvg.style.maxWidth = "none";
+		previewSvg.style.width = `${Math.round(zoom * 100)}%`;
+	}
+}
+
+function setZoom(value: number): void {
+	zoom = Math.min(4, Math.max(0.25, Math.round(value * 100) / 100));
+	applyZoom();
+}
+
+zoomIn.addEventListener("click", () => setZoom(zoom * 1.25));
+zoomOut.addEventListener("click", () => setZoom(zoom / 1.25));
+zoomReset.addEventListener("click", () => setZoom(1));
+
 let interactivity: RoadmapInteractivityHandle | undefined;
 let detachSpotlight: (() => void) | undefined;
 
@@ -383,6 +420,7 @@ function render(): void {
 		});
 		svg = result.svg;
 		preview.innerHTML = svg;
+		applyZoom();
 		suppressPreviewTitleTooltip();
 		preview.dataset.theme = result.theme.name;
 		preview.dataset.mode = result.theme.mode;
