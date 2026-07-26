@@ -128,15 +128,26 @@ describe("interactive progress integrity", () => {
 
 	test("selection callbacks fire on select and clear", () => {
 		const seen: (string | undefined)[] = [];
+		const ranges: (string | undefined)[] = [];
 		const handle = attachRoadmapInteractivity(mountChart(), {
 			storage: null,
 			summary: false,
-			onSelect: (detail) => seen.push(detail?.id),
+			onSelect: (detail) => {
+				seen.push(detail?.id);
+				// The detail carries the node's authored source location so a
+				// host can jump its editor to the clicked topic.
+				ranges.push(
+					detail?.sourceRange
+						? `${detail.sourceRange.start.line}:${detail.sourceRange.start.column}`
+						: undefined,
+				);
+			},
 		});
 		const id = handle.topics()[0]?.id ?? "";
 		handle.select(id);
 		handle.select(undefined);
 		expect(seen).toEqual([id, undefined]);
+		expect(ranges[0]).toMatch(/^\d+:\d+$/u);
 		handle.dispose();
 	});
 

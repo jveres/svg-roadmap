@@ -410,7 +410,7 @@ function renderTagChip(
 	const metrics = tagChipMetrics(tag, fontSize, node.text.fontFamily);
 	const paint = badgePaintToken(badge);
 	const background = cssToken(`badge-${paint}-background`);
-	const pillY = baseline - fontSize * 0.93;
+	const pillY = baseline - fontSize * 0.8;
 	const pill = `<rect x="${roundCoordinate(x)}" y="${roundCoordinate(pillY)}" width="${roundCoordinate(segmentWidth)}" height="${roundCoordinate(metrics.pillHeight)}" rx="${roundCoordinate(metrics.pillHeight / 2)}" fill="${background}" fill-opacity="0.14"/>`;
 	const discY = pillY + (metrics.pillHeight - metrics.disc) / 2;
 	const disc = renderBadge(
@@ -420,7 +420,7 @@ function renderTagChip(
 		metrics.disc,
 		prefix,
 	);
-	const labelLength = segmentWidth - metrics.labelX - fontSize * 0.4;
+	const labelLength = segmentWidth - metrics.labelX - fontSize * 0.35;
 	const label = `<text x="${roundCoordinate(x + metrics.labelX)}" y="${roundCoordinate(baseline)}" textLength="${roundCoordinate(labelLength)}" lengthAdjust="spacingAndGlyphs" xml:space="preserve" font-size="${roundCoordinate(metrics.labelFontSize)}" font-weight="${metrics.labelFontWeight}" letter-spacing="0" fill="${background}">${escapeXml(tag)}</text>`;
 	return `<g class="roadmap__tag-chip" data-tag="${escapeXml(tag)}">${pill}${disc}${label}</g>`;
 }

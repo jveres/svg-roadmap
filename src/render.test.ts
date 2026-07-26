@@ -497,6 +497,30 @@ Start with [foundation] first.
 		expect(chip).toMatch(/<text [^>]*font-weight="600"[^>]*>foundation<\/text>/u);
 		// The chip never merges into neighbouring prose segments.
 		expect(svg).toContain(">Start with </text>");
+
+		// Chip-bearing blocks floor truly tight leading at the pill clearance
+		// so pills cannot overlap neighbouring lines; ordinary leading stays.
+		const generated = generateRoadmap(
+			`---
+roadmap:
+  tags:
+    foundation:
+      icon: check
+      accent: green
+---
+
+Start with [foundation] first.
+
+* Chapter
+  * Topic
+`,
+			{ render: { idPrefix: "tag-chip-leading" } },
+		);
+		const note = generated.layout.elements.find(
+			(element) => "text" in element && element.kind === "note",
+		);
+		if (!note || !("text" in note)) throw new Error("Note layout was not generated");
+		expect(note.text.lineHeight).toBeGreaterThanOrEqual(note.text.fontSize * 1.25);
 	});
 
 	it("should paint Fun card shadows as cross-browser SVG geometry", () => {

@@ -310,6 +310,38 @@ function syncSpotlight(): void {
 	if (previewSvg) detachSpotlight = attachRoadmapSpotlight(previewSvg);
 }
 
+/**
+ * Scrolls the Markdown editor to a source line and selects it, so a click on
+ * the chart lands the eye on the authored text. Rows above the target are
+ * counted through the editor's soft wrap with measured monospace advances;
+ * the target lands at the top with one context row above it. Focus stays on
+ * the chart.
+ */
+function revealSourceLine(line: number): void {
+	if (editorHidden) return;
+	const lines = source.value.split("\n");
+	const lineText = lines[line - 1];
+	if (lineText === undefined) return;
+	let offset = 0;
+	for (let index = 0; index < line - 1; index += 1) offset += (lines[index]?.length ?? 0) + 1;
+	source.setSelectionRange(offset, offset + lineText.length);
+	const style = window.getComputedStyle(source);
+	const context = document.createElement("canvas").getContext("2d");
+	let charWidth = Number.parseFloat(style.fontSize) * 0.6;
+	if (context) {
+		context.font = `${style.fontSize} ${style.fontFamily}`;
+		charWidth = context.measureText("M").width || charWidth;
+	}
+	const padding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+	const columns = Math.max(20, Math.floor((source.clientWidth - padding) / charWidth));
+	let rows = 0;
+	for (let index = 0; index < line - 1; index += 1) {
+		rows += Math.max(1, Math.ceil((lines[index]?.length ?? 0) / columns));
+	}
+	const lineHeight = Number.parseFloat(style.lineHeight) || 20;
+	source.scrollTop = Math.max(0, (rows - 1) * lineHeight);
+}
+
 function syncInteractivity(): void {
 	interactivity?.dispose();
 	interactivity = undefined;
@@ -321,6 +353,10 @@ function syncInteractivity(): void {
 		// Notes arrive as authored Markdown; rendering is the host's call.
 		// comrak escapes raw HTML by default, so the output is inert.
 		renderNote: (markdown) => mdToHtml(markdown),
+		// A selected topic also reveals its authored source in the editor.
+		onSelect: (detail) => {
+			if (detail?.sourceRange) revealSourceLine(detail.sourceRange.start.line);
+		},
 	});
 }
 

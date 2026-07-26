@@ -193,10 +193,16 @@ function layoutText(
 	typography: TypographyTheme,
 	abbreviationIndicatorSize: number,
 ): LayoutText {
+	// An inline tag chip's pill hugs the text band (1.12em, rising 0.8em
+	// above the baseline), so ordinary leading clears it untouched; only a
+	// truly tight theme leading gets floored — just enough that stacked
+	// pills on consecutive lines keep a hairline of air.
+	const hasChip = lines.some((line) => line.segments.some((segment) => segment.tag));
+	const lineHeightRatio = hasChip ? Math.max(typography.lineHeight, 1.25) : typography.lineHeight;
 	return {
 		lines,
 		fontSize: typography.fontSize,
-		lineHeight: typography.fontSize * typography.lineHeight,
+		lineHeight: typography.fontSize * lineHeightRatio,
 		fontFamily: typography.fontFamily,
 		fontWeight: typography.fontWeight,
 		fontStyle: typography.fontStyle,
@@ -731,6 +737,11 @@ function packGridColumn(entries: readonly GridEntry[], itemGap: number): GridCol
 		...entries.map((entry) => entry.node.width + gridIndent(entry.relativeDepth)),
 	);
 	const rows: GridEntry[][] = [];
+	// A topic with nested children must span its own row: the children's
+	// tree rail runs in the left indent gutter, which only sits under the
+	// parent when the parent owns the full row — a parent packed into the
+	// right cell of a shared row reads as its neighbour's child.
+	const parents = new Set(entries.map((entry) => entry.parentId).filter(Boolean));
 	for (let index = 0; index < entries.length; index += 1) {
 		const entry = entries[index];
 		if (!entry) continue;
@@ -741,6 +752,8 @@ function packGridColumn(entries: readonly GridEntry[], itemGap: number): GridCol
 			entry.relativeDepth === 1 &&
 			next.relativeDepth === 1 &&
 			entry.parentId === next.parentId &&
+			!parents.has(entry.topic.id) &&
+			!parents.has(next.topic.id) &&
 			entry.node.width + itemGap + next.node.width <= width;
 		if (canPair && next) {
 			rows.push([entry, next]);

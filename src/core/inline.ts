@@ -462,21 +462,24 @@ export interface TagChipMetrics {
 }
 
 export function tagChipMetrics(tag: string, fontSize: number, fontFamily: string): TagChipMetrics {
-	const disc = fontSize * 1.05;
-	const discX = fontSize * 0.15;
+	// The pill hugs the text band (1.12em, rising 0.8em above the baseline)
+	// so ordinary theme leading clears it without loosening chip-bearing
+	// blocks; layout only floors truly tight leading (see layoutText).
+	const disc = fontSize * 0.95;
+	const discX = fontSize * 0.12;
 	const labelFontSize = fontSize * 0.9;
 	const labelFontWeight = 600;
 	const labelWidth = measureText(tag, labelFontSize, [], labelFontWeight, fontFamily);
-	const labelX = discX + disc + fontSize * 0.25;
+	const labelX = discX + disc + fontSize * 0.22;
 	return {
-		width: labelX + labelWidth + fontSize * 0.4,
+		width: labelX + labelWidth + fontSize * 0.35,
 		disc,
 		discX,
 		labelX,
 		labelWidth,
 		labelFontSize,
 		labelFontWeight,
-		pillHeight: fontSize * 1.35,
+		pillHeight: fontSize * 1.12,
 	};
 }
 

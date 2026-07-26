@@ -679,6 +679,43 @@ Standalone note.
 		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
+	test("keeps a grid parent on its own row so its child rail starts under it", () => {
+		const generated = generateRoadmap(`* 1️⃣ Operations
+  + Reliability
+    * SRE
+    * SLOs
+      * SLIs
+      * Error budgets
+    * Capacity engineering
+    * Self-healing`);
+		const nodes = generated.layout.elements.filter(
+			(element): element is LayoutNode => element.kind !== "group" && element.kind !== "legend",
+		);
+		const findNode = (label: string): LayoutNode => {
+			const node = nodes.find(
+				(candidate) =>
+					candidate.text.lines
+						.flatMap((line) => line.segments.map((segment) => segment.text))
+						.join("") === label,
+			);
+			if (!node) throw new Error(`Grid node was not found: ${label}`);
+			return node;
+		};
+		const sre = findNode("SRE");
+		const slos = findNode("SLOs");
+		// SRE and SLOs are narrow enough to pair, but SLOs owns nested
+		// children: pairing would put it in the right cell while its
+		// children's tree rail drops through the left gutter — under SRE.
+		expect(slos.y).toBeGreaterThan(sre.y);
+		// The rail's gutter must sit within the parent's horizontal span.
+		const rail = generated.layout.connectors.find((connector) =>
+			connector.id.endsWith("slis-grid-rail"),
+		);
+		if (!rail) throw new Error("SLIs grid rail was not generated");
+		expect(rail.from.x).toBeGreaterThanOrEqual(slos.x);
+		expect(rail.from.x).toBeLessThanOrEqual(slos.x + slos.width);
+	});
+
 	test("keeps optical text fitting scoped by note placement", () => {
 		const generated = generateRoadmap(
 			"* Chapter\n*An [Software Craftsmanship](https://example.com) description.*",

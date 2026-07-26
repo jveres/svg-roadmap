@@ -130,6 +130,32 @@ export interface RoadmapTopicDetail {
 	readonly columnIds?: readonly string[];
 	/** Grid headers only: aggregate progress of the column's topics. */
 	readonly columnProgress?: RoadmapProgressSummary;
+	/**
+	 * The node's authored location in the Markdown source (1-based line and
+	 * column), parsed from the renderer's `data-sourcepos`. Lets a host jump
+	 * its editor to the clicked topic.
+	 */
+	readonly sourceRange?: RoadmapSourceRange;
+}
+
+export interface RoadmapSourcePosition {
+	readonly line: number;
+	readonly column: number;
+}
+
+export interface RoadmapSourceRange {
+	readonly start: RoadmapSourcePosition;
+	readonly end: RoadmapSourcePosition;
+}
+
+function parseSourcepos(value: string | null): RoadmapSourceRange | undefined {
+	const match = value?.match(/^(\d+):(\d+)-(\d+):(\d+)$/u);
+	if (!match) return undefined;
+	const [, startLine, startColumn, endLine, endColumn] = match;
+	return {
+		start: { line: Number(startLine), column: Number(startColumn) },
+		end: { line: Number(endLine), column: Number(endColumn) },
+	};
 }
 
 /** Aggregate progress counts, for hosts drawing their own summary UI. */
@@ -1062,6 +1088,7 @@ export function attachRoadmapInteractivity(
 		const columnIds = headerColumns.get(id);
 		const state = states[id];
 		const note = group.getAttribute("data-roadmap-note")?.trim() || undefined;
+		const sourceRange = parseSourcepos(group.getAttribute("data-sourcepos"));
 		// Term definitions already travel as <title> tooltips in the text.
 		const definitions = [
 			...new Set(
@@ -1077,6 +1104,7 @@ export function attachRoadmapInteractivity(
 				: {}),
 			tags: (group.getAttribute("data-tags") ?? "").split(",").filter(Boolean),
 			...(note ? { note } : {}),
+			...(sourceRange ? { sourceRange } : {}),
 			definitions,
 			...(state ? { state } : {}),
 			...(columnIds

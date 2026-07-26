@@ -48,7 +48,7 @@ roadmap:
     > Shape what you build around evidence from users, not opinions in meetings. Design
     > thinking's cycle — empathize, define, ideate, prototype, test — is the loop to
     > internalize.
-    * UI/UX prototyping [contextual]
+    * [UI/UX prototyping](https://www.nngroup.com/articles/ux-prototype-hi-lo-fidelity/) [contextual]
       > Test the flow while it is still cheap to change: an interactive prototype answers
       > usability questions before implementation begins.
     * [User story mapping](https://www.jpattonassociates.com/story-mapping/) [contextual]
@@ -71,27 +71,27 @@ roadmap:
     * [Product analytics](https://www.gov.uk/service-manual/measuring-success) [foundation]
       > Define success measures before delivery and instrument them with appropriate consent —
       > the outcome reviews in chapter three depend on these signals existing.
-    * Customer feedback [foundation]
+    * [Customer feedback](https://www.gov.uk/service-manual/user-research) [foundation]
       > Combine interviews, support signals, usability studies, and behavioral evidence. Feed
       > what you learn back into discovery instead of treating release as the finish line.
-  * Requirements & outcomes [foundation]
+  * [Requirements & outcomes](https://en.wikipedia.org/wiki/Requirements_engineering) [foundation]
     > Translate discovery into testable outcomes, constraints, and evidence. Requirements stay
     > useful when each one has an owner, rationale, and way to verify it.
-    * Functional requirements [foundation]
+    * [Functional requirements](https://en.wikipedia.org/wiki/Functional_requirement) [foundation]
       > Describe the behavior users and dependent systems need without prescribing unnecessary
       > implementation details.
-    * Quality attributes [foundation]
+    * [Quality attributes](https://en.wikipedia.org/wiki/Non-functional_requirement) [foundation]
       > The classic NFRs: make performance, reliability, security, accessibility, privacy, and
       > operability measurable; these constraints often shape architecture more than features
       > do.
-    * Acceptance criteria [foundation]
+    * [Acceptance criteria](https://gojko.net/books/specification-by-example/) [foundation]
       > State the observable examples that prove a change works, including failure paths and
       > boundary conditions.
-    * Risk & compliance [contextual]
+    * [Risk & compliance](https://csrc.nist.gov/projects/risk-management) [contextual]
       > Identify legal, regulatory, safety, privacy, and business risks early enough to change
       > the design, and record which obligations apply — the secure development lifecycle in
       > chapter three turns them into controls.
-    * Traceability [contextual]
+    * [Traceability](https://en.wikipedia.org/wiki/Requirements_traceability) [contextual]
       > Connect important requirements to design decisions, tests, releases, and operational
       > evidence when the product's risk or regulation demands it.
   * [Technical design](https://martinfowler.com/architecture/) [foundation]
@@ -112,7 +112,9 @@ roadmap:
     * [Threat modeling](https://owasp.org/www-community/Threat_Modeling) [foundation]
       > Ask what can go wrong while the design is still on the whiteboard: attackers, assets,
       > entry points. Fixing a flaw here costs a meeting; in production it costs an incident.
-  * Team spirit [foundation]
+  * [Team spirit](https://www.atlassian.com/team-playbook) [foundation]
+    > Culture is the multiplier on every practice in this roadmap: trust, autonomy, and shared
+    > direction decide whether the rest is adopted or merely performed.
     * [Psychological safety](https://rework.withgoogle.com/en/guides/understanding-team-effectiveness) [foundation]
       > Google's Project Aristotle found it to be the strongest predictor of team effectiveness:
       > people must be safe to ask, dissent, and admit mistakes — build this before process.
@@ -140,23 +142,23 @@ roadmap:
   * [Team Topologies](https://teamtopologies.com/) [contextual]
     > Organize teams for fast flow: stream-aligned teams own value end to end, platform and
     > enabling teams reduce their load, and interaction modes are chosen deliberately.
-  * Quality engineering [foundation]
+  * [Quality engineering](https://moderntesting.org/) [foundation]
     > Quality is designed, built, verified, and monitored by the whole team. Independent testing
     > adds perspective, but it does not replace developer ownership of quality.
-    * Acceptance & exploratory testing [foundation]
+    * [Acceptance & exploratory testing](https://www.satisfice.com/exploratory-testing) [foundation]
       > Automate stable acceptance examples and use exploratory testing to investigate risks,
       > interactions, and failure modes that scripted checks do not anticipate.
-    * Performance & resilience testing [foundation]
+    * [Performance & resilience testing](https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/performance-test) [foundation]
       > Validate latency, throughput, resource use, degradation, and recovery against explicit
       > targets before production traffic discovers the limits.
     * [Accessibility testing](https://www.w3.org/WAI/test-evaluate/) [foundation]
       > Combine automated checks, keyboard and screen-reader evaluation, and testing with people.
       > Automation alone cannot establish that an experience is accessible.
-    * Security testing [foundation]
+    * [Security testing](https://owasp.org/www-project-devsecops-guideline/) [foundation]
       > Build security verification into everyday delivery: automated checks in the pipeline,
       > human review where risk concentrates. The specific controls and probes are defined by
       > the security practices in chapter three.
-    * Test data & environments [foundation]
+    * [Test data & environments](https://12factor.net/dev-prod-parity) [foundation]
       > Create representative, isolated, privacy-safe data and reproducible environments. Define
       > ownership for flaky tests instead of normalizing unreliable feedback.
   * [Code review](https://google.github.io/eng-practices/review/) [foundation]
@@ -186,7 +188,7 @@ roadmap:
     * [Configuration management](https://12factor.net/config) [foundation]
       > Keep environment-specific configuration outside code, validate it, protect sensitive
       > values, and promote the same immutable artifact through each environment.
-    * Artifact provenance [foundation]
+    * [Artifact provenance](https://12factor.net/build-release-run) [foundation]
       > Build once, promote unchanged: the same immutable artifact moves through every
       > environment, so what you verified is what you ship and every release traces back to its
       > source. Signing and attestation belong to supply chain security.
@@ -196,16 +198,18 @@ roadmap:
     * [Progressive delivery](https://launchdarkly.com/blog/what-is-progressive-delivery-all-about/) [contextual]
       > Release to 1% before 100%: canaries, rings, and targeting contain the blast radius of
       > every change, with metrics deciding each next step.
-    * Release verification [foundation]
+    * [Release verification](https://sre.google/workbook/canarying-releases/) [foundation]
       > Run automated smoke tests and health checks after deployment, then stop or reverse a
       > rollout when user and system signals breach its guardrails.
-    * Rollback & roll-forward [foundation]
+    * [Rollback & roll-forward](https://martinfowler.com/bliki/BlueGreenDeployment.html) [foundation]
       > Rehearse both recovery paths. Prefer a fast corrective release when state has changed,
       > and retain rollback when the artifact and data remain compatible.
   * [DoD](https://www.scrum.org/resources/blog/walking-through-definition-done) [foundation]
     > One shared answer to 'is it actually done?' — tested, reviewed, documented, deployed.
     > Without it, every done means something different.
-  * Source control [foundation]
+  * [Source control](https://en.wikipedia.org/wiki/Version_control) [foundation]
+    > Everything that produces the product lives in version control — code, configuration,
+    > documentation, infrastructure — with a history that explains itself.
     * [Git](https://git-scm.com) [contextual]
       > Learn the team's source-control system beyond commit and push. History, bisect, and
       > recovery tools shorten diagnosis when a change causes a failure.
@@ -228,15 +232,17 @@ roadmap:
   * [Refactoring](https://refactoring.com/) [foundation]
     > Improve structure in small, behavior-preserving steps as part of daily work — not as a
     > big-bang project you must ask permission for. Fowler's catalog names the moves.
-  * Versioning [foundation]
+  * [Versioning](https://en.wikipedia.org/wiki/Software_versioning) [foundation]
+    > Give every release an identity: a scheme that communicates change, compatibility, and
+    > support expectations to everyone downstream.
     * [Semver](https://semver.org/) [contextual]
       > When software declares a public API, MAJOR.MINOR.PATCH communicates compatible and
       > breaking changes. Products without a public API can use a scheme suited to their release
       > and support model.
-    * Deprecation & end of life [foundation]
+    * [Deprecation & end of life](https://endoflife.date/) [foundation]
       > Publish migration paths and support windows before removing an interface, runtime, or
       > product version. Track adoption until retirement is safe.
-  * Dependency management [foundation]
+  * [Dependency management](https://cheatsheetseries.owasp.org/cheatsheets/Vulnerable_Dependency_Management_Cheat_Sheet.html) [foundation]
     > Inventory direct and transitive dependencies, automate safe updates, and review
     > unsupported components — chapter three's vulnerability scanning decides how urgently a
     > fix ships.
@@ -268,7 +274,7 @@ roadmap:
   * [Deployability](https://www.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [foundation]
     > Architect so any component can deploy independently and safely — deployability is a design
     > property you build in, not an ops problem you discover later.
-  * AI-assisted engineering [advanced]
+  * [AI-assisted engineering](https://dora.dev/research/ai/) [advanced]
     > The defining shift since 2023: agents plan, edit, and verify code under
     > engineer supervision. Start here after your delivery flow is solid.
     * [Coding agents](https://martinfowler.com/articles/exploring-gen-ai.html) [advanced]
@@ -297,46 +303,46 @@ roadmap:
     * [GitOps](https://opengitops.dev/) [contextual]
       > Declare the desired state in Git and let controllers continuously reconcile reality to
       > it — deployments become pull requests, and drift fixes itself.
+    * [FinOps](https://www.finops.org/) [contextual]
+      > Cloud spend is an engineering signal: give teams visibility and ownership of their cost,
+      > and efficiency becomes part of design instead of a finance escalation.
     * [Platform engineering](https://platformengineering.org/) [advanced]
       > Pave the golden path: an internal platform, run as a product, lets stream teams ship
       > without each reinventing infrastructure — and without ticket-ops in between.
     * [Auto-scaling](https://en.wikipedia.org/wiki/Autoscaling) [contextual]
       > When demand varies enough to justify it, scale capacity within tested limits and retain
       > headroom for bursts. Predictable or stateful workloads may need a different strategy.
-    * [FinOps](https://www.finops.org/) [contextual]
-      > Cloud spend is an engineering signal: give teams visibility and ownership of their cost,
-      > and efficiency becomes part of design instead of a finance escalation.
     * [Green operations](https://greensoftware.foundation/) [contextual]
       > Measure and reduce the energy and carbon cost of software where the workload and
       > organizational goals make it material. The Green Software Foundation collects patterns.
   * [Reliability](https://learn.microsoft.com/en-us/azure/well-architected/reliability/design-patterns) [foundation]
     > Assume everything fails and design for it: retries with backoff, bulkheads, circuit
     > breakers — Microsoft's pattern catalog is a practical menu.
+    * [Self-healing](https://learn.microsoft.com/en-us/azure/architecture/guide/design-principles/self-healing) [contextual]
+      > Prefer systems that remediate themselves — restarts, failover, reconciliation — so
+      > humans handle the novel failures, not the routine ones.
     * [SRE](https://sre.google/) [contextual]
       > Operations as a software problem: engineers automate away toil and error budgets decide
       > when to ship versus stabilize. Google's free SRE books define the discipline.
     * [SLOs](https://sre.google/sre-book/service-level-objectives/) [foundation]
       > Pick the reliability level users actually need, measure it, and spend the error budget
       > deliberately — SLOs turn 'is it reliable enough?' into an engineering decision.
-      * SLIs [foundation]
+      * [SLIs](https://sre.google/workbook/implementing-slos/) [foundation]
         > Measure user-visible success, latency, freshness, correctness, or durability with
         > service-level indicators that have precise event, population, and aggregation rules.
-      * Error budgets [foundation]
+      * [Error budgets](https://sre.google/workbook/error-budget-policy/) [foundation]
         > Use the permitted unreliability to balance delivery and stability. Agree in advance
         > what action the team takes when the budget is at risk or exhausted.
-    * Capacity & performance engineering [foundation]
+    * [Capacity & performance engineering](https://sre.google/workbook/managing-load/) [foundation]
       > Forecast demand, measure saturation, test limits, and preserve headroom. Performance is a
       > design constraint and an operational responsibility, not a late optimization.
-    * Self-healing [contextual]
-      > Prefer systems that remediate themselves — restarts, failover, reconciliation — so
-      > humans handle the novel failures, not the routine ones.
     * [Chaos engineering](https://principlesofchaos.org/) [advanced]
       > Inject failure on purpose, in controlled experiments, before production does it for you
       > at 3 a.m. — confidence in resilience is earned, not assumed.
-    * Service ownership & on-call [foundation]
+    * [Service ownership & on-call](https://sre.google/sre-book/being-on-call/) [foundation]
       > Give every production service an accountable team, support expectations, escalation
       > path, and sustainable on-call rotation. Ownership must include authority to improve it.
-    * Runbooks [foundation]
+    * [Runbooks](https://sre.google/workbook/on-call/) [foundation]
       > Link actionable diagnosis, mitigation, communication, and escalation guidance from each
       > alert. Test runbooks during exercises and update them after incidents.
     * [Incident response](https://sre.google/sre-book/managing-incidents/) [foundation]
@@ -345,10 +351,10 @@ roadmap:
     * [Blameless postmortems](https://sre.google/sre-book/postmortem-culture/) [foundation]
       > After every incident, fix the system rather than the person: blame buries the
       > information you need most. Google's postmortem culture chapter shows how.
-    * [Backup and restore](https://learn.microsoft.com/en-us/azure/well-architected/reliability/disaster-recovery) [foundation]
+    * [Backup and restore](https://sre.google/sre-book/data-integrity/) [foundation]
       > A backup you have never restored is a hope, not a plan: keep isolated, immutable copies
       > of the data that matters and rehearse the restore path until it is boring.
-    * Disaster recovery [foundation]
+    * [Disaster recovery](https://learn.microsoft.com/en-us/azure/well-architected/reliability/disaster-recovery) [foundation]
       > Define RTOs and RPOs from business impact, design recovery for infrastructure, data,
       > identity, and dependencies, and run realistic recovery exercises on a schedule.
   * [Security](https://owasp.org/) [foundation]
@@ -357,24 +363,21 @@ roadmap:
     * [Secure development lifecycle](https://csrc.nist.gov/projects/ssdf) [foundation]
       > Prepare the organization, protect source and build environments, produce secure
       > software, and respond to vulnerabilities through one risk-based development framework.
-      * Security requirements [foundation]
+      * [Security requirements](https://cheatsheetseries.owasp.org/cheatsheets/Abuse_Case_Cheat_Sheet.html) [foundation]
         > Turn the risks and obligations identified during discovery into verifiable controls
         > and abuse cases; track important decisions with the rest of the requirements.
       * [Application security controls](https://owasp.org/www-project-application-security-verification-standard/) [foundation]
         > Design and verify authentication, authorization, session management, input handling,
         > output encoding, cryptography, and error handling at the required assurance level.
-      * Data protection & privacy [foundation]
+      * [Data protection & privacy](https://www.nist.gov/privacy-framework) [foundation]
         > Classify data, minimize collection and retention, encrypt it appropriately, restrict
         > access, and make deletion and consent requirements part of the design.
-      * Secure coding & review [foundation]
+      * [Secure coding & review](https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/) [foundation]
         > Train engineers for the risks in their stack, use approved security patterns, and
         > review high-risk code paths with appropriate expertise.
-      * Vulnerability response [foundation]
+      * [Vulnerability response](https://cheatsheetseries.owasp.org/cheatsheets/Vulnerability_Disclosure_Cheat_Sheet.html) [foundation]
         > Provide a reporting channel, triage by exploitability and impact, patch within defined
         > targets, notify affected parties, and learn from recurring root causes.
-    * [Zero trust](https://csrc.nist.gov/pubs/sp/800/207/final) [contextual]
-      > Never trust by network location: authenticate and authorize every access explicitly, as
-      > if the perimeter were already breached — NIST 800-207 is the reference architecture.
     * [Penetration testing](https://owasp.org/www-project-web-security-testing-guide/) [contextual]
       > Invite the attack before attackers do: regular authorized probes find what reviews and
       > scanners miss. OWASP's testing guide is the playbook.
@@ -390,6 +393,9 @@ roadmap:
     * [SBOM](https://www.cisa.gov/sbom) [foundation]
       > Keep an ingredient list for every artifact — when the next Log4Shell lands, you want to
       > answer 'are we affected?' in minutes, not weeks.
+    * [Zero trust](https://csrc.nist.gov/pubs/sp/800/207/final) [contextual]
+      > Never trust by network location: authenticate and authorize every access explicitly, as
+      > if the perimeter were already breached — NIST 800-207 is the reference architecture.
   * [Observability](https://opentelemetry.io/docs/concepts/observability-primer/#what-is-observability) [foundation]
     > Use telemetry and investigation tools to infer relevant internal conditions from system
     > outputs. Design signals around user journeys and diagnostic questions, not data volume.
@@ -405,19 +411,19 @@ roadmap:
     * [Structured logging](https://opentelemetry.io/docs/concepts/signals/logs/) [foundation]
       > Log events as structured data, correlated with traces — grep gives way to queries, and
       > debugging distributed systems stops being archaeology.
-    * Continuous profiling [advanced]
+    * [Continuous profiling](https://www.cncf.io/blog/2022/05/31/what-is-continuous-profiling/) [advanced]
       > Correlate production resource profiles with traces, metrics, and logs when code-level
       > CPU, memory, allocation, or lock behavior cannot be diagnosed from other signals.
-  * Continuous improvement [foundation]
+  * [Continuous improvement](https://itrevolution.com/articles/the-three-ways-principles-underpinning-devops/) [foundation]
     > Delivery creates evidence. Use it to improve the product and the system instead of ending
     > the learning cycle at deployment.
-    * Outcome reviews [foundation]
+    * [Outcome reviews](https://martinfowler.com/bliki/OutcomeOverOutput.html) [foundation]
       > Compare adoption, user outcomes, quality, cost, and risk with the measures defined during
       > discovery. Change or retire work that does not produce the intended result.
-    * Retrospectives [foundation]
+    * [Retrospectives](https://www.scrum.org/resources/what-is-a-sprint-retrospective) [foundation]
       > Inspect how the team works at a useful cadence, choose a small improvement, assign an
       > owner, and verify whether the change helped.
-    * Operational feedback [foundation]
+    * [Operational feedback](https://sre.google/workbook/eliminating-toil/) [foundation]
       > Feed incidents, support requests, performance, security findings, and toil into product
       > and technical priorities alongside feature demand.
 
@@ -425,6 +431,7 @@ roadmap:
 
 Use these definitions as a shared vocabulary, and adapt each practice to the
 product's risk, scale, and operating context.
+© János Veres · [MIT License](https://opensource.org/license/mit)
 
 *[Technology scouting]: Technology scouting identifies and evaluates emerging technologies.
 *[Psychological safety]: A shared belief that the team is safe for interpersonal risk-taking.
