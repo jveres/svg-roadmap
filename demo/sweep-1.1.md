@@ -14,7 +14,7 @@ roadmap:
       accent: green
       label: Foundation
     contextual:
-      icon: question
+      icon: ":bulb:"
       accent: blue
       label: Adopt when applicable
     advanced:
@@ -65,11 +65,12 @@ roadmap:
       > Shared components, tokens, and guidance improve consistency and reduce repeated design
       > and implementation work when a product family benefits from standardization.
     * [Accessibility](https://www.w3.org/WAI/standards-guidelines/wcag/) [foundation]
-      > Include accessibility from the first wireframe, evaluate it throughout delivery, and
-      > test with people who use assistive technology. WCAG defines the shared standard.
+      > Include accessibility from the first wireframe so it shapes flows, content, and
+      > components. WCAG defines the shared standard; verification is accessibility testing's
+      > job in chapter two.
     * [Product analytics](https://www.gov.uk/service-manual/measuring-success) [foundation]
-      > Define success measures before delivery, instrument them with appropriate consent, and
-      > compare outcomes with the assumptions that justified the work.
+      > Define success measures before delivery and instrument them with appropriate consent —
+      > the outcome reviews in chapter three depend on these signals existing.
     * Customer feedback [foundation]
       > Combine interviews, support signals, usability studies, and behavioral evidence. Feed
       > what you learn back into discovery instead of treating release as the finish line.
@@ -80,14 +81,16 @@ roadmap:
       > Describe the behavior users and dependent systems need without prescribing unnecessary
       > implementation details.
     * Quality attributes [foundation]
-      > Make performance, reliability, security, accessibility, privacy, and operability
-      > measurable; these constraints often shape architecture more than features do.
+      > The classic NFRs: make performance, reliability, security, accessibility, privacy, and
+      > operability measurable; these constraints often shape architecture more than features
+      > do.
     * Acceptance criteria [foundation]
       > State the observable examples that prove a change works, including failure paths and
       > boundary conditions.
     * Risk & compliance [contextual]
       > Identify legal, regulatory, safety, privacy, and business risks early enough to change
-      > the design. Record the controls and evidence each obligation requires.
+      > the design, and record which obligations apply — the secure development lifecycle in
+      > chapter three turns them into controls.
     * Traceability [contextual]
       > Connect important requirements to design decisions, tests, releases, and operational
       > evidence when the product's risk or regulation demands it.
@@ -140,6 +143,22 @@ roadmap:
   * Quality engineering [foundation]
     > Quality is designed, built, verified, and monitored by the whole team. Independent testing
     > adds perspective, but it does not replace developer ownership of quality.
+    * Acceptance & exploratory testing [foundation]
+      > Automate stable acceptance examples and use exploratory testing to investigate risks,
+      > interactions, and failure modes that scripted checks do not anticipate.
+    * Performance & resilience testing [foundation]
+      > Validate latency, throughput, resource use, degradation, and recovery against explicit
+      > targets before production traffic discovers the limits.
+    * [Accessibility testing](https://www.w3.org/WAI/test-evaluate/) [foundation]
+      > Combine automated checks, keyboard and screen-reader evaluation, and testing with people.
+      > Automation alone cannot establish that an experience is accessible.
+    * Security testing [foundation]
+      > Build security verification into everyday delivery: automated checks in the pipeline,
+      > human review where risk concentrates. The specific controls and probes are defined by
+      > the security practices in chapter three.
+    * Test data & environments [foundation]
+      > Create representative, isolated, privacy-safe data and reproducible environments. Define
+      > ownership for flaky tests instead of normalizing unreliable feedback.
   * [Code review](https://google.github.io/eng-practices/review/) [foundation]
     > Match review rigor to risk. Pull-request review, pairing, and ensemble work can all provide
     > correctness checks, shared ownership, and knowledge transfer without stalling flow.
@@ -168,11 +187,15 @@ roadmap:
       > Keep environment-specific configuration outside code, validate it, protect sensitive
       > values, and promote the same immutable artifact through each environment.
     * Artifact provenance [foundation]
-      > Produce immutable, signed, traceable artifacts once, then promote them without rebuilding
-      > so operators know exactly which source and pipeline created a release.
+      > Build once, promote unchanged: the same immutable artifact moves through every
+      > environment, so what you verified is what you ship and every release traces back to its
+      > source. Signing and attestation belong to supply chain security.
     * [Database evolution](https://martinfowler.com/articles/evodb.html) [foundation]
       > Use backward-compatible schema and data migrations so old and new application versions
       > can coexist during deployment and recovery.
+    * [Progressive delivery](https://launchdarkly.com/blog/what-is-progressive-delivery-all-about/) [contextual]
+      > Release to 1% before 100%: canaries, rings, and targeting contain the blast radius of
+      > every change, with metrics deciding each next step.
     * Release verification [foundation]
       > Run automated smoke tests and health checks after deployment, then stop or reverse a
       > rollout when user and system signals breach its guardrails.
@@ -186,9 +209,6 @@ roadmap:
     * [Git](https://git-scm.com) [contextual]
       > Learn the team's source-control system beyond commit and push. History, bisect, and
       > recovery tools shorten diagnosis when a change causes a failure.
-  * [Progressive delivery](https://launchdarkly.com/blog/what-is-progressive-delivery-all-about/) [contextual]
-    > Release to 1% before 100%: canaries, rings, and targeting contain the blast radius of
-    > every change, with metrics deciding each next step.
 
   * [Architecture patterns](https://en.wikipedia.org/wiki/Architectural_pattern) [contextual]
     > Layers, events, microservices — patterns are a vocabulary of trade-offs, not badges; know
@@ -213,12 +233,13 @@ roadmap:
       > When software declares a public API, MAJOR.MINOR.PATCH communicates compatible and
       > breaking changes. Products without a public API can use a scheme suited to their release
       > and support model.
-    * Dependency management [foundation]
-      > Inventory direct and transitive dependencies, automate safe updates, review unsupported
-      > components, and define how quickly security fixes must be adopted.
     * Deprecation & end of life [foundation]
       > Publish migration paths and support windows before removing an interface, runtime, or
       > product version. Track adoption until retirement is safe.
+  * Dependency management [foundation]
+    > Inventory direct and transitive dependencies, automate safe updates, and review
+    > unsupported components — chapter three's vulnerability scanning decides how urgently a
+    > fix ships.
   * [Instrumentation](https://opentelemetry.io/docs/concepts/instrumentation/) [foundation]
     > Telemetry is a feature you build, not an agent you bolt on: emit spans, metrics, and logs
     > from your own code at the source, and chapter three becomes possible.
@@ -244,21 +265,6 @@ roadmap:
     * [Test pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) [contextual]
       > Use a context-appropriate mix of fast focused tests, integration tests, and end-to-end
       > tests. Keep feedback fast, cover real boundaries, and avoid duplicating the same checks.
-    * Acceptance & exploratory testing [foundation]
-      > Automate stable acceptance examples and use exploratory testing to investigate risks,
-      > interactions, and failure modes that scripted checks do not anticipate.
-    * Performance & resilience testing [foundation]
-      > Validate latency, throughput, resource use, degradation, and recovery against explicit
-      > targets before production traffic discovers the limits.
-    * [Accessibility testing](https://www.w3.org/WAI/test-evaluate/) [foundation]
-      > Combine automated checks, keyboard and screen-reader evaluation, and testing with people.
-      > Automation alone cannot establish that an experience is accessible.
-    * Security testing [foundation]
-      > Combine static analysis, dependency and secret scanning, dynamic testing, and targeted
-      > manual review according to the system's threats and exposure.
-    * Test data & environments [foundation]
-      > Create representative, isolated, privacy-safe data and reproducible environments. Define
-      > ownership for flaky tests instead of normalizing unreliable feedback.
   * [Deployability](https://www.sei.cmu.edu/blog/two-categories-of-architecture-patterns-for-deployability/) [foundation]
     > Architect so any component can deploy independently and safely — deployability is a design
     > property you build in, not an ops problem you discover later.
@@ -285,15 +291,6 @@ roadmap:
     > Run on foundations you can reason about: the Well-Architected pillars — operations,
     > security, reliability, performance, cost, sustainability — are the checklist for this
     > whole column.
-    * [Monitoring & alerting](https://sre.google/sre-book/monitoring-distributed-systems/) [foundation]
-      > Watch the four golden signals and alert on user-visible symptoms, not causes — a page
-      > should always mean a human decision is needed right now.
-    * Service ownership & on-call [foundation]
-      > Give every production service an accountable team, support expectations, escalation
-      > path, and sustainable on-call rotation. Ownership must include authority to improve it.
-    * Runbooks [foundation]
-      > Link actionable diagnosis, mitigation, communication, and escalation guidance from each
-      > alert. Test runbooks during exercises and update them after incidents.
     * [Infrastructure as code](https://martinfowler.com/bliki/InfrastructureAsCode.html) [foundation]
       > Infrastructure belongs in version control like everything else: reviewed, repeatable,
       > and rebuildable from scratch — console clicks are unrecorded outages waiting to happen.
@@ -336,6 +333,12 @@ roadmap:
     * [Chaos engineering](https://principlesofchaos.org/) [advanced]
       > Inject failure on purpose, in controlled experiments, before production does it for you
       > at 3 a.m. — confidence in resilience is earned, not assumed.
+    * Service ownership & on-call [foundation]
+      > Give every production service an accountable team, support expectations, escalation
+      > path, and sustainable on-call rotation. Ownership must include authority to improve it.
+    * Runbooks [foundation]
+      > Link actionable diagnosis, mitigation, communication, and escalation guidance from each
+      > alert. Test runbooks during exercises and update them after incidents.
     * [Incident response](https://sre.google/sre-book/managing-incidents/) [foundation]
       > When production breaks, structure beats heroics: clear roles, one incident commander,
       > calm communication. Practice the choreography before you need it.
@@ -343,8 +346,8 @@ roadmap:
       > After every incident, fix the system rather than the person: blame buries the
       > information you need most. Google's postmortem culture chapter shows how.
     * [Backup and restore](https://learn.microsoft.com/en-us/azure/well-architected/reliability/disaster-recovery) [foundation]
-      > A backup you have never restored is a hope, not a plan: define recovery time and point
-      > objectives, then rehearse the restore path until it is boring.
+      > A backup you have never restored is a hope, not a plan: keep isolated, immutable copies
+      > of the data that matters and rehearse the restore path until it is boring.
     * Disaster recovery [foundation]
       > Define RTOs and RPOs from business impact, design recovery for infrastructure, data,
       > identity, and dependencies, and run realistic recovery exercises on a schedule.
@@ -355,8 +358,8 @@ roadmap:
       > Prepare the organization, protect source and build environments, produce secure
       > software, and respond to vulnerabilities through one risk-based development framework.
       * Security requirements [foundation]
-        > Derive verifiable controls and abuse cases from threats, data sensitivity, regulation,
-        > and business risk; track important decisions with the rest of the requirements.
+        > Turn the risks and obligations identified during discovery into verifiable controls
+        > and abuse cases; track important decisions with the rest of the requirements.
       * [Application security controls](https://owasp.org/www-project-application-security-verification-standard/) [foundation]
         > Design and verify authentication, authorization, session management, input handling,
         > output encoding, cryptography, and error handling at the required assurance level.
@@ -393,6 +396,9 @@ roadmap:
     * [Metrics collection](https://opentelemetry.io/docs/concepts/signals/metrics/) [foundation]
       > Aggregated measurements power dashboards, alerts, and capacity planning — capture them
       > consistently and they become the system's vital signs.
+    * [Monitoring & alerting](https://sre.google/sre-book/monitoring-distributed-systems/) [foundation]
+      > Watch the four golden signals and alert on user-visible symptoms, not causes — a page
+      > should always mean a human decision is needed right now.
     * [Distributed tracing](https://opentelemetry.io/docs/concepts/signals/traces/) [contextual]
       > One request, every hop: traces turn 'something is slow somewhere' into 'this call, in
       > this service, this long'.
@@ -470,6 +476,7 @@ product's risk, scale, and operating context.
 *[Customer feedback]: Evidence gathered directly and indirectly from the people a product serves.
 *[Functional requirements]: Observable behavior that users or dependent systems need.
 *[Quality attributes]: Measurable constraints such as reliability, performance, security, and usability.
+*[NFRs]: Non-functional requirements, the traditional name for quality attributes.
 *[Acceptance criteria]: Observable examples that determine whether a requirement is satisfied.
 *[Traceability]: Connections among requirements, decisions, tests, releases, and evidence.
 *[Quality engineering]: Building quality into design, development, verification, and operation.
