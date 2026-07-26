@@ -15,7 +15,8 @@ import {
 } from "../src/interactive.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
-import sweep from "./sweep.md?raw";
+import sweep10 from "./sweep-1.0.md?raw";
+import sweep from "./sweep-1.1.md?raw";
 import "./style.css";
 
 interface WorkbenchSample {
@@ -25,8 +26,13 @@ interface WorkbenchSample {
 }
 
 const samples: Readonly<Record<string, WorkbenchSample>> = {
+	"sweep-1.0": {
+		label: "Sweep 1.0",
+		source: sweep10,
+		preset: "fun",
+	},
 	sweep: {
-		label: "Sweep",
+		label: "Sweep 1.1",
 		source: sweep,
 		preset: "fun",
 	},
@@ -42,6 +48,7 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 	},
 };
 
+const defaultSampleId = "sweep-1.0";
 const fallbackPreset = "fun";
 
 /** Preset labels for the picker; anything unlisted falls back to its id. */
@@ -71,7 +78,10 @@ app.innerHTML = `
 			<label class="theme-picker">Roadmap
 				<select id="sample">
 					${Object.entries(samples)
-						.map(([id, sample]) => `<option value="${id}">${sample.label}</option>`)
+						.map(
+							([id, sample]) =>
+								`<option value="${id}"${id === defaultSampleId ? " selected" : ""}>${sample.label}</option>`,
+						)
 						.join("")}
 				</select>
 			</label>

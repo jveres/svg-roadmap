@@ -26,16 +26,16 @@ const wideWord = "Superlongunbreakablelabelwithoutanyspacesatall";
 const filler = Array.from({ length: 28 }, (_, index) => `word${index}`).join(" ");
 
 const documents: Record<string, string> = {
-	"demo sweep": readFileSync(new URL("../demo/sweep.md", import.meta.url), "utf8"),
+	"demo sweep": readFileSync(new URL("../demo/sweep-1.1.md", import.meta.url), "utf8"),
 	"demo ai architect": readFileSync(new URL("../demo/ai-architect.md", import.meta.url), "utf8"),
 	// A tall tree-chapter description forces the chapter connectors' mid-runs
 	// to clear it — the run must not graze the note border after marker trim.
 	"demo sweep tall description": readFileSync(
-		new URL("../demo/sweep.md", import.meta.url),
+		new URL("../demo/sweep-1.1.md", import.meta.url),
 		"utf8",
 	).replace(
-		/\*:beginner: \[Software Engineers\][^\n]*\*/u,
-		`*:beginner: [Software Engineers](https://en.wikipedia.org/wiki/Software_engineering) strive for better **quality** and favour things ${filler} like [Software Craftsmanship](https://manifesto.softwarecraftsmanship.org/) and [12factors](https://12factor.net/). Engineering decisions drive ==_how_== to create.*`,
+		/\*:beginner: \[Software engineers\][^\n]*\*/u,
+		`*:beginner: [Software engineers](https://en.wikipedia.org/wiki/Software_engineering) build quality into every change and favor things ${filler}. Fast feedback, small batches, automation, and shared ownership decide ==_how_== the product is created.*`,
 	),
 	minimal: "# Tiny\n\n* Chapter\n  * Topic\n",
 	"deep nesting": `# Deep
