@@ -267,7 +267,9 @@ function createCardNode(
 	if (kind === "note" && lines.length >= 3) {
 		const profile = (count: number): number[] =>
 			Array.from({ length: count }, (_, index) => {
-				const position = (index + 0.5) / count;
+				// Inclusive sampling: the first and last lines sit at the full
+				// taper so even three-line blocks visibly follow the hull.
+				const position = count === 1 ? 0.5 : index / (count - 1);
 				return targetWidth * (0.78 + 0.22 * Math.sin(Math.PI * position));
 			});
 		for (let pass = 0; pass < 2; pass += 1) {
