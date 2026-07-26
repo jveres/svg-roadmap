@@ -715,8 +715,8 @@ Standalone note.
 			if (!chapter) throw new Error("Chapter fixture was not generated");
 			const frame = paintedNodeFrameRectangle(description);
 
-			expect(frame.width).toBe(description.width);
-			expect(frame.width).toBeLessThan(120);
+			expect(frame.width).toBe(description.width + (description.text.fontSize / 16) * 8);
+			expect(frame.width).toBeLessThan(130);
 			expect(rectanglesOverlap(chapter, frame, 1)).toBe(false);
 		}
 	});
@@ -899,7 +899,7 @@ Standalone note.
 		const reserved = paintedNodeFrameRectangle(note);
 		// The painted bubble spans the note's box and is anchored to it — a
 		// real oracle, not the function compared with itself.
-		expect(reserved.width).toBe(note.width);
+		expect(reserved.width).toBe(note.width + (note.text.fontSize / 16) * 8);
 		expect(reserved.height).toBeGreaterThan(0);
 		expect(reserved.y).toBeLessThanOrEqual(note.y + note.height);
 		expect(reserved.y + reserved.height).toBeGreaterThanOrEqual(note.y);

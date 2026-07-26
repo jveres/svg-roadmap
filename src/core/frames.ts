@@ -64,7 +64,10 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 	const safety = 2 * scale;
 	const minY = Math.min(...lines.map((line) => line.y));
 	const maxY = Math.max(...lines.map((line) => line.y + line.height));
-	const width = node.width;
+	// The blob's side edges wave inward, and the widest line meets the hull
+	// at its fattest point: without side allowance the wave eats into the
+	// standard horizontal padding exactly where the eye checks it.
+	let width = node.width + 8 * scale;
 	const centerX = node.x + node.width / 2;
 	let top = minY - padding - upperInset - safety;
 	let bottom = maxY + padding + lowerInset + safety;
@@ -90,6 +93,9 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 			if (outside.length === 0) return;
 			if (outside.some((point) => point.y <= contentCenterY)) top -= scale;
 			if (outside.some((point) => point.y > contentCenterY)) bottom += scale;
+			// Vertical growth cannot fix a point outside the wavy side edges;
+			// widen as a backstop when violations persist.
+			if (iteration % 4 === 3) width += 2 * scale;
 		}
 	};
 	// The fit grows whichever side collides — usually the top, where a wide

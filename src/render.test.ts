@@ -657,8 +657,11 @@ describe("SVG rendering boundaries", () => {
 		expect(longer).toBeDefined();
 		if (!tiny || !longer) throw new Error("Generated note fixtures were not created");
 		expect(tiny.note.width).toBeLessThan(120);
-		expect(tiny.frame.width).toBe(tiny.note.width);
-		expect(longer.frame.width).toBe(longer.note.width);
+		// The frame adds side-wave allowance so the hull's inward waves never
+		// eat the standard horizontal padding at the fattest line.
+		const sideAllowance = (note: LayoutNode): number => (note.text.fontSize / 16) * 8;
+		expect(tiny.frame.width).toBe(tiny.note.width + sideAllowance(tiny.note));
+		expect(longer.frame.width).toBe(longer.note.width + sideAllowance(longer.note));
 		expect(tiny.frame.width).toBeLessThan(longer.frame.width);
 
 		const svg = generateRoadmap("A short floating note").svg;
@@ -726,10 +729,9 @@ describe("SVG rendering boundaries", () => {
 			const scale = note.text.fontSize / 16;
 			const polygon = organicBlobPolygon(contentFrame, 4 * scale, scale, 0.98 * scale, 0.1);
 			expect(note.text.lines).toHaveLength(expectedLines);
-			// The layout box hugs the painted text; the blob's bulge extends
-			// beyond it, so the frame spans the box's width and may exceed its
-			// height. Coverage below is the real contract.
-			expect(contentFrame.width).toBe(note.width);
+			// The layout box hugs the painted text; the blob's bulge and side
+			// waves extend beyond it. Coverage below is the real contract.
+			expect(contentFrame.width).toBe(note.width + (note.text.fontSize / 16) * 8);
 			for (const line of paintedTextLines(note)) {
 				for (const point of [
 					{ x: line.x - 2 * scale, y: line.y - 2 * scale },
@@ -764,7 +766,7 @@ describe("SVG rendering boundaries", () => {
 			geometry.upperShoulderRatio,
 		);
 		const safety = 2 * scale;
-		expect(frame.width).toBe(note.width);
+		expect(frame.width).toBe(note.width + scale * 8);
 		for (const line of paintedTextLines(note)) {
 			for (const point of [
 				{ x: line.x - safety, y: line.y - safety },
