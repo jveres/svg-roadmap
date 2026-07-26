@@ -512,12 +512,20 @@ function createChartProgress(
 		for (const [i, chapter] of chapters.entries()) {
 			if (chapter.centerY < midpoint.y) gap = i + 1;
 		}
+		// When the theme paints the spine with a gradient, the progress ink
+		// wears the same user-space gradient: the traveled portion reveals
+		// exactly the ramp segment it covers — a color journey that ends on
+		// the gradient's arrival color.
+		const journeyGradient = svg.getElementById(`${prefix}-connector-spine-gradient`)
+			? `url(#${prefix}-connector-spine-gradient)`
+			: undefined;
 		const clone = (className: string, width: number): SVGPathElement => {
 			const ink = hostDocument.createElementNS(svgNamespace, "path") as SVGPathElement;
 			ink.setAttribute("class", `roadmap__progress-ink ${className}`);
 			ink.setAttribute("d", path.getAttribute("d") ?? "");
 			ink.setAttribute("stroke-width", String(width));
 			ink.setAttribute("pathLength", "100");
+			if (journeyGradient) ink.style.stroke = journeyGradient;
 			ink.style.display = "none";
 			path.parentNode?.insertBefore(ink, path.nextSibling);
 			cleanups.push(() => ink.remove());

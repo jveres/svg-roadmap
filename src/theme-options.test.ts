@@ -7,6 +7,46 @@ import type { TypographyTheme } from "./types.ts";
 
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
 
+describe("connector gradients", () => {
+	test("the fun spine wears the reference rainbow as a user-space gradient", () => {
+		const generated = generateRoadmap(source, { render: { idPrefix: "grad" } });
+		expect(generated.svg).toContain(
+			'<linearGradient id="grad-connector-spine-gradient" gradientUnits="userSpaceOnUse"',
+		);
+		expect(generated.svg).toMatch(
+			/roadmap__connector--spine[^>]*stroke="url\(#grad-connector-spine-gradient\)"/u,
+		);
+		expect(generated.svg).toContain('stop-color="#8ed246"');
+	});
+
+	test("themes without a gradient keep the plain color stroke", () => {
+		const generated = generateRoadmap(source, {
+			theme: { preset: "sci-fi" },
+			render: { idPrefix: "plain" },
+		});
+		expect(generated.svg).not.toContain("plain-connector-spine-gradient");
+		expect(generated.svg).toMatch(
+			/roadmap__connector--spine[^>]*stroke="var\(--roadmap-connector-spine-color\)"/u,
+		);
+	});
+
+	test("gradient stop colors are escaped in the def", () => {
+		const generated = generateRoadmap(source, {
+			theme: {
+				connectors: {
+					spine: {
+						gradient: [
+							{ offset: 0, color: '"><script>x</script>' },
+							{ offset: 1, color: "#00a586" },
+						],
+					},
+				},
+			},
+		});
+		expect(generated.svg).not.toContain("<script");
+	});
+});
+
 describe("theme merging fidelity", () => {
 	test("TagStyle.legend survives theme merging", () => {
 		const generated = generateRoadmap(

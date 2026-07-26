@@ -6,6 +6,7 @@ import type {
 	BadgeStyle,
 	BoardTheme,
 	CardTheme,
+	ConnectorGradientStop,
 	ConnectorTheme,
 	DeepPartial,
 	LegendTheme,
@@ -290,6 +291,17 @@ export const lightTheme: RoadmapTheme = {
 			routing: "curved",
 			laneSpacing: 0,
 			color: "#c0c0c0",
+			// The reference project's prototype rainbow, shipped at last: the
+			// spine runs the color journey from warm start to done-green end.
+			gradient: [
+				{ offset: 0, color: "#fed509" },
+				{ offset: 0.16, color: "#fea501" },
+				{ offset: 0.33, color: "#fe654a" },
+				{ offset: 0.5, color: "#e16f86" },
+				{ offset: 0.66, color: "#2499bd" },
+				{ offset: 0.83, color: "#00a586" },
+				{ offset: 1, color: "#8ed246" },
+			],
 			width: 6,
 			dash: "",
 			opacity: 1,
@@ -582,6 +594,18 @@ function mergeConnector(
 ): ConnectorTheme {
 	const endShape = override?.endShape ?? base.endShape;
 	const endShapeJoin = override?.endShapeJoin ?? base.endShapeJoin;
+	// Gradient and color are alternate paints: overriding the color repaints
+	// the connector plainly, so the base gradient must not leak through. An
+	// explicit empty gradient also clears it.
+	const overrideGradient = override?.gradient as readonly ConnectorGradientStop[] | undefined;
+	const gradient =
+		override?.gradient !== undefined
+			? overrideGradient?.length
+				? overrideGradient
+				: undefined
+			: override?.color !== undefined
+				? undefined
+				: base.gradient;
 	return {
 		routing: override?.routing ?? base.routing,
 		laneSpacing: override?.laneSpacing ?? base.laneSpacing,
@@ -591,6 +615,7 @@ function mergeConnector(
 		opacity: override?.opacity ?? base.opacity,
 		...(endShape !== undefined ? { endShape } : {}),
 		...(endShapeJoin !== undefined ? { endShapeJoin } : {}),
+		...(gradient !== undefined ? { gradient } : {}),
 	};
 }
 

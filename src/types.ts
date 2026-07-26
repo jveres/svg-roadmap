@@ -516,10 +516,24 @@ export interface BoardTheme {
 	readonly padding: number;
 }
 
+/** One stop of a connector stroke gradient; offsets run 0..1. */
+export interface ConnectorGradientStop {
+	readonly offset: number;
+	readonly color: string;
+}
+
 export interface ConnectorTheme {
 	readonly routing: "curved" | "orthogonal" | "straight" | "braided";
 	readonly laneSpacing: number;
 	readonly color: string;
+	/**
+	 * Optional multi-stop stroke gradient, drawn top-to-bottom across the
+	 * connector kind's full vertical extent in user space — the spine wears
+	 * it as a color journey from the chart's start to its end. When set, it
+	 * replaces `color` for the stroke; `color` remains the fallback for
+	 * consumers that need a single value.
+	 */
+	readonly gradient?: readonly ConnectorGradientStop[];
 	readonly width: number;
 	readonly dash: string;
 	readonly opacity: number;

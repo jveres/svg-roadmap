@@ -1153,7 +1153,12 @@ function renderConnector(
 		endShape !== "none" && connectorTheme.routing !== "braided"
 			? ` marker-end="url(#${prefix}-marker-${token}-${endShape})"`
 			: "";
-	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}"${connector.groupId ? ` data-group="${safeId(connector.groupId)}"` : ""} d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"${marker}`;
+	// A gradient stroke references its def directly: CSS custom properties
+	// cannot carry paint-server references interoperably across viewers.
+	const stroke = connectorTheme.gradient?.length
+		? `url(#${prefix}-connector-${token}-gradient)`
+		: cssToken(`connector-${token}-color`);
+	const attributes = `class="roadmap__connector roadmap__connector--${connector.kind}" data-roadmap-element="${connector.kind}-connector" data-depth="${connector.depth}"${connector.groupId ? ` data-group="${safeId(connector.groupId)}"` : ""} d="${path}" fill="none" stroke="${stroke}" stroke-width="${cssToken(`connector-${token}-width`)}" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-dasharray="${cssToken(`connector-${token}-dash`)}" stroke-dashoffset="12" stroke-linecap="round"${marker}`;
 	if (connectorTheme.routing !== "braided") {
 		return `<path id="${prefix}-${safeId(connector.id)}" ${attributes}/>`;
 	}
@@ -1284,16 +1289,52 @@ function usedEmojiShortcodes(layout: RoadmapLayout, theme: RoadmapTheme): Readon
 	return used;
 }
 
+/**
+ * Connector stroke gradients live in user space, spanning the kind's full
+ * vertical extent: the spine wears its color journey from the chart's first
+ * anchor to its last, and any partial reveal (the interactive progress ink)
+ * shows exactly the ramp segment it has traveled.
+ */
+function connectorGradientDefs(
+	prefix: string,
+	theme: RoadmapTheme,
+	connectors: readonly LayoutConnector[],
+): string {
+	const defs: string[] = [];
+	for (const [kind, connectorTheme] of Object.entries(theme.connectors)) {
+		const gradient = connectorTheme.gradient;
+		if (!gradient || gradient.length === 0) continue;
+		const spanned = connectors.filter((connector) => connector.kind === kind);
+		if (spanned.length === 0) continue;
+		const ys = spanned.flatMap((connector) => [connector.from.y, connector.to.y]);
+		const top = Math.min(...ys);
+		const bottom = Math.max(...ys);
+		if (!(bottom > top)) continue;
+		const stops = gradient
+			.map(
+				(stop) =>
+					`<stop offset="${escapeXml(String(Math.min(1, Math.max(0, stop.offset))))}" stop-color="${escapeXml(stop.color)}"/>`,
+			)
+			.join("");
+		defs.push(
+			`<linearGradient id="${prefix}-connector-${kebabToken(kind)}-gradient" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${bottom}">${stops}</linearGradient>`,
+		);
+	}
+	return defs.join("\n\t\t");
+}
+
 function renderDefinitions(
 	prefix: string,
 	theme: RoadmapTheme,
 	usedEmoji: ReadonlySet<string>,
+	connectors: readonly LayoutConnector[] = [],
 ): string {
 	const symbol = (id: string, viewBox: string, content: string): string =>
 		`<symbol id="${prefix}-icon-${id}" viewBox="${viewBox}">${content}</symbol>`;
 	const emojiSymbol = (id: string, viewBox: string, content: string): string =>
 		`<symbol id="${prefix}-emoji-${id}" viewBox="${viewBox}">${content}</symbol>`;
 	return `<defs>
+		${connectorGradientDefs(prefix, theme, connectors)}
 		<linearGradient id="${prefix}-chapter-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("chapter-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("chapter-gradient-end")}"/><stop offset="1" stop-color="${cssToken("chapter-gradient-end")}"/></linearGradient>
 		<linearGradient id="${prefix}-topic-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("topic-header-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("topic-header-gradient-end")}"/><stop offset="1" stop-color="${cssToken("topic-header-gradient-end")}"/></linearGradient>
 		${
@@ -1550,7 +1591,7 @@ export function renderRoadmapSvg(
 	<title id="${titleId}">${escapeXml(title)}</title>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
 	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>
-	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout, theme))}
+	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout, theme), layout.connectors)}
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>
 	<g class="roadmap__connectors">${underlayConnectors}</g>

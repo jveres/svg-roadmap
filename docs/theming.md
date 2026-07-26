@@ -155,6 +155,15 @@ Each connector kind (`spine`, `chapterToTopics`, `topicToChildren`) selects
 `curved`, `orthogonal`, `straight`, or `braided` routing, with width, dash,
 opacity, and an optional end shape (`arrow`, `circle`, `diamond`, `dot`).
 
+A connector may carry a typed multi-stop `gradient` instead of its plain
+`color`: the stroke is painted with a user-space gradient spanning the
+kind's full vertical extent, so the spine wears a color journey from the
+chart's first anchor to its last. Gradient and color are alternate paints —
+a theme overriding `color` repaints plainly and drops the inherited
+gradient. The Fun preset ships the reference project's prototype rainbow
+on its spine, and the interactive progress ink adopts the same gradient
+automatically, revealing the traveled segment of the ramp.
+
 - `endShapeJoin: "overlap"` (default) runs the stroke under the marker;
   `"detached"` places the marker wholly ahead of the trimmed stroke. The
   renderer anchors overlapped circles and diamonds so a dash landing at the
