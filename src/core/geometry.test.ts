@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
 	blobPath,
 	bundledCurvePath,
+	childCurvePath,
 	convexHull,
 	intersectionArea,
 	organicBlobPath,
@@ -66,9 +67,33 @@ describe("dependency-free paths", () => {
 		expect(verticalBumpPath({ x: 0, y: 0 }, { x: 20, y: 40 })).toBe("M 0 0 C 0 20 20 20 20 40");
 	});
 
+	test("flat bump connectors keep turning out of their ports", () => {
+		// Nearly level endpoints: the midpoint S would collapse into a straight
+		// horizontal line; the tangent floor keeps a perpendicular departure.
+		expect(verticalBumpPath({ x: 0, y: 0 }, { x: 200, y: 10 })).toBe("M 0 0 C 0 32 200 -22 200 10");
+		// The floor is capped, and steep links keep the classic midpoint S.
+		expect(verticalBumpPath({ x: 0, y: 0 }, { x: 200, y: 120 })).toBe(
+			"M 0 0 C 0 60 200 60 200 120",
+		);
+		// Short flat links stay tight: the floor scales with the cross run.
+		expect(verticalBumpPath({ x: 0, y: 0 }, { x: 40, y: 6 })).toBe("M 0 0 C 0 10 40 -4 40 6");
+	});
+
 	test("reproduces the legacy three-point bundle curve without d3", () => {
 		expect(bundledCurvePath({ x: 0, y: 0 }, { x: 100, y: 0 })).toBe(
 			"M 0 0 L 12.5 2.5 C 25 5 50 10 66.67 10 C 83.33 10 91.67 5 95.83 2.5 L 100 0",
+		);
+	});
+
+	test("steep child links trade the bundle bow for a turning S-curve", () => {
+		// Sweeping aspect keeps the legacy bundle.
+		expect(childCurvePath({ x: 0, y: 0 }, { x: 100, y: 0 })).toBe(
+			bundledCurvePath({ x: 0, y: 0 }, { x: 100, y: 0 }),
+		);
+		// Steeper than 45°: the bundle would hang near-vertically out of a
+		// horizontal port, so the link turns into both ports instead.
+		expect(childCurvePath({ x: 0, y: 0 }, { x: -56, y: 209 })).toBe(
+			"M 0 0 C -32 0 -24 209 -56 209",
 		);
 	});
 

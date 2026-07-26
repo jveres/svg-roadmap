@@ -4,7 +4,7 @@ import { canonicalShortcode, emojiArtwork } from "./core/emoji-artwork.ts";
 import { fittedCapsuleFrame, noteBlobGeometry, paintedTextLines } from "./core/frames.ts";
 import {
 	blobPath,
-	bundledCurvePath,
+	childCurvePath,
 	organicBlobPath,
 	rectBottom,
 	rectCenter,
@@ -1159,7 +1159,7 @@ function renderConnector(
 				: connectorTheme.routing === "straight"
 					? `M ${routed.from.x} ${routed.from.y} L ${routed.to.x} ${routed.to.y}`
 					: routed.kind === "topicToChildren"
-						? bundledCurvePath(routed.from, routed.to)
+						? childCurvePath(routed.from, routed.to)
 						: verticalBumpPath(routed.from, routed.to);
 	const marker =
 		endShape !== "none" && connectorTheme.routing !== "braided"

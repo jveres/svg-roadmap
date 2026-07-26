@@ -486,14 +486,40 @@ export function pointInPolygon(polygon: readonly Point[], point: Point): boolean
 	return inside;
 }
 
+/**
+ * Tangent length out of a port for an S-curve between axis-aligned ports.
+ * Half the port-axis distance gives the classic midpoint S; the floor keeps
+ * the curve turning out of the port when the endpoints sit nearly level, so
+ * a flat connector still departs and arrives perpendicular instead of
+ * degenerating into a straight line. The floor grows with the cross-axis
+ * run (a longer sweep earns more turning room) and is capped so short
+ * links stay tight.
+ */
+function portReach(alongAxis: number, acrossAxis: number): number {
+	return Math.max(Math.abs(alongAxis) / 2, Math.min(32, Math.abs(acrossAxis) * 0.25));
+}
+
 export function verticalBumpPath(from: Point, to: Point): string {
-	const middle = (from.y + to.y) / 2;
-	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(from.x)} ${roundCoordinate(middle)} ${roundCoordinate(to.x)} ${roundCoordinate(middle)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
+	const sign = Math.sign(to.y - from.y) || 1;
+	const reach = sign * portReach(to.y - from.y, to.x - from.x);
+	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(from.x)} ${roundCoordinate(from.y + reach)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y - reach)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
 }
 
 export function horizontalBumpPath(from: Point, to: Point): string {
-	const middle = (from.x + to.x) / 2;
-	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(middle)} ${roundCoordinate(from.y)} ${roundCoordinate(middle)} ${roundCoordinate(to.y)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
+	const sign = Math.sign(to.x - from.x) || 1;
+	const reach = sign * portReach(to.x - from.x, to.y - from.y);
+	return `M ${roundCoordinate(from.x)} ${roundCoordinate(from.y)} C ${roundCoordinate(from.x + reach)} ${roundCoordinate(from.y)} ${roundCoordinate(to.x - reach)} ${roundCoordinate(to.y)} ${roundCoordinate(to.x)} ${roundCoordinate(to.y)}`;
+}
+
+/**
+ * Curved route for a side-port child link. Sweeping links keep the legacy
+ * bundled bow, but on a steep link that bow collapses into a near-vertical
+ * line hanging out of a horizontal port; those switch to the S-curve whose
+ * tangent floor keeps both ends turning into their ports.
+ */
+export function childCurvePath(from: Point, to: Point): string {
+	if (Math.abs(to.y - from.y) > Math.abs(to.x - from.x)) return horizontalBumpPath(from, to);
+	return bundledCurvePath(from, to);
 }
 
 export function bundledCurvePath(from: Point, to: Point, curveDistance = 0.15): string {
