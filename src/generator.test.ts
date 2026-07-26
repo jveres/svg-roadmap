@@ -262,7 +262,10 @@ Product **discovery** with [Product Owners](https://example.com) and ==highlight
 		const capsuleFrame = generated.svg.match(
 			/roadmap__node--chapter[^>]*>.*?<rect class="roadmap__frame" data-roadmap-shape="capsule"[^>]* rx="([\d.]+)"/u,
 		);
-		expect(capsuleFrame).toBeDefined();
+		// String.match returns null on a miss, which toBeDefined would let
+		// through; assert the capture actually exists and is a real radius.
+		expect(capsuleFrame).not.toBeNull();
+		expect(Number(capsuleFrame?.[1])).toBeGreaterThan(0);
 		expect(generated.svg).toContain('class="roadmap__frame-detail"');
 		expect(generated.svg).toContain("--roadmap-frame-detail-width:0.7");
 		expect(generated.theme.chapter.typography.fontFamily).toContain("Iowan Old Style");
@@ -894,6 +897,11 @@ Standalone note.
 		expect(note).toBeDefined();
 		if (!note) throw new Error("Description fixture was not generated");
 		const reserved = paintedNodeFrameRectangle(note);
-		expect(reserved).toEqual(paintedNodeFrameRectangle(note));
+		// The painted bubble spans the note's box and is anchored to it — a
+		// real oracle, not the function compared with itself.
+		expect(reserved.width).toBe(note.width);
+		expect(reserved.height).toBeGreaterThan(0);
+		expect(reserved.y).toBeLessThanOrEqual(note.y + note.height);
+		expect(reserved.y + reserved.height).toBeGreaterThanOrEqual(note.y);
 	});
 });

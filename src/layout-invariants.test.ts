@@ -271,9 +271,21 @@ function collectViolations(layout: RoadmapLayout, svg?: string): string[] {
 	// of the chord approximation.
 	const polylineKinds = new Set<string>();
 	if (svg !== undefined) {
-		for (const match of svg.matchAll(
-			/class="roadmap__connector roadmap__connector--(chapterToTopics|topicToChildren)"[^>]*\bd="([^"]+)"/gu,
-		)) {
+		const matches = [
+			...svg.matchAll(
+				/class="roadmap__connector roadmap__connector--(chapterToTopics|topicToChildren)"[^>]*\bd="([^"]+)"/gu,
+			),
+		];
+		// A selector drifting out of sync with the renderer would silently
+		// downgrade every connector to the chord approximation; charts with
+		// branch connectors must yield at least one path here.
+		const hasBranchConnectors = layout.connectors.some(
+			(connector) => connector.kind === "chapterToTopics" || connector.kind === "topicToChildren",
+		);
+		if (hasBranchConnectors && matches.length === 0) {
+			violations.push("connector oracle matched no SVG paths despite branch connectors");
+		}
+		for (const match of matches) {
 			if (!/[CQAS]/u.test(match[2] ?? "")) polylineKinds.add(match[1] ?? "");
 		}
 	}
