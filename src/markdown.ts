@@ -430,6 +430,20 @@ function headingFromElement(node: XmlElementNode, context: ParseContext): Roadma
 	};
 }
 
+/**
+ * The emphasis carrying a milestone label: the paragraph must be exactly one
+ * `*...*` emphasis, the same shape chapter comments use.
+ */
+function milestoneLabel(
+	paragraph: XmlElementNode,
+	lines: readonly string[],
+): XmlElementNode | undefined {
+	const inline = childElements(paragraph);
+	const only = inline[0];
+	if (inline.length !== 1 || only?.name !== "emph") return undefined;
+	return sourceCharacterAt(nodeRange(only), lines) === "*" ? only : undefined;
+}
+
 function noteFromElement(node: XmlElementNode, context: ParseContext): RoadmapNote {
 	const sourceRange = nodeRange(node);
 	const content = withProseInline(
@@ -482,11 +496,40 @@ function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): Roadmap
 	const steps: RoadmapStep[] = [];
 	const footnotes: FootnoteDefinition[] = [];
 
-	for (const child of childElements(root)) {
+	const children = childElements(root);
+	for (let index = 0; index < children.length; index += 1) {
+		const child = children[index];
+		if (!child) continue;
 		switch (child.name) {
 			case "heading":
 				steps.push(headingFromElement(child, context));
 				break;
+			case "thematic_break": {
+				// A break between chapters is a journey milestone. An
+				// immediately following comment paragraph (`*...*`, the chapter
+				// comment syntax) becomes its label; a bare break stays an
+				// unlabeled station.
+				const next = children[index + 1];
+				const labelEmph =
+					next?.name === "paragraph" ? milestoneLabel(next, context.lines) : undefined;
+				// The `*...*` wrapper is comment syntax, not styling: the label
+				// paints upright, so unwrap the emphasis container.
+				const labelInline = labelEmph ? inlineFromXml(labelEmph) : [];
+				const first = labelInline[0];
+				const content = withProseInline(
+					labelInline.length === 1 && first?.type === "emphasis" ? first.children : labelInline,
+					context,
+				);
+				if (labelEmph) index += 1;
+				const sourceRange = nodeRange(child);
+				steps.push({
+					type: "milestone",
+					id: context.nextId("milestone", content),
+					content,
+					...(sourceRange ? { sourceRange } : {}),
+				});
+				break;
+			}
 			case "paragraph":
 			case "block_quote":
 			case "code_block":

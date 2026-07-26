@@ -78,6 +78,9 @@ roadmap:
   * Footnote markers [optional]
   * Old habits ~~like these~~ [deprecated]
 
+---
+*:checkered_flag: A `---` break between chapters becomes a spine milestone like this one — in interactive mode it lights up once everything above is done.*
+
 * :three: Tags & badges
 *:beginner: The tags on this chart are **defined in front matter**: a name, an icon or emoji, and a theme ==accent slot== — so they restyle with every theme and mode. In prose a declared tag renders as its chip — [core], [experimental] — while undeclared ones like [mystery] stay plain text.*
   * Built-in icons [core]
@@ -87,6 +90,8 @@ roadmap:
   * Fallback badges [mystery]
 
 ## Switch themes and modes from the toolbar :arrows_counterclockwise:
+
+#### Deeper headings keep shrinking: h4, h5, and h6 step down from the h3 size.
 
 *[Grid headers]: The bold first row of a grid; every topic under it joins that column.
 *[Grid topics]: Topics laid out in balanced columns inside a chapter grid.

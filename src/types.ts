@@ -126,7 +126,20 @@ export interface RoadmapChapter {
 	readonly sourceRange?: SourceRange;
 }
 
-export type RoadmapStep = RoadmapHeading | RoadmapNote | RoadmapChapter;
+/**
+ * A journey milestone authored as a thematic break (`---`) between chapters,
+ * optionally labeled by an immediately following comment paragraph
+ * (`*...*`). Rendered as a station on the spine.
+ */
+export interface RoadmapMilestone {
+	readonly type: "milestone";
+	readonly id: string;
+	/** Label content; empty for a bare, unlabeled station. */
+	readonly content: readonly InlineNode[];
+	readonly sourceRange?: SourceRange;
+}
+
+export type RoadmapStep = RoadmapHeading | RoadmapNote | RoadmapChapter | RoadmapMilestone;
 
 export interface FootnoteDefinition {
 	readonly label: string;
@@ -279,6 +292,8 @@ export type InlineMark =
 
 export interface LayoutText {
 	readonly lines: readonly TextLine[];
+	/** Horizontal ragged-line alignment inside the box; centered when unset. */
+	readonly align?: "start" | "end";
 	readonly fontSize: number;
 	readonly lineHeight: number;
 	readonly fontFamily: string;
@@ -308,6 +323,7 @@ export interface LayoutNode extends Rect {
 	readonly placement:
 		| "standalone"
 		| "floating-note"
+		| "milestone-label"
 		| "chapter"
 		| "grid-description"
 		| "tree-description"
@@ -432,11 +448,22 @@ export type LayoutBackgroundArtifactShape =
 			readonly animation?: "blink";
 	  };
 
+/** A spine station for a document milestone, in canvas coordinates. */
+export interface LayoutMilestone {
+	readonly id: string;
+	x: number;
+	y: number;
+	/** Plain-text label, also carried as `data-title` for hosts. */
+	readonly title: string;
+	readonly sourceRange?: SourceRange;
+}
+
 export interface RoadmapLayout {
 	readonly width: number;
 	readonly height: number;
 	readonly elements: readonly LayoutElement[];
 	readonly connectors: readonly LayoutConnector[];
+	readonly milestones?: readonly LayoutMilestone[];
 	readonly backgroundArtifacts: readonly LayoutBackgroundArtifact[];
 	readonly title: string;
 	readonly maxDepth: number;

@@ -361,6 +361,27 @@ mode. `legend: false` at the roadmap level hides the tag legend entirely, and
 detail note, so readers can see where a click has content waiting (hosts can
 override per render with `render.noteMarkers`).
 
+### Milestones
+
+A thematic break (`---`) between chapters becomes a station on the spine — a
+journey milestone. An italic paragraph right after it (the chapter-comment
+syntax) becomes the station's label; a bare break stays an unlabeled station:
+
+```markdown
+* 1️⃣ Development & Delivery
+  ...
+
+---
+*🏁 You can ship a real service now.*
+
+* 2️⃣ Deployment & Operations
+```
+
+In interactive mode a station lights up once every topic authored above it is
+done or skipped, and `handle.milestones()` reports each station's remaining
+count for custom progress UIs. (Mind the blank line before `---`: text
+directly above it would parse as a setext heading instead.)
+
 ```yaml
 ---
 roadmap:

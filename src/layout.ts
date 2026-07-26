@@ -17,6 +17,7 @@ import type {
 	LayoutGroup,
 	LayoutLegend,
 	LayoutLegendMetrics,
+	LayoutMilestone,
 	LayoutNode,
 	LayoutText,
 	Point,
@@ -1441,6 +1442,7 @@ export function layoutRoadmap(
 	const connectors: LayoutConnector[] = [];
 	const occupied: Rect[] = [];
 	const spineAnchors: Point[] = [];
+	const milestones: LayoutMilestone[] = [];
 	const baseCenter = options.width / 2;
 	const spineObstacle: Rect = {
 		x: baseCenter - 4 - options.spineClearance,
@@ -1469,6 +1471,75 @@ export function layoutRoadmap(
 			occupied.push(inflateRectangle(node, options.overlapPadding));
 			spineAnchors.push({ x: rectCenter(node).x, y: step.level === 1 ? rectBottom(node) : node.y });
 			y = rectBottom(node) + options.stepGap;
+			continue;
+		}
+
+		if (step.type === "milestone") {
+			// A station on the spine: the anchor joins the spine polyline so
+			// the line bends through it; the label (if any) sits beside it
+			// like a small floating comment.
+			const stationRadius = 8;
+			const stationX = baseCenter + 14;
+			const stationY = y + stationRadius;
+			milestones.push({
+				id: step.id,
+				x: stationX,
+				y: stationY,
+				title: inlineToPlainText(step.content),
+				...(step.sourceRange ? { sourceRange: step.sourceRange } : {}),
+			});
+			spineAnchors.push({ x: stationX, y: stationY });
+			occupied.push({
+				x: stationX - stationRadius - 2,
+				y: stationY - stationRadius - 2,
+				width: stationRadius * 2 + 4,
+				height: stationRadius * 2 + 4,
+			});
+			let bottom = stationY + stationRadius;
+			if (step.content.length > 0) {
+				// The label is a snug capsule chip beside the station — station
+				// signage, not a prose bubble: smaller upright type, tight
+				// padding, the floating note's paint.
+				const noteTypography = theme.floatingNote.typography;
+				const labelCard: CardTheme = {
+					...theme.floatingNote,
+					shape: "rounded",
+					radius: 13,
+					paddingX: 13,
+					paddingY: 6,
+					minWidth: 0,
+					maxWidth: 520,
+					typography: {
+						...noteTypography,
+						fontSize: Math.round(noteTypography.fontSize * 0.82),
+						fontStyle: "normal",
+						lineHeight: 1.3,
+					},
+				};
+				const label = createCardNode(
+					"note",
+					"floating-note",
+					"milestone-label",
+					`${step.id}-label`,
+					0,
+					step.content,
+					[],
+					labelCard,
+					step.sourceRange,
+					theme.inline.abbreviationIndicatorSize,
+				);
+				label.x =
+					side > 0 ? stationX + stationRadius + 18 : stationX - stationRadius - 18 - label.width;
+				label.y = stationY - label.height / 2;
+				// Multi-line labels rag toward the station, not centered.
+				Object.assign(label, {
+					text: { ...label.text, align: side > 0 ? "start" : "end" },
+				});
+				elements.push(label);
+				occupied.push(inflateRectangle(paintedNodeFrameRectangle(label), options.overlapPadding));
+				bottom = Math.max(bottom, rectBottom(paintedNodeFrameRectangle(label)));
+			}
+			y = bottom + options.noteStepGap;
 			continue;
 		}
 
@@ -1653,20 +1724,35 @@ export function layoutRoadmap(
 	// about; without this bleed a cropped canvas trims the hull edge.
 	const boardPaintBleed = 12;
 	const paintedBounds = (): Rect =>
-		unionRectangles(
-			elements.map((element) => {
+		unionRectangles([
+			...elements.map((element) => {
 				if (element.kind === "note") return paintedNodeFrameRectangle(element);
 				if (element.kind === "group") return inflateRectangle(element, boardPaintBleed);
 				return element;
 			}),
-		);
+			...milestones.map((milestone) => ({
+				x: milestone.x - 10,
+				y: milestone.y - 10,
+				width: 20,
+				height: 20,
+			})),
+		]);
+	const shiftMilestones = (dx: number, dy: number): void => {
+		for (const milestone of milestones) {
+			milestone.x += dx;
+			milestone.y += dy;
+		}
+	};
 	const bounds = paintedBounds();
 	// The canvas crops to content on both axes: `width` is only the working
 	// corridor the solver spreads into, never a promise about the final
 	// canvas — the SVG hugs the chart exactly as it always has vertically.
 	const dx = options.padding - bounds.x;
 	const dy = bounds.y < options.padding / 2 ? options.padding / 2 - bounds.y : 0;
-	if (dx || dy) moveAll(elements, connectors, dx, dy);
+	if (dx || dy) {
+		moveAll(elements, connectors, dx, dy);
+		shiftMilestones(dx, dy);
+	}
 	const movedBounds = paintedBounds();
 	let width = Math.ceil(rectRight(movedBounds) + options.endPaddingX);
 	let height = Math.ceil(
@@ -1679,6 +1765,7 @@ export function layoutRoadmap(
 		const grownWidth = Math.ceil(width * options.canvasScale);
 		const grownHeight = Math.ceil(height * options.canvasScale);
 		moveAll(elements, connectors, (grownWidth - width) / 2, (grownHeight - height) / 2);
+		shiftMilestones((grownWidth - width) / 2, (grownHeight - height) / 2);
 		width = grownWidth;
 		height = grownHeight;
 	}
@@ -1708,6 +1795,7 @@ export function layoutRoadmap(
 		height,
 		elements,
 		connectors,
+		...(milestones.length > 0 ? { milestones } : {}),
 		backgroundArtifacts:
 			theme.backgroundArtifacts?.generate({
 				width,

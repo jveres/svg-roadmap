@@ -294,6 +294,32 @@ Reference[^note]
 		expect(document.steps.every((step) => step.type === "note")).toBe(true);
 	});
 
+	test("thematic breaks between chapters become milestones with optional labels", () => {
+		const document = parseRoadmapMarkdown(`* Chapter one
+  * Topic
+
+---
+*:checkered_flag: You can ship now.*
+
+* Chapter two
+  * Later topic
+
+---
+
+A plain paragraph stays a floating note.
+`);
+
+		const kinds = document.steps.map((step) => step.type);
+		expect(kinds).toEqual(["chapter", "milestone", "chapter", "milestone", "note"]);
+		const labeled = document.steps[1];
+		expect(labeled?.type === "milestone" ? inlineToPlainText(labeled.content) : "").toBe(
+			"🏁 You can ship now.",
+		);
+		const bare = document.steps[3];
+		expect(bare?.type === "milestone" ? bare.content : undefined).toEqual([]);
+		expect(labeled?.type === "milestone" ? labeled.sourceRange?.start.line : 0).toBe(4);
+	});
+
 	test("accepts non-ASCII tag names in front matter and prose chips", () => {
 		const document = parseRoadmapMarkdown(`---
 roadmap:

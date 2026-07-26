@@ -24,6 +24,7 @@ import type {
 	LayoutElement,
 	LayoutGroup,
 	LayoutLegend,
+	LayoutMilestone,
 	LayoutNode,
 	Rect,
 	RoadmapLayout,
@@ -740,6 +741,10 @@ function renderFlowingText(node: LayoutNode): string {
 }
 
 function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+	// Milestone labels own their alignment (ragged toward the station), which
+	// flowing paint would override with per-line centering — they always
+	// paint positioned, whatever the theme prefers.
+	if (node.placement === "milestone-label") return renderPositionedText(node, theme, prefix);
 	if ((theme.textPainting ?? "positioned") === "positioned") {
 		return renderPositionedText(node, theme, prefix);
 	}
@@ -1028,7 +1033,15 @@ function renderNode(
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
 		: "";
 	const card = cardTheme(node, theme);
-	const frame = card ? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid") : "";
+	// Milestone labels are station signage, not comment bubbles: a quiet
+	// pill tinted with the spine's own paint, so it reads as part of the
+	// line in every theme and mode.
+	const frame =
+		node.placement === "milestone-label"
+			? `<rect class="roadmap__milestone-label" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${roundCoordinate(node.height / 2)}" fill="${cssToken("connector-spine-color")}" fill-opacity="0.16"/>`
+			: card
+				? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
+				: "";
 	// The detail note travels once, as raw Markdown in data-roadmap-note —
 	// exactly what the author wrote. Turning it into rich text is the host's
 	// concern (the workbench renders it with comrak); the chart itself never
@@ -1039,6 +1052,28 @@ function renderNode(
 			? `<rect class="roadmap__heading-backdrop" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" fill="${cssToken("canvas-background")}"/>`
 			: "";
 	return `<g id="${prefix}-${safeId(node.id)}" class="roadmap__node roadmap__node--${role}" data-roadmap-element="${role}" data-placement="${node.placement}" data-depth="${node.depth}" data-tags="${escapeXml(tags)}"${source ? ` data-sourcepos="${source}"` : ""}${node.parentId ? ` data-parent="${safeId(node.parentId)}"` : ""}${node.groupId ? ` data-group="${safeId(node.groupId)}"` : ""}${noteData}>${frame}${headingBackdrop}${renderText(node, theme, prefix)}${renderNodeBadges(node, theme, prefix)}${noteMarkers && node.note ? renderNoteMarker(node, theme) : ""}</g>`;
+}
+
+/**
+ * Journey milestones: metro-style station roundels on the spine. The ring
+ * wears the spine's paint and the center core carries the same color, so
+ * themes and CSS overrides restyle stations with the line they sit on; the
+ * interactive layer dims the core until the station is reached.
+ */
+function renderMilestones(
+	milestones: readonly LayoutMilestone[] | undefined,
+	prefix: string,
+): string {
+	if (!milestones?.length) return "";
+	const stations = milestones
+		.map((milestone) => {
+			const source = milestone.sourceRange
+				? ` data-sourcepos="${milestone.sourceRange.start.line}:${milestone.sourceRange.start.column}-${milestone.sourceRange.end.line}:${milestone.sourceRange.end.column}"`
+				: "";
+			return `<g id="${prefix}-${safeId(milestone.id)}" class="roadmap__milestone" data-roadmap-element="milestone" data-title="${escapeXml(milestone.title)}"${source}><circle cx="${roundCoordinate(milestone.x)}" cy="${roundCoordinate(milestone.y)}" r="7.5" fill="${cssToken("canvas-background")}" stroke="${cssToken("connector-spine-color")}" stroke-width="3"/><circle class="roadmap__milestone-core" cx="${roundCoordinate(milestone.x)}" cy="${roundCoordinate(milestone.y)}" r="2.8" fill="${cssToken("connector-spine-color")}"/></g>`;
+		})
+		.join("");
+	return `<g class="roadmap__milestones">${stations}</g>`;
 }
 
 function memberNodes(group: LayoutGroup, elements: readonly LayoutElement[]): LayoutNode[] {
@@ -1730,6 +1765,7 @@ export function renderRoadmapSvg(
 	<rect class="roadmap__canvas" data-roadmap-element="canvas" x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${cssToken("canvas-background")}"/>
 	<g class="roadmap__background-artifacts" aria-hidden="true">${backgroundArtifacts}</g>
 	<g class="roadmap__connectors">${underlayConnectors}</g>
+	${renderMilestones(layout.milestones, prefix)}
 	<g class="roadmap__groups">${groups}</g>
 	<g class="roadmap__connectors roadmap__connectors--children">${overlayConnectors}</g>
 	<g class="roadmap__nodes">${nodes}</g>

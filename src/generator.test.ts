@@ -679,6 +679,40 @@ Standalone note.
 		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
+	test("milestones render as spine stations with labels beside them", () => {
+		const generated = generateRoadmap(`* Chapter one
+  * Topic
+
+---
+*:checkered_flag: Halfway there.*
+
+* Chapter two
+  * Later topic
+`);
+
+		const milestones = generated.layout.milestones ?? [];
+		expect(milestones).toHaveLength(1);
+		const station = milestones[0];
+		if (!station) throw new Error("Milestone station was not generated");
+		expect(station.title).toBe("🏁 Halfway there.");
+		// The spine polyline bends through the station: one segment ends on it
+		// and the next leaves from it.
+		const spine = generated.layout.connectors.filter((connector) => connector.kind === "spine");
+		expect(spine.some((s) => s.to.x === station.x && s.to.y === station.y)).toBe(true);
+		expect(spine.some((s) => s.from.x === station.x && s.from.y === station.y)).toBe(true);
+		// The label paints as a floating comment beside the station.
+		const label = generated.layout.elements.find(
+			(element) => "text" in element && element.id === `${station.id}-label`,
+		);
+		expect(label).toBeDefined();
+		// The SVG carries the station with its metadata for hosts.
+		expect(generated.svg).toContain('data-roadmap-element="milestone"');
+		expect(generated.svg).toContain('data-title="🏁 Halfway there."');
+		expect(generated.svg).toMatch(/roadmap__milestone-core/u);
+		// Unlabeled documents render no milestone layer at all.
+		expect(generateRoadmapSvgSync("* Chapter\n  * Topic")).not.toContain("roadmap__milestones");
+	});
+
 	test("note markers are opt-in and only mark noted nodes", () => {
 		const markdown = (frontmatter: string) => `${frontmatter}* Chapter
   * Noted topic

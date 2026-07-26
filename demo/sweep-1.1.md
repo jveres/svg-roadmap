@@ -292,6 +292,9 @@ roadmap:
     > change fail rate, and deployment rework rate — expose delivery throughput and instability.
     > Compare one service with itself over time; context matters.
 
+---
+*:checkered_flag: You can build and ship with confidence — now keep it running.*
+
 * :three: Deployment & Operations
 *:beginner: High-quality software can ship frequently and safely — and stay ==_running_==. [DevSecOps](https://www.redhat.com/en/topics/devops/what-is-devsecops) provides continuous delivery and deployment capabilities by bringing development, security, and operations together.*
   + [Infrastructure](https://aws.amazon.com/architecture/well-architected/) [foundation]

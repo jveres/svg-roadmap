@@ -151,6 +151,41 @@ describe("interactive progress integrity", () => {
 		handle.dispose();
 	});
 
+	test("milestones report reach progress and light up when cleared", () => {
+		const svg = mountChart(`* Chapter one
+  * Alpha
+  * Beta
+
+---
+*Halfway.*
+
+* Chapter two
+  * Gamma
+`);
+		const handle = attachRoadmapInteractivity(svg, { storage: null, summary: false });
+		const station = svg.querySelector('[data-roadmap-element="milestone"]');
+		if (!station) throw new Error("Milestone station not rendered");
+
+		let [status] = handle.milestones();
+		expect(status).toMatchObject({ title: "Halfway.", reached: false, total: 2, remaining: 2 });
+
+		const [alpha, beta] = handle
+			.topics()
+			.filter((topic) => topic.kind === "topic")
+			.map((topic) => topic.id);
+		if (!alpha || !beta) throw new Error("Fixture topics missing");
+		handle.setState(alpha, "done");
+		handle.setState(beta, "skipped");
+		[status] = handle.milestones();
+		// Done and skipped both clear the way; the station lights up.
+		expect(status).toMatchObject({ reached: true, remaining: 0 });
+		expect(station.classList.contains("roadmap__milestone--reached")).toBe(true);
+
+		handle.setState(alpha, undefined);
+		expect(station.classList.contains("roadmap__milestone--reached")).toBe(false);
+		handle.dispose();
+	});
+
 	test("a throwing storage backend degrades to in-memory tracking", () => {
 		const storage = new MemoryStorage();
 		storage.setItem = () => {

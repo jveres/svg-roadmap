@@ -241,6 +241,17 @@ export interface AttachRoadmapInteractivityOptions {
 	readonly onSelect?: (detail: RoadmapTopicDetail | undefined) => void;
 }
 
+/** Progress toward a spine milestone, computed over the topics above it. */
+export interface RoadmapMilestoneStatus {
+	readonly id: string;
+	readonly title: string;
+	/** Every topic authored before the milestone is done or skipped. */
+	readonly reached: boolean;
+	/** Topics before the milestone still neither done nor skipped. */
+	readonly remaining: number;
+	readonly total: number;
+}
+
 export interface RoadmapInteractivityHandle {
 	/** The summary panel element, for hosts embedding extra content (a topic
 	 * detail section, for example). `undefined` when the summary is disabled. */
@@ -254,6 +265,8 @@ export interface RoadmapInteractivityHandle {
 	getTopic(id: string): RoadmapTopicDetail | undefined;
 	/** Aggregate counts for custom summary UIs. */
 	getSummary(): RoadmapProgressSummary;
+	/** Spine milestones in document order, with reach progress. */
+	milestones(): readonly RoadmapMilestoneStatus[];
 	getState(id: string): RoadmapProgressState | undefined;
 	setState(id: string, state: RoadmapProgressState | undefined): void;
 	/** Currently selected topic id, if any. */
@@ -277,6 +290,7 @@ const interactiveCss = `
 .roadmap--interactive [data-roadmap-element="topic"],
 .roadmap--interactive [data-roadmap-element="nested-topic"],
 .roadmap--interactive [data-roadmap-element="topic-header"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.roadmap--interactive .roadmap__milestone:not(.roadmap__milestone--reached) .roadmap__milestone-core{opacity:0.25}
 .roadmap--interactive [data-roadmap-element="topic"]:focus-visible,
 .roadmap--interactive [data-roadmap-element="nested-topic"]:focus-visible,
 .roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible{outline:none}
@@ -1263,12 +1277,44 @@ export function attachRoadmapInteractivity(
 		}
 	};
 
+	// Milestones are reached when every topic authored above them is done or
+	// skipped; document order comes from the sourcepos both carry.
+	const startLine = (element: Element): number =>
+		Number(element.getAttribute("data-sourcepos")?.split(":")[0] ?? Number.POSITIVE_INFINITY);
+	const milestoneElements = [
+		...svg.querySelectorAll<SVGGElement>('[data-roadmap-element="milestone"]'),
+	];
+	const milestoneStatus = (element: SVGGElement): RoadmapMilestoneStatus => {
+		const line = startLine(element);
+		let total = 0;
+		let remaining = 0;
+		for (const [id, group] of groups) {
+			if (startLine(group) >= line) continue;
+			total += 1;
+			const state = states[id];
+			if (state !== "done" && state !== "skipped") remaining += 1;
+		}
+		return {
+			id: element.id.startsWith(`${prefix}-`) ? element.id.slice(prefix.length + 1) : element.id,
+			title: element.getAttribute("data-title") ?? "",
+			reached: total > 0 && remaining === 0,
+			remaining,
+			total,
+		};
+	};
+	const syncMilestones = (): void => {
+		for (const element of milestoneElements) {
+			element.classList.toggle("roadmap__milestone--reached", milestoneStatus(element).reached);
+		}
+	};
+
 	const apply = (id: string, state: RoadmapProgressState | undefined): void => {
 		if (state) states[id] = state;
 		else delete states[id];
 		persist();
 		paint(id);
 		updateSummary();
+		syncMilestones();
 		repaintChart?.(states);
 		if (selectedId && headerColumns.get(selectedId)?.includes(id)) renderDetail();
 		const group = groups.get(id);
@@ -1280,6 +1326,7 @@ export function attachRoadmapInteractivity(
 		persist();
 		for (const id of groups.keys()) paint(id);
 		updateSummary();
+		syncMilestones();
 		repaintChart?.(states);
 		renderDetail();
 		options.onReset?.();
@@ -1400,6 +1447,7 @@ export function attachRoadmapInteractivity(
 	if (chartProgress) repaintChart = chartProgress.repaint;
 	chartProgress?.repaint(states);
 	updateSummary();
+	syncMilestones();
 
 	return {
 		get summaryElement() {
@@ -1415,6 +1463,7 @@ export function attachRoadmapInteractivity(
 			return group ? detailFor(id, group) : undefined;
 		},
 		getSummary: () => summarizeProgress(states, groups.size),
+		milestones: () => milestoneElements.map(milestoneStatus),
 		getState: (id) => states[id],
 		setState: (id, state) => {
 			// Headers are stateless by design and unknown ids must not leak
@@ -1441,6 +1490,9 @@ export function attachRoadmapInteractivity(
 			chartProgress?.dispose();
 			detailSection?.remove();
 			if (selectedId) groupFor(selectedId)?.classList.remove("roadmap__node--selected");
+			for (const element of milestoneElements) {
+				element.classList.remove("roadmap__milestone--reached");
+			}
 			groups.clear();
 			headerGroups.clear();
 			headerColumns.clear();
