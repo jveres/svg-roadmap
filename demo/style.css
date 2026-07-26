@@ -249,6 +249,40 @@ textarea:focus-visible {
 	border-bottom: 0;
 }
 
+#editor-dirty {
+	margin-left: 2px;
+	color: var(--focus-color, #4779d0);
+	font-size: 0.75em;
+}
+
+/*
+ * Like .panel-toggle, overrides the toolbar button styling (dark controls)
+ * with panel-heading colors so it reads correctly in both modes.
+ */
+.panel-reset {
+	/* Fits inside the heading's text line so appearing never changes its
+	   height. */
+	box-sizing: border-box;
+	height: 20px;
+	border: 1px solid color-mix(in srgb, var(--panel-heading-color) 35%, transparent);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--panel-heading-color);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 550;
+	line-height: 1;
+	padding: 0 8px;
+	cursor: pointer;
+	opacity: 0.8;
+}
+
+.panel-reset:hover {
+	opacity: 1;
+	border-color: var(--panel-heading-color);
+	background: color-mix(in srgb, var(--panel-heading-color) 12%, transparent);
+}
+
 .workbench--preview-only .editor-panel h2 {
 	display: block;
 	margin: 0;

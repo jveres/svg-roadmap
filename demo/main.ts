@@ -113,7 +113,9 @@ app.innerHTML = `
 				>
 					<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8 10 12.5"/></svg>
 				</button>
-				<h2 id="editor-title">Markdown</h2>
+				<h2 id="editor-title">Markdown<sup id="editor-dirty" hidden aria-label="modified">*</sup></h2>
+				<button id="reset-source" class="panel-reset" type="button" hidden
+					title="Discard edits and restore the sample">reset</button>
 				<span id="stats">Loading parser…</span>
 			</div>
 			<textarea id="source" spellcheck="false" aria-label="Roadmap Markdown"></textarea>
@@ -135,6 +137,8 @@ function requiredElement<ElementType extends Element>(selector: string): Element
 }
 
 const source = requiredElement<HTMLTextAreaElement>("#source");
+const editorDirty = requiredElement<HTMLElement>("#editor-dirty");
+const resetSource = requiredElement<HTMLButtonElement>("#reset-source");
 const sampleSelect = requiredElement<HTMLSelectElement>("#sample");
 const themePresetSelect = requiredElement<HTMLSelectElement>("#theme-preset");
 const colorModeSelect = requiredElement<HTMLSelectElement>("#color-mode");
@@ -149,13 +153,43 @@ const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
 
+const draftStorageKey = (id: string): string => `roadmap-workbench-draft:${id}`;
+
+function syncDirtyState(): void {
+	const sample = samples[sampleSelect.value];
+	const dirty = sample !== undefined && source.value !== sample.source;
+	editorDirty.hidden = !dirty;
+	resetSource.hidden = !dirty;
+}
+
+/** User edits survive reloads and sample switches, per sample. */
+function saveDraft(): void {
+	const sample = samples[sampleSelect.value];
+	if (!sample) return;
+	try {
+		if (source.value === sample.source)
+			localStorage.removeItem(draftStorageKey(sampleSelect.value));
+		else localStorage.setItem(draftStorageKey(sampleSelect.value), source.value);
+	} catch {
+		// Storage may be unavailable; edits just do not persist.
+	}
+	syncDirtyState();
+}
+
 function loadSample(id: string): void {
 	const sample = samples[id];
 	if (!sample) return;
-	source.value = sample.source;
+	let draft: string | null = null;
+	try {
+		draft = localStorage.getItem(draftStorageKey(id));
+	} catch {
+		// Fall through to the pristine sample.
+	}
+	source.value = draft ?? sample.source;
 	if ([...themePresetSelect.options].some((option) => option.value === sample.preset)) {
 		themePresetSelect.value = sample.preset;
 	}
+	syncDirtyState();
 }
 
 const settingsStorageKey = "roadmap-workbench-settings";
@@ -312,7 +346,17 @@ function scheduleRender(): void {
 	renderTimer = window.setTimeout(render, 120);
 }
 
-source.addEventListener("input", scheduleRender);
+source.addEventListener("input", () => {
+	saveDraft();
+	scheduleRender();
+});
+resetSource.addEventListener("click", () => {
+	const sample = samples[sampleSelect.value];
+	if (!sample) return;
+	source.value = sample.source;
+	saveDraft();
+	render();
+});
 sampleSelect.addEventListener("change", () => {
 	loadSample(sampleSelect.value);
 	saveSettings();
