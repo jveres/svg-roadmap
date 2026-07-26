@@ -189,6 +189,11 @@ function createCardNode(
 	const lines = wrapInline(content, targetWidth, card.typography, abbreviationIndicatorSize);
 	const measuredWidth = Math.max(minContentWidth, ...lines.map((line) => line.width));
 	const text = layoutText(lines, card.typography, abbreviationIndicatorSize);
+	// Notes wrap at the typography's nominal size but paint at renderScale;
+	// their box hugs the painted text, otherwise the scale slack (~12% of the
+	// text width) piles up as horizontal padding far beyond the vertical.
+	const paintScaleX = kind === "note" ? text.renderScale * (text.renderScaleX ?? 1) : 1;
+	const paintScaleY = kind === "note" ? text.renderScale : 1;
 	return {
 		kind,
 		role,
@@ -197,11 +202,15 @@ function createCardNode(
 		depth,
 		x: 0,
 		y: 0,
-		width: Math.ceil(Math.min(maxContentWidth, measuredWidth) + card.paddingX * 2),
-		height: Math.ceil(Math.max(1, lines.length) * text.lineHeight + card.paddingY * 2),
+		width: Math.ceil(Math.min(maxContentWidth, measuredWidth) * paintScaleX + card.paddingX * 2),
+		height: Math.ceil(
+			Math.max(1, lines.length) * text.lineHeight * paintScaleY + card.paddingY * 2,
+		),
 		text,
 		tags,
 		frameShape: card.shape,
+		paddingX: card.paddingX,
+		paddingY: card.paddingY,
 		...(note ? { note } : {}),
 		...(parentId ? { parentId } : {}),
 		...(sourceRange ? { sourceRange } : {}),
@@ -1376,6 +1385,10 @@ export function layoutRoadmap(
 			} else {
 				descriptionNode.x = centerX - descriptionNode.width / 2;
 				descriptionNode.y = rectBottom(chapterNode) + options.chapterDescriptionGap;
+				// The painted bubble can bulge above the layout box; the gap is
+				// promised to the visible frame, not the box.
+				const bulge = descriptionNode.y - paintedNodeFrameRectangle(descriptionNode).y;
+				if (bulge > 0) descriptionNode.y += bulge;
 			}
 			elements.push(descriptionNode);
 			occupied.push(

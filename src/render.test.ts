@@ -722,7 +722,10 @@ describe("SVG rendering boundaries", () => {
 			const scale = note.text.fontSize / 16;
 			const polygon = organicBlobPolygon(contentFrame, 4 * scale, scale, 0.98 * scale, 0.1);
 			expect(note.text.lines).toHaveLength(expectedLines);
-			expect(contentFrame.height).toBeLessThan(note.height);
+			// The layout box hugs the painted text; the blob's bulge extends
+			// beyond it, so the frame spans the box's width and may exceed its
+			// height. Coverage below is the real contract.
+			expect(contentFrame.width).toBe(note.width);
 			for (const line of paintedTextLines(note)) {
 				for (const point of [
 					{ x: line.x - 2 * scale, y: line.y - 2 * scale },

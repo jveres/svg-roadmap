@@ -89,7 +89,6 @@ export const printLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1,
 			radius: 0,
 			shadow: false,
-			paddingX: 10,
 			typography: {
 				color: "#48443d",
 				fontFamily: displayFontFamily,

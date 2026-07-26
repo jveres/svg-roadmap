@@ -114,10 +114,13 @@ export function fittedCapsuleFrame(node: LayoutNode): Rect {
 	const lastLine = lines.at(-1);
 	if (!firstLine || !lastLine) return node;
 	const fontSize = node.text.fontSize * node.text.renderScale;
-	const paddingY = Math.max(6, fontSize * 0.45);
+	// The theme's padding tokens are the contract; the capsule only adds its
+	// curve clearance on top. Font-derived floors remain as a fallback for
+	// nodes built without tokens (tests, external callers).
+	const paddingY = node.paddingY ?? Math.max(6, fontSize * 0.45);
 	// The widest line meets the capsule at its fattest point, so side air
 	// needs to be visibly larger than the vertical padding to read as padded.
-	const paddingX = Math.max(9, fontSize * 0.7);
+	const paddingX = node.paddingX ?? Math.max(9, fontSize * 0.7);
 	const verticalSafety = 1;
 	const curveClearance = Math.max(1.5, fontSize * 0.12);
 	const top = Math.min(...lines.map((line) => line.y)) - paddingY;

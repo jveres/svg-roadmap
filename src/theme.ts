@@ -140,10 +140,14 @@ export const lightTheme: RoadmapTheme = {
 		strokeWidth: 0,
 		radius: 42,
 		shadow: false,
-		paddingX: 5,
-		paddingY: 12,
+		// The consolidated comment-card contract: every theme inherits these
+		// two tokens; shapes add clearance (blob bulge, capsule ends) on top.
+		paddingX: 12,
+		paddingY: 9,
 		minWidth: 0,
-		maxWidth: 410,
+		// Content width stays 400 (maxWidth - 2 * paddingX), the wrap width
+		// comments have always had.
+		maxWidth: 424,
 		typography: {
 			color: "#565561",
 			fontFamily,
@@ -153,7 +157,11 @@ export const lightTheme: RoadmapTheme = {
 			lineHeight: 1.15,
 			renderScale: 0.875,
 			renderScaleX: 0.99,
-			baselineRatio: 0.815,
+			// Same optical baseline as floatingNote: the line box reserves a
+			// descender row that mostly reads as air, so the baseline sits low
+			// in the box to keep the glyph band visually centered. 0.815 here
+			// made chapter descriptions read ~1px higher than floating notes.
+			baselineRatio: 0.945,
 		},
 	},
 	floatingNote: {
@@ -166,10 +174,10 @@ export const lightTheme: RoadmapTheme = {
 		strokeWidth: 0,
 		radius: 42,
 		shadow: false,
-		paddingX: 5,
-		paddingY: 12,
+		paddingX: 12,
+		paddingY: 9,
 		minWidth: 0,
-		maxWidth: 410,
+		maxWidth: 424,
 		typography: {
 			color: "#565561",
 			fontFamily,

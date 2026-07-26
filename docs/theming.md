@@ -131,9 +131,12 @@ change SVG topology.
 
 Notes and chapter descriptions use **content-fitted frames**: the painted
 frame hugs the wrapped text rather than the layout box, so bubbles keep
-consistent padding at any line count. Capsule note frames center on the
-cap-height band for optical balance and reserve larger horizontal padding,
-because the widest line meets the capsule at its fattest point.
+consistent padding at any line count. Comment padding is a two-token
+contract shared by every theme — the card's `paddingX`/`paddingY` — and
+shape fitting adds clearance on top of those tokens (the blob's bulge, the
+capsule's curve), never substitutes its own constants. Capsule note frames
+additionally center on the cap-height band for optical balance, because
+the widest line meets the capsule at its fattest point.
 
 Badges anchor to a node's top-right corner — except on capsule cards, where
 the anchor moves onto the cap's 45° shoulder so the badge overlaps the
