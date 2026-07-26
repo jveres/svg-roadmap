@@ -699,8 +699,10 @@ describe("SVG rendering boundaries", () => {
 				"This is a ==prototype== of a simple collaborative tool for generating **roadmap chart (tm)** from [markdown](https://commonmark.org) text. Text styles: _italic_, **bold**, ~sub~, ^sup^, etc. All [GitHub emojis](https://github.com) supported: :poop: :tada: :boom: :100: and [shortcuts](https://example.com): 8-) :-@ +-",
 		},
 		{
-			label: "eight-line note with a wide first line",
-			expectedLines: 8,
+			// The source's newline is a soft break, so the prose flows through
+			// it instead of forcing a fresh line.
+			label: "seven-line note with a wide first line",
+			expectedLines: 7,
 			source: [
 				"This is a ==prototype== of a simple collaborative toodfdkjhdf sldjkfhlsdkjfhslkdfj sdlfjkhsldkjfhsdlkjfhsdjkfhlskdjfllskdjfhsldkjfhsldflsdkjfhsldkfjhdsfds",
 				"fsdf l for generating **roadmap chart (tm)** from [markdown](https://www.markdownguide.org/) text. Text styles: _italic_, **bold**, ~sub~, ^sup^ etc. All [GitHub emojis](https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md) supported: :poop: :tada: :boom: :100: and [shortcuts](https://github.com/markdown-it/markdown-it-emoji/blob/master/lib/data/shortcuts.js): 8-) :-@ +-",

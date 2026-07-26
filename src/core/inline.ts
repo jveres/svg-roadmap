@@ -127,6 +127,10 @@ function visitInline(nodes: readonly InlineNode[], state: RunState, runs: Inline
 				break;
 			}
 			case "softBreak":
+				// A soft break is the author wrapping their source line; prose
+				// flows through it. Only a hard break forces a new line.
+				runs.push({ text: " ", marks: state.marks });
+				break;
 			case "lineBreak":
 				runs.push({ text: "\n", marks: state.marks });
 				break;

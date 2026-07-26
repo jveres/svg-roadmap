@@ -76,21 +76,36 @@ function fittedNoteContentRectangle(node: LayoutNode): Rect {
 		{ x: line.x - safety, y: line.y + line.height + safety },
 	]);
 
-	for (let iteration = 0; iteration < 256; iteration += 1) {
-		const rectangle = { x: centerX - width / 2, y: top, width, height: bottom - top };
-		const polygon = organicBlobPolygon(
-			rectangle,
-			lowerInset,
-			upperInset,
-			upperShoulderInset,
-			upperShoulderRatio,
-		);
-		const outside = points.filter((point) => !pointInPolygon(polygon, point));
-		if (outside.length === 0) return rectangle;
-		if (outside.some((point) => point.y <= contentCenterY)) top -= scale;
-		if (outside.some((point) => point.y > contentCenterY)) bottom += scale;
+	const expandToContain = (): void => {
+		for (let iteration = 0; iteration < 256; iteration += 1) {
+			const rectangle = { x: centerX - width / 2, y: top, width, height: bottom - top };
+			const polygon = organicBlobPolygon(
+				rectangle,
+				lowerInset,
+				upperInset,
+				upperShoulderInset,
+				upperShoulderRatio,
+			);
+			const outside = points.filter((point) => !pointInPolygon(polygon, point));
+			if (outside.length === 0) return;
+			if (outside.some((point) => point.y <= contentCenterY)) top -= scale;
+			if (outside.some((point) => point.y > contentCenterY)) bottom += scale;
+		}
+	};
+	// The fit grows whichever side collides — usually the top, where a wide
+	// first line meets the blob's sloped shoulder — leaving the text visibly
+	// low in the bubble. Rebalancing equalizes the outer air, but the blob's
+	// carves scale with height, so each rebalance re-runs containment and the
+	// sequence ends on a containment pass: symmetric to within a couple of
+	// pixels, and never leaking paint.
+	expandToContain();
+	for (let pass = 0; pass < 2; pass += 1) {
+		const topAir = minY - top;
+		const bottomAir = bottom - maxY;
+		if (topAir > bottomAir) bottom += topAir - bottomAir;
+		else top -= bottomAir - topAir;
+		expandToContain();
 	}
-
 	return { x: centerX - width / 2, y: top, width, height: bottom - top };
 }
 

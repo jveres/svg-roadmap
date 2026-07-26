@@ -601,7 +601,10 @@ function attachTopicChildren(
 		Math.max(candidate.rect.y, container.y),
 	);
 	context.elements.push(cluster.group, ...cluster.nodes);
-	context.occupied.push(inflateRectangle(cluster.group, 1));
+	// Organic hulls paint up to ~8px beyond the group rect; siblings must
+	// clear the painted bulge, not just the box, or adjacent child clusters
+	// visually overlap.
+	context.occupied.push(inflateRectangle(cluster.group, 6));
 	// The reference renderer leaves a small gap so links never touch the
 	// parent topic card.
 	const linkGap = 4;

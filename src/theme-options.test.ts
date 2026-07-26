@@ -120,6 +120,22 @@ describe("grapheme integrity", () => {
 		lineHeight: 1.2,
 	} as unknown as TypographyTheme;
 
+	test("source-line soft breaks flow as spaces, not forced line breaks", () => {
+		const generated = generateRoadmap(
+			"# T\n\nGroups practices by maturity: start with\n[foundation], adopt later.\n\n* Chapter\n  * Topic\n",
+		);
+		const note = generated.layout.elements.find(
+			(element) => element.kind === "note" && "text" in element,
+		);
+		const lines =
+			note && "text" in note
+				? note.text.lines.map((line) => line.segments.map((segment) => segment.text).join(""))
+				: [];
+		// The source newline sits between "with" and "[foundation]"; flowing
+		// prose keeps them on one line at this width.
+		expect(lines.some((line) => /with \[foundation\]/u.test(line))).toBe(true);
+	});
+
 	test("ZWJ emoji survive hard wrapping as a single grapheme", () => {
 		const family = "\u{1F469}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}";
 		const content = [{ type: "text" as const, value: family.repeat(6) }];
