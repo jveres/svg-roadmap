@@ -446,7 +446,7 @@ describe("SVG rendering boundaries", () => {
 		]);
 
 		expect(textY(svg, " Chapter")).toBe(34.2);
-		expect(shortcodeUseY(svg, "two")).toBeCloseTo(26.475, 8);
+		expect(shortcodeUseY(svg, "two")).toBeCloseTo(26.075, 8);
 	});
 
 	it("should use scoped legacy gradients and detailed badge symbols", () => {
@@ -848,7 +848,7 @@ Start with [foundation] first.
 		expect(svg).toContain('href="#emoji-map-emoji-one"');
 		expect(svg).toMatch(/data-shortcode="one"[^>]*><use[^>]*width="18" height="17"/u);
 		expect(svg).toMatch(/data-shortcode="two"[^>]*><use[^>]*width="18" height="17"/u);
-		expect(svg).toMatch(/data-shortcode="three"[^>]*><use[^>]*width="18" height="18"/u);
+		expect(svg).toMatch(/data-shortcode="three"[^>]*><use[^>]*width="18" height="17"/u);
 		expect(svg).toContain('href="#emoji-map-emoji-recycle"');
 		expect(svg).not.toMatch(/<text\b[^>]*>🧼<\/text>/u);
 	});

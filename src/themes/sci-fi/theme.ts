@@ -107,9 +107,6 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			detailInset: 2,
 			shadowColor: "#8b7ee8",
 			shadowOpacity: 0.2,
-			// The inner detail rule crowds the tracked uppercase; extra leading
-			// keeps headers at least cell-height.
-			paddingY: 8,
 			typography: {
 				color: "#17364d",
 				fontFamily: displayFontFamily,

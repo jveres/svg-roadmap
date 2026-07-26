@@ -442,14 +442,16 @@ export function measureTrackedText(
 function sameRunStyle(left: TextLineSegment | undefined, right: TextLineSegment): boolean {
 	return (
 		left !== undefined &&
-		// Chips never merge: each is one atomic painted unit.
+		// Chips and emoji never merge: each is one atomic painted unit — two
+		// adjacent :one: shortcodes must stay two glyphs, not one wide one.
 		left.tag === undefined &&
 		right.tag === undefined &&
+		left.shortcode === undefined &&
+		right.shortcode === undefined &&
 		left.destination === right.destination &&
 		left.linkTitle === right.linkTitle &&
 		left.abbreviation === right.abbreviation &&
 		left.abbreviationIndicator === right.abbreviationIndicator &&
-		left.shortcode === right.shortcode &&
 		left.marks.join("|") === right.marks.join("|")
 	);
 }

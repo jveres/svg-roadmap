@@ -120,10 +120,10 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 			shadowOpacity: 0.25,
 			detailInset: 2,
 			paddingX: 16,
-			// The smaller header face plus the inner detail rule left headers
-			// shorter than their cells; extra leading keeps them at least
-			// cell-height.
-			paddingY: 8,
+			// The smaller header face would leave headers shorter than their
+			// cells; this padding lands headers at exactly the cell height
+			// (11.5 × 1.2 + 2 × 6.6 = 27, matching the cells' 15 + 12).
+			paddingY: 6.6,
 			typography: {
 				color: "#0b4b58",
 				fontFamily: monoFontFamily,

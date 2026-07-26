@@ -545,8 +545,10 @@ const shortcodeEmojiGeometry: Readonly<Record<string, ShortcodeEmojiGeometry>> =
 	boom: { widthEm: 1, heightEm: 1, baselineInset: 0.5 },
 	beginner: { widthEm: 0.73, heightEm: 1, baselineInset: 2.75 },
 	one: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
-	two: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.9 },
-	three: { widthEm: 1.125, heightEm: 1.125, baselineInset: 2.5 },
+	// Keycaps share one artwork frame; identical geometry keeps a 1-2-3 row
+	// on a single optical line.
+	two: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
+	three: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },
 	recycle: { widthEm: 1.125, heightEm: 1, baselineInset: 1.5 },
 	telescope: { widthEm: 0.96, heightEm: 0.88, baselineInset: 1.18, xOffsetEm: -0.08 },
 	four: { widthEm: 1.125, heightEm: 1.0625, baselineInset: 2.5 },

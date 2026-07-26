@@ -58,4 +58,12 @@ describe("emoji tiers", () => {
 		const generated = generateRoadmap(document(":definitely_not_an_emoji:"));
 		expect(generated.svg).toContain(":definitely_not_an_emoji:");
 	});
+
+	test("adjacent identical shortcodes paint as separate glyphs", () => {
+		// :one::one: is how authors write eleven; merging the two runs into
+		// one segment painted a single wide glyph.
+		const generated = generateRoadmap(document(":one::one:"));
+		const uses = generated.svg.match(/href="#[^"]*-emoji-one"/gu) ?? [];
+		expect(uses.length).toBe(2);
+	});
 });

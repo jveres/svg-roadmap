@@ -231,6 +231,7 @@ interface WorkbenchSettings {
 	readonly editorHidden?: boolean;
 	readonly interactive?: boolean;
 	readonly spotlight?: boolean;
+	readonly zoom?: number;
 }
 
 function loadStoredSettings(): WorkbenchSettings {
@@ -251,6 +252,7 @@ function saveSettings(): void {
 				mode: colorModeSelect.value,
 				editorHidden,
 				interactive: interactiveToggle.checked,
+				zoom,
 				spotlight: spotlightToggle.checked,
 			} satisfies WorkbenchSettings),
 		);
@@ -325,6 +327,10 @@ function suppressPreviewTitleTooltip(): void {
  * The factor survives re-renders, so theme and source edits keep the view.
  */
 let zoom = 1;
+{
+	const stored = Number(loadStoredSettings().zoom);
+	if (Number.isFinite(stored) && stored >= 0.25 && stored <= 4) zoom = stored;
+}
 
 function applyZoom(): void {
 	zoomReset.textContent = `${Math.round(zoom * 100)}%`;
@@ -333,15 +339,26 @@ function applyZoom(): void {
 	if (zoom === 1) {
 		previewSvg.style.maxWidth = "100%";
 		previewSvg.style.width = "";
-	} else {
-		previewSvg.style.maxWidth = "none";
-		previewSvg.style.width = `${Math.round(zoom * 100)}%`;
+		return;
 	}
+	// Zoom multiplies the size the chart actually displays at 100% — the
+	// natural width capped by the pane — not the pane width, which would
+	// let 80% grow a chart narrower than the pane.
+	const natural = Number(previewSvg.getAttribute("width")) || previewSvg.viewBox.baseVal.width;
+	const paneStyle = window.getComputedStyle(preview);
+	const pane =
+		preview.clientWidth -
+		Number.parseFloat(paneStyle.paddingLeft) -
+		Number.parseFloat(paneStyle.paddingRight);
+	const base = Math.min(natural, Math.max(100, pane));
+	previewSvg.style.maxWidth = "none";
+	previewSvg.style.width = `${Math.round(base * zoom)}px`;
 }
 
 function setZoom(value: number): void {
 	zoom = Math.min(4, Math.max(0.25, Math.round(value * 100) / 100));
 	applyZoom();
+	saveSettings();
 }
 
 zoomIn.addEventListener("click", () => setZoom(zoom * 1.25));

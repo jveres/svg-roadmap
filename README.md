@@ -361,6 +361,14 @@ mode. `legend: false` at the roadmap level hides the tag legend entirely, and
 detail note, so readers can see where a click has content waiting (hosts can
 override per render with `render.noteMarkers`).
 
+### Footnotes
+
+Footnote references (`[^label]` or inline `^[text]`) paint as small
+superscript numbers, assigned in order of first reference. The referenced
+definitions gather in a footnotes block beneath the chart — legend-styled,
+hanging-indented, aligned with the legend's column — with full inline
+formatting. `footnotes: false` keeps the block off the chart.
+
 ### Milestones
 
 A thematic break (`---`) between chapters becomes a station on the spine — a
