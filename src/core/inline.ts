@@ -279,6 +279,11 @@ export function setMeasurementProvider(provider: MeasurementProvider | undefined
 	measurementCache.clear();
 }
 
+/** The provider currently occupying the global slot, for lifecycle guards. */
+export function activeMeasurementProvider(): MeasurementProvider | undefined {
+	return measurementProvider;
+}
+
 function textGraphemes(text: string): readonly string[] {
 	if (graphemeSegmenter) {
 		return [...graphemeSegmenter.segment(text)].map((entry) => entry.segment);

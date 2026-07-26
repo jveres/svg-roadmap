@@ -1,7 +1,8 @@
-import { type MeasurementProvider, setMeasurementProvider } from "./inline.ts";
-
-/** The provider whose installation currently owns the global slot. */
-let currentMeasurementOwner: MeasurementProvider | undefined;
+import {
+	activeMeasurementProvider,
+	type MeasurementProvider,
+	setMeasurementProvider,
+} from "./inline.ts";
 
 /**
  * Hidden-DOM measurement oracle: measures text with the browser's real font
@@ -113,24 +114,20 @@ export async function installDomMeasurement(
 	}
 	const handle = createDomMeasurementProvider(hostDocument);
 	setMeasurementProvider(handle.provider);
-	currentMeasurementOwner = handle.provider;
+	const ownsSlot = (): boolean => activeMeasurementProvider() === handle.provider;
 	const handleLoadingDone = (): void => {
 		// Re-installing the same provider flushes the measurement cache —
-		// but only while this installation still owns the global slot.
-		if (currentMeasurementOwner === handle.provider) {
-			setMeasurementProvider(handle.provider);
-		}
+		// but only while this installation still occupies the global slot.
+		if (ownsSlot()) setMeasurementProvider(handle.provider);
 		options.onFontsChanged?.();
 	};
 	fontFaceSet?.addEventListener("loadingdone", handleLoadingDone);
 	return () => {
 		fontFaceSet?.removeEventListener("loadingdone", handleLoadingDone);
-		// Ownership guard: installing A then B and disposing A must not tear
-		// down B's provider. Only the current owner may clear the slot.
-		if (currentMeasurementOwner === handle.provider) {
-			currentMeasurementOwner = undefined;
-			setMeasurementProvider(undefined);
-		}
+		// Ownership is whatever the slot currently holds: installing A then B
+		// (or a host swapping in its own provider) and disposing A must not
+		// tear down the active provider.
+		if (ownsSlot()) setMeasurementProvider(undefined);
 		handle.dispose();
 	};
 }

@@ -191,4 +191,27 @@ describe("hidden-DOM oracle", () => {
 		expect(fonts.removeEventListener).toHaveBeenCalled();
 		expect(measureText("abcd", 16)).not.toBe(28);
 	});
+
+	test("disposing an older installation leaves the newer one active", async () => {
+		const first = createStubDocument();
+		const second = createStubDocument();
+		const uninstallFirst = await installDomMeasurement({ document: first.document });
+		const uninstallSecond = await installDomMeasurement({ document: second.document });
+		// The stub oracle measures 7px per character; the tables do not.
+		expect(measureText("abcd", 16)).toBe(28);
+		uninstallFirst();
+		// First's dispose must not tear down second's provider.
+		expect(measureText("abcd", 16)).toBe(28);
+		uninstallSecond();
+		expect(measureText("abcd", 16)).not.toBe(28);
+	});
+
+	test("disposing an installation never clobbers a host-swapped provider", async () => {
+		const { document } = createStubDocument();
+		const uninstall = await installDomMeasurement({ document });
+		setMeasurementProvider(() => 999);
+		uninstall();
+		// The host's provider still owns the slot.
+		expect(measureText("abcd", 16)).toBe(999);
+	});
 });
