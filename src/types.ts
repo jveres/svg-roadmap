@@ -169,11 +169,16 @@ export type RoadmapSpacing = "compact" | "cozy" | "roomy";
  */
 export interface RoadmapLayoutSettings {
 	/**
-	 * Scales the layout's working corridor (default `1`): wider spread makes
-	 * a wider, shorter chart. The canvas always crops to the content, so
-	 * spread trades proportions, never promises pixels.
+	 * Grows the final canvas — both dimensions — by this factor (default
+	 * `1`): the chart stays centered and the extra room becomes breathing
+	 * space, and territory for the theme's background artifacts.
 	 */
-	readonly spread?: number;
+	readonly canvas?: number;
+	/**
+	 * Topic columns inside tree clusters: `1` (default) or `2`. Two is the
+	 * ceiling by design — clusters keep a clean edge for their subtopics.
+	 */
+	readonly clusterColumns?: 1 | 2;
 	/** Maximum grid columns per row before the grid wraps into chunks. */
 	readonly columns?: number;
 	/** Scales the rhythm gaps coherently; solver clearances stay fixed. */
@@ -659,6 +664,10 @@ export interface RoadmapLayoutOptions {
 	readonly overlapPadding?: number;
 	readonly spineClearance?: number;
 	readonly maxGridColumns?: number;
+	/** Topic columns inside tree clusters: 1 (default) or 2. */
+	readonly clusterColumns?: 1 | 2;
+	/** Final-canvas growth factor; the chart centers in the extra room. */
+	readonly canvasScale?: number;
 	readonly showLegend?: boolean;
 }
 

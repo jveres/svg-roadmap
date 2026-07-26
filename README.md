@@ -310,9 +310,10 @@ roadmap:
   title: Engineering roadmap 2026     # accessible <title>; defaults to the H1
   description: Our path to production # accessible <desc>
   layout:
-    spread: 1.3      # horizontal reach factor (0.6–2); default 1
-    columns: 3       # grid columns per row before wrapping; default unlimited
-    spacing: compact # compact | cozy | roomy — scales the vertical rhythm
+    clusterColumns: 2   # topic columns in tree clusters (1 or 2); default 1
+    columns: 3          # grid columns per row before wrapping; default unlimited
+    spacing: compact    # compact | cozy | roomy — scales the vertical rhythm
+    canvas: 1.5 # grow the canvas around the centered chart (1–3)
   background:
     enabled: true
     seed: engineering-2026
@@ -334,13 +335,17 @@ scheme without rewriting its source.
 `layout` carries the document's curated layout intent. The canvas always
 crops to the chart's content on both axes — a roadmap with a single small
 grid renders as a small SVG, ready to embed — so neither knob promises
-pixels; they shape proportions. `spread` scales the horizontal reach
-(spine-to-cluster distance, branch gaps, and the working corridor) for a
-wider or narrower chart; `spacing` scales the vertical rhythm gaps
-coherently (`compact` ×0.8, `roomy` ×1.25). Solver clearances stay fixed
-in both, so a document can tune proportions but never lay out a broken
-chart; the raw gap values remain API-only (`options.layout`), and explicit
-API options always win over front matter. `title` and `description` set
+pixels; they shape proportions. `clusterColumns: 2` lays tree clusters out
+in two columns of uniform boxes — two is the ceiling by design, so every
+cluster keeps a clean edge for its subtopics to attach to — while the
+widest topic still sets the box width and every gap keeps its default.
+`spacing` scales the vertical rhythm gaps coherently (`compact` ×0.8,
+`roomy` ×1.25), and `canvas` grows the final canvas — both
+dimensions — around the centered chart: the chart itself does not change,
+and the margins become open ground for the theme's background artifacts. Solver clearances stay fixed in both, so a document can
+tune proportions but never lay out a broken chart; the raw gap values
+remain API-only (`options.layout`), and explicit API options always win
+over front matter. `title` and `description` set
 the SVG's accessible name and description, defaulting to the document's
 H1.
 

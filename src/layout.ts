@@ -63,6 +63,16 @@ interface RequiredLayoutOptions {
 	readonly overlapPadding: number;
 	readonly spineClearance: number;
 	readonly maxGridColumns: number;
+	/**
+	 * Columns of topic boxes inside tree clusters: `1` (the classic column)
+	 * or `2`. Two is the ceiling by design — every cluster must keep a clean
+	 * left or right edge for its subtopic clusters to attach to. Nested
+	 * (subtopic) clusters always stay single-column, and box width stays
+	 * governed by the widest topic either way.
+	 */
+	readonly clusterColumns: 1 | 2;
+	/** Grows the cropped canvas; the chart centers in the extra room. */
+	readonly canvasScale: number;
 	readonly showLegend: boolean;
 }
 
@@ -95,6 +105,8 @@ const defaults: RequiredLayoutOptions = {
 	overlapPadding: 10,
 	spineClearance: 12,
 	maxGridColumns: Number.MAX_SAFE_INTEGER,
+	clusterColumns: 1,
+	canvasScale: 1,
 	showLegend: true,
 };
 
@@ -112,17 +124,6 @@ const spacingScaledGaps = [
 	"commentGap",
 	"itemGap",
 	"gridItemGap",
-] as const satisfies readonly (keyof RequiredLayoutOptions)[];
-
-/** The knobs a document's `spread` setting scales — the horizontal reach:
- * spine-to-cluster distance, branch gaps, and the working corridor. */
-const spreadScaledOptions = [
-	"width",
-	"groupGap",
-	"branchGapLeftOuter",
-	"branchGapLeftInner",
-	"branchGapRightOuter",
-	"branchGapRightInner",
 ] as const satisfies readonly (keyof RequiredLayoutOptions)[];
 
 const spacingFactors: Readonly<Record<RoadmapSpacing, number>> = {
@@ -143,15 +144,10 @@ export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapL
 			scaled[gap] = Math.round(defaults[gap] * factor);
 		}
 	}
-	if (settings.spread !== undefined && settings.spread !== 1) {
-		// Spread scales the chart's horizontal reach; the canvas still crops
-		// to the content, so this trades proportions, never promises pixels.
-		for (const option of spreadScaledOptions) {
-			scaled[option] = Math.round(defaults[option] * settings.spread);
-		}
-	}
 	return {
 		...scaled,
+		...(settings.canvas !== undefined ? { canvasScale: settings.canvas } : {}),
+		...(settings.clusterColumns !== undefined ? { clusterColumns: settings.clusterColumns } : {}),
 		...(settings.columns !== undefined ? { maxGridColumns: settings.columns } : {}),
 	};
 }
@@ -342,35 +338,63 @@ function packCluster(
 			parentId,
 		),
 	);
+	// The reference algorithm: the widest topic sets the box width for the
+	// whole cluster; narrow boxes may merge into a shared row, but nothing
+	// ever extends beyond that width. At two columns the same box width
+	// simply tiles twice per row.
 	const widest = Math.max(1, ...nodes.map((node) => node.width));
+	// A two-topic cluster keeps the classic column: one row of two reads as
+	// a headerless fragment, not a cluster.
+	const twoColumn = !nested && options.clusterColumns === 2 && nodes.length > 2;
 	let y = padding;
-	for (let index = 0; index < nodes.length; index += 1) {
-		const node = nodes[index];
-		if (!node) continue;
-		const next = nodes[index + 1];
-		const canPair =
-			index > 0 && next !== undefined && node.width + options.itemGap + next.width <= widest;
-		if (canPair && next) {
-			const spareWidth = widest - node.width - next.width - options.itemGap;
-			const leftShare = spareWidth / 2;
-			const rowHeight = Math.max(node.height, next.height);
-			node.x = padding;
-			node.y = y;
-			node.width += leftShare;
-			next.x = padding + node.width + options.itemGap;
-			next.y = y;
-			next.width += spareWidth - leftShare;
-			node.height = rowHeight;
-			next.height = rowHeight;
+	if (twoColumn) {
+		for (let index = 0; index < nodes.length; index += 2) {
+			const left = nodes[index];
+			const right = nodes[index + 1];
+			if (!left) continue;
+			const rowHeight = Math.max(left.height, right?.height ?? 0);
+			left.x = padding;
+			left.y = y;
+			left.width = widest;
+			left.height = rowHeight;
+			if (right) {
+				right.x = padding + widest + options.itemGap;
+				right.y = y;
+				right.width = widest;
+				right.height = rowHeight;
+			}
 			y += rowHeight + options.itemGap;
-			index += 1;
-		} else {
-			node.x = padding;
-			node.y = y;
-			node.width = widest;
-			y += node.height + options.itemGap;
+		}
+	} else {
+		for (let index = 0; index < nodes.length; index += 1) {
+			const node = nodes[index];
+			if (!node) continue;
+			const next = nodes[index + 1];
+			const canPair =
+				index > 0 && next !== undefined && node.width + options.itemGap + next.width <= widest;
+			if (canPair && next) {
+				const spareWidth = widest - node.width - next.width - options.itemGap;
+				const leftShare = spareWidth / 2;
+				const rowHeight = Math.max(node.height, next.height);
+				node.x = padding;
+				node.y = y;
+				node.width += leftShare;
+				next.x = padding + node.width + options.itemGap;
+				next.y = y;
+				next.width += spareWidth - leftShare;
+				node.height = rowHeight;
+				next.height = rowHeight;
+				y += rowHeight + options.itemGap;
+				index += 1;
+			} else {
+				node.x = padding;
+				node.y = y;
+				node.width = widest;
+				y += node.height + options.itemGap;
+			}
 		}
 	}
+	const clusterWidth = twoColumn ? widest * 2 + options.itemGap : widest;
 	const group: LayoutGroup = {
 		kind: "group",
 		id,
@@ -379,7 +403,7 @@ function packCluster(
 		memberIds: nodes.map((node) => node.id),
 		x: 0,
 		y: 0,
-		width: widest + padding * 2,
+		width: clusterWidth + padding * 2,
 		height: Math.max(padding * 2, y - options.itemGap + padding),
 	};
 	return {
@@ -990,7 +1014,23 @@ function layoutTreeGroups(
 						centerX + localGroupGap,
 						rectRight(context.spineObstacle) + context.options.overlapPadding,
 					);
-		moveCluster(cluster, x, y);
+		// The cluster moves to its final horizontal position before any child
+		// attaches: children solve collisions against the chart's real
+		// geometry. (Placing children first and translating the compound
+		// afterwards made them dodge obstacles — the chapter description, the
+		// opposite group — at temporary coordinates, leaving inexplicable
+		// gaps once the branch moved away.) The old left-edge clamp is gone
+		// with it: the canvas crops to content, so there is no edge to guard.
+		const outwardDx =
+			side *
+				Math.max(
+					0,
+					context.options.groupGap +
+						(side < 0 ? context.options.groupOutsetLeft : 0) -
+						localGroupGap,
+				) +
+			(side > 0 ? context.options.groupOutsetRight : 0);
+		moveCluster(cluster, x + outwardDx, y);
 		sideBottom.set(side, rectBottom(cluster.group) + context.options.commentGap * 2);
 		context.elements.push(cluster.group, ...cluster.nodes);
 		const occupiedIndex = context.occupied.length;
@@ -1046,20 +1086,14 @@ function layoutTreeGroups(
 			if (topic.children.length > 0) branchIndex += 1;
 		}
 
-		// Preserve local collision decisions, then move the completed branch as a
-		// rigid compound to the wider position used by the reference renderer.
+		// The branch is already at its final horizontal position; the compound
+		// exists for the later whole-branch adjustments (spine clearance,
+		// description avoidance).
 		const compoundElements = [
 			cluster.group,
 			...cluster.nodes,
 			...context.elements.slice(childElementStart),
 		];
-		const baselineOutset = side < 0 ? context.options.groupOutsetLeft : 0;
-		const requestedDx =
-			side * Math.max(0, context.options.groupGap + baselineOutset - localGroupGap);
-		const dx =
-			side < 0
-				? Math.max(requestedDx, context.options.padding - unionRectangles(compoundElements).x)
-				: requestedDx;
 		const occupiedIndexes = [
 			occupiedIndex,
 			...Array.from(
@@ -1075,13 +1109,7 @@ function layoutTreeGroups(
 			childConnectorEnd: context.connectors.length,
 			occupiedIndexes,
 		};
-		translatePlacedCompound(compound, dx, 0, context);
 		placedCompounds.push(compound);
-	}
-
-	for (const compound of placedCompounds) {
-		const dx = compound.side < 0 ? 0 : context.options.groupOutsetRight;
-		translatePlacedCompound(compound, dx, 0, context);
 	}
 
 	// Children may use the spine corridor, but never cover the spine itself:
@@ -1533,27 +1561,63 @@ export function layoutRoadmap(
 	}
 
 	const legend = createLegend(document, theme, options);
-	if (legend) elements.push(legend);
-	const bounds = unionRectangles(
-		elements.map((element) =>
-			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
-		),
-	);
+	if (legend) {
+		// The legend anchors to the chart's own top-left corner, not to the
+		// working corridor: a wide-spread chart crops to its content, and a
+		// corner pinned at an absolute x would drag the canvas edge with it,
+		// pushing the whole chart off-center. When content already occupies
+		// the corner (tall legends, top-left clusters), the legend backs off
+		// leftward just far enough to stay clear.
+		const chartBounds = unionRectangles(
+			elements.map((element) =>
+				element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
+			),
+		);
+		const cornerBand = elements
+			.map((element) => (element.kind === "note" ? paintedNodeFrameRectangle(element) : element))
+			.filter(
+				(rect) =>
+					rect.y < legend.y + legend.height + options.overlapPadding &&
+					rectBottom(rect) > legend.y - options.overlapPadding,
+			);
+		const bandLeft = Math.min(Number.POSITIVE_INFINITY, ...cornerBand.map((rect) => rect.x));
+		legend.x = Math.min(chartBounds.x, bandLeft - options.overlapPadding * 2 - legend.width);
+		elements.push(legend);
+	}
+	// Board hulls paint around their member cards with curve overshoot
+	// (organic bulge, scallops) that the group's layout rect knows nothing
+	// about; without this bleed a cropped canvas trims the hull edge.
+	const boardPaintBleed = 12;
+	const paintedBounds = (): Rect =>
+		unionRectangles(
+			elements.map((element) => {
+				if (element.kind === "note") return paintedNodeFrameRectangle(element);
+				if (element.kind === "group") return inflateRectangle(element, boardPaintBleed);
+				return element;
+			}),
+		);
+	const bounds = paintedBounds();
 	// The canvas crops to content on both axes: `width` is only the working
 	// corridor the solver spreads into, never a promise about the final
 	// canvas — the SVG hugs the chart exactly as it always has vertically.
 	const dx = options.padding - bounds.x;
 	const dy = bounds.y < options.padding / 2 ? options.padding / 2 - bounds.y : 0;
 	if (dx || dy) moveAll(elements, connectors, dx, dy);
-	const movedBounds = unionRectangles(
-		elements.map((element) =>
-			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
-		),
-	);
-	const width = Math.ceil(rectRight(movedBounds) + options.endPaddingX);
-	const height = Math.ceil(
+	const movedBounds = paintedBounds();
+	let width = Math.ceil(rectRight(movedBounds) + options.endPaddingX);
+	let height = Math.ceil(
 		Math.max(options.minHeight, rectBottom(movedBounds) + options.endPaddingY),
 	);
+	if (options.canvasScale > 1) {
+		// The canvas grows around the finished chart in both dimensions:
+		// content re-centers and the margins become open ground (the themes'
+		// background artifacts settle there). The chart itself is unchanged.
+		const grownWidth = Math.ceil(width * options.canvasScale);
+		const grownHeight = Math.ceil(height * options.canvasScale);
+		moveAll(elements, connectors, (grownWidth - width) / 2, (grownHeight - height) / 2);
+		width = grownWidth;
+		height = grownHeight;
+	}
 	const titleStep = document.steps.find((step) => step.type === "heading" && step.level === 1);
 	const title = titleStep ? inlineToPlainText(titleStep.content) : "Roadmap";
 	const artifactAvoidance = [

@@ -23,7 +23,20 @@ describe("document layout settings", () => {
 		expect(generated.layout.width - contentRight).toBeLessThan(60);
 	});
 
-	test("layout spread widens the chart's horizontal reach; API knobs win", () => {
+	test("canvas factor grows both dimensions around a centered chart", () => {
+		const tight = generateRoadmap(source);
+		const grown = generateRoadmap(`---\nroadmap:\n  layout:\n    canvas: 1.5\n---\n${source}`);
+		expect(grown.layout.width).toBe(Math.ceil(tight.layout.width * 1.5));
+		expect(grown.layout.height).toBe(Math.ceil(tight.layout.height * 1.5));
+		const heading = (layout: typeof tight.layout) =>
+			layout.elements.find((element) => element.kind === "heading");
+		const dx = (grown.layout.width - tight.layout.width) / 2;
+		const dy = (grown.layout.height - tight.layout.height) / 2;
+		expect(heading(grown.layout)?.x).toBeCloseTo((heading(tight.layout)?.x ?? 0) + dx, 5);
+		expect(heading(grown.layout)?.y).toBeCloseTo((heading(tight.layout)?.y ?? 0) + dy, 5);
+	});
+
+	test("two-column clusters widen and shorten the chart; API knobs win", () => {
 		const busy = [
 			"# T",
 			"",
@@ -34,12 +47,15 @@ describe("document layout settings", () => {
 			]),
 		].join("\n");
 		const cozy = generateRoadmap(busy);
-		const wide = generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 1.6\n---\n${busy}`);
+		const wide = generateRoadmap(`---\nroadmap:\n  layout:\n    clusterColumns: 2\n---\n${busy}`);
+		// Clusters tile their uniform box in two columns: wider, shorter.
 		expect(wide.layout.width).toBeGreaterThan(cozy.layout.width);
-		// Explicit API knobs override the spread-derived values.
-		const apiWins = generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 1.6\n---\n${busy}`, {
-			layout: { groupGap: 176, branchGap: 40 },
-		});
+		expect(wide.layout.height).toBeLessThan(cozy.layout.height);
+		// Explicit API knobs override the document's setting.
+		const apiWins = generateRoadmap(
+			`---\nroadmap:\n  layout:\n    clusterColumns: 2\n---\n${busy}`,
+			{ layout: { clusterColumns: 1 } },
+		);
 		expect(apiWins.layout.width).toBeLessThan(wide.layout.width);
 	});
 
@@ -73,8 +89,11 @@ describe("document layout settings", () => {
 
 	test("invalid layout values fail with helpful messages", () => {
 		expect(() =>
-			generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 0.2\n---\n${source}`),
-		).toThrowError(/spread must be a number between 0.6 and 2/u);
+			generateRoadmap(`---\nroadmap:\n  layout:\n    canvas: 0.5\n---\n${source}`),
+		).toThrowError(/canvas must be a number between 1 and 3/u);
+		expect(() =>
+			generateRoadmap(`---\nroadmap:\n  layout:\n    clusterColumns: 3\n---\n${source}`),
+		).toThrowError(/clusterColumns must be 1 or 2/u);
 		expect(() =>
 			generateRoadmap(`---\nroadmap:\n  layout:\n    spacing: dense\n---\n${source}`),
 		).toThrowError(/spacing must be "compact", "cozy", or "roomy"/u);

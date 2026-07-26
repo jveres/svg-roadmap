@@ -294,10 +294,14 @@ function parseLayout(value: FrontmatterValue | undefined): RoadmapSettings["layo
 	if (!isMap(value)) {
 		throw new RoadmapFrontmatterError("The roadmap layout must be a mapping.");
 	}
-	assertKnownKeys(value, ["spread", "columns", "spacing"], "layout");
-	const spread = value.spread;
-	if (spread !== undefined && (typeof spread !== "number" || spread < 0.6 || spread > 2)) {
-		throw new RoadmapFrontmatterError("The layout spread must be a number between 0.6 and 2.");
+	assertKnownKeys(value, ["canvas", "clusterColumns", "columns", "spacing"], "layout");
+	const canvas = value.canvas;
+	if (canvas !== undefined && (typeof canvas !== "number" || canvas < 1 || canvas > 3)) {
+		throw new RoadmapFrontmatterError("The layout canvas must be a number between 1 and 3.");
+	}
+	const clusterColumns = value.clusterColumns;
+	if (clusterColumns !== undefined && clusterColumns !== 1 && clusterColumns !== 2) {
+		throw new RoadmapFrontmatterError("The layout clusterColumns must be 1 or 2.");
 	}
 	const columns = value.columns;
 	if (
@@ -311,7 +315,8 @@ function parseLayout(value: FrontmatterValue | undefined): RoadmapSettings["layo
 		throw new RoadmapFrontmatterError('The layout spacing must be "compact", "cozy", or "roomy".');
 	}
 	return {
-		...(spread !== undefined ? { spread } : {}),
+		...(canvas !== undefined ? { canvas } : {}),
+		...(clusterColumns !== undefined ? { clusterColumns } : {}),
 		...(columns !== undefined ? { columns } : {}),
 		...(spacing !== undefined ? { spacing } : {}),
 	};
