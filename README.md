@@ -307,6 +307,12 @@ roadmap:
   theme:
     preset: sci-fi
     mode: dark
+  title: Engineering roadmap 2026     # accessible <title>; defaults to the H1
+  description: Our path to production # accessible <desc>
+  layout:
+    spread: 1.3      # horizontal reach factor (0.6–2); default 1
+    columns: 3       # grid columns per row before wrapping; default unlimited
+    spacing: compact # compact | cozy | roomy — scales the vertical rhythm
   background:
     enabled: true
     seed: engineering-2026
@@ -324,6 +330,19 @@ a number from `0` to `4` scales the motion. No scripts are involved,
 tempo. Programmatic `theme` options
 override the front-matter theme, which lets an editor follow the system color
 scheme without rewriting its source.
+
+`layout` carries the document's curated layout intent. The canvas always
+crops to the chart's content on both axes — a roadmap with a single small
+grid renders as a small SVG, ready to embed — so neither knob promises
+pixels; they shape proportions. `spread` scales the horizontal reach
+(spine-to-cluster distance, branch gaps, and the working corridor) for a
+wider or narrower chart; `spacing` scales the vertical rhythm gaps
+coherently (`compact` ×0.8, `roomy` ×1.25). Solver clearances stay fixed
+in both, so a document can tune proportions but never lay out a broken
+chart; the raw gap values remain API-only (`options.layout`), and explicit
+API options always win over front matter. `title` and `description` set
+the SVG's accessible name and description, defaulting to the document's
+H1.
 
 ### Document-defined tags
 

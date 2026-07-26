@@ -1,4 +1,4 @@
-import { layoutRoadmap } from "./layout.ts";
+import { documentLayoutOptions, layoutRoadmap } from "./layout.ts";
 import { initializeRoadmapMarkdown, parseRoadmapMarkdown, RoadmapParser } from "./markdown.ts";
 import { renderRoadmapSvg } from "./render.ts";
 import { applyDocumentTags } from "./theme.ts";
@@ -26,7 +26,7 @@ export {
 	setMeasurementProvider,
 	type TextMeasurementStyle,
 } from "./core/inline.ts";
-export { layoutRoadmap } from "./layout.ts";
+export { documentLayoutOptions, layoutRoadmap } from "./layout.ts";
 export {
 	createMarkdownOptions,
 	initializeRoadmapMarkdown,
@@ -64,16 +64,22 @@ function generateFromDocument(
 	// Document-defined tags extend the theme's taxonomy; identity is
 	// preserved when the front matter declares none.
 	const theme = applyDocumentTags(resolved, document.settings.tags);
-	// The document can hide the legend; an explicit API option still wins.
+	// Document-authored layout intent (width, columns, spacing) resolves
+	// first; explicit API options still win, legend included.
 	const layout = layoutRoadmap(document, theme, {
 		showLegend: document.settings.legend,
+		...documentLayoutOptions(document.settings.layout),
 		...options.layout,
 	});
 	const animatedBackground =
 		options.render?.animatedBackground ?? document.settings.background.animated;
+	const title = options.render?.title ?? document.settings.title;
+	const description = options.render?.description ?? document.settings.description;
 	const svg = renderRoadmapSvg(layout, theme, {
 		...options.render,
 		...(animatedBackground !== undefined ? { animatedBackground } : {}),
+		...(title !== undefined ? { title } : {}),
+		...(description !== undefined ? { description } : {}),
 	});
 	return { document, layout, svg, theme };
 }

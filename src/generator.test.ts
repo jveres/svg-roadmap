@@ -570,7 +570,9 @@ Standalone note.
 		}
 
 		expect(overlaps).toEqual([]);
-		expect(generated.layout.width).toBeGreaterThanOrEqual(1184);
+		// The canvas crops to content, so width reflects the chart, not the
+		// working corridor.
+		expect(generated.layout.width).toBeGreaterThan(300);
 		expect(generated.layout.height).toBeGreaterThan(400);
 	});
 

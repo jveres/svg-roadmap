@@ -25,6 +25,8 @@ import type {
 	RoadmapDocument,
 	RoadmapLayout,
 	RoadmapLayoutOptions,
+	RoadmapLayoutSettings,
+	RoadmapSpacing,
 	RoadmapTheme,
 	RoadmapTopic,
 	RoadmapTopicGroup,
@@ -95,6 +97,64 @@ const defaults: RequiredLayoutOptions = {
 	maxGridColumns: Number.MAX_SAFE_INTEGER,
 	showLegend: true,
 };
+
+/** The gaps a document's `spacing` setting scales — vertical rhythm and
+ * clustering air. Solver clearances (overlap padding, spine clearance,
+ * branch gaps) stay fixed so density can never produce a broken chart. */
+const spacingScaledGaps = [
+	"stepGap",
+	"noteStepGap",
+	"gridStepGap",
+	"treeStepGap",
+	"chapterContentGap",
+	"chapterDescriptionGap",
+	"treeDescriptionGap",
+	"commentGap",
+	"itemGap",
+	"gridItemGap",
+] as const satisfies readonly (keyof RequiredLayoutOptions)[];
+
+/** The knobs a document's `spread` setting scales — the horizontal reach:
+ * spine-to-cluster distance, branch gaps, and the working corridor. */
+const spreadScaledOptions = [
+	"width",
+	"groupGap",
+	"branchGapLeftOuter",
+	"branchGapLeftInner",
+	"branchGapRightOuter",
+	"branchGapRightInner",
+] as const satisfies readonly (keyof RequiredLayoutOptions)[];
+
+const spacingFactors: Readonly<Record<RoadmapSpacing, number>> = {
+	compact: 0.8,
+	cozy: 1,
+	roomy: 1.25,
+};
+
+/**
+ * Translates a document's curated layout settings into layout options.
+ * Explicit API options merge after these, so the host always wins.
+ */
+export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapLayoutOptions {
+	const scaled: { -readonly [K in keyof RoadmapLayoutOptions]?: RoadmapLayoutOptions[K] } = {};
+	const factor = spacingFactors[settings.spacing ?? "cozy"];
+	if (factor !== 1) {
+		for (const gap of spacingScaledGaps) {
+			scaled[gap] = Math.round(defaults[gap] * factor);
+		}
+	}
+	if (settings.spread !== undefined && settings.spread !== 1) {
+		// Spread scales the chart's horizontal reach; the canvas still crops
+		// to the content, so this trades proportions, never promises pixels.
+		for (const option of spreadScaledOptions) {
+			scaled[option] = Math.round(defaults[option] * settings.spread);
+		}
+	}
+	return {
+		...scaled,
+		...(settings.columns !== undefined ? { maxGridColumns: settings.columns } : {}),
+	};
+}
 
 function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
 	const resolved = { ...defaults, ...options };
@@ -1479,7 +1539,10 @@ export function layoutRoadmap(
 			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
 		),
 	);
-	const dx = bounds.x < options.padding ? options.padding - bounds.x : 0;
+	// The canvas crops to content on both axes: `width` is only the working
+	// corridor the solver spreads into, never a promise about the final
+	// canvas — the SVG hugs the chart exactly as it always has vertically.
+	const dx = options.padding - bounds.x;
 	const dy = bounds.y < options.padding / 2 ? options.padding / 2 - bounds.y : 0;
 	if (dx || dy) moveAll(elements, connectors, dx, dy);
 	const movedBounds = unionRectangles(
@@ -1487,7 +1550,7 @@ export function layoutRoadmap(
 			element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
 		),
 	);
-	const width = Math.ceil(Math.max(options.width, rectRight(movedBounds) + options.endPaddingX));
+	const width = Math.ceil(rectRight(movedBounds) + options.endPaddingX);
 	const height = Math.ceil(
 		Math.max(options.minHeight, rectBottom(movedBounds) + options.endPaddingY),
 	);

@@ -11,6 +11,7 @@ export const defaultRoadmapSettings: RoadmapSettings = {
 	background: { enabled: false, seed: "default", density: 0.55, size: 1, animated: false },
 	tags: {},
 	legend: true,
+	layout: {},
 };
 
 export class RoadmapFrontmatterError extends Error {
@@ -260,15 +261,58 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 	if (!isMap(roadmap)) {
 		throw new RoadmapFrontmatterError("The roadmap front-matter value must be a mapping.");
 	}
-	assertKnownKeys(roadmap, ["theme", "background", "tags", "legend"], "roadmap");
+	assertKnownKeys(
+		roadmap,
+		["theme", "background", "tags", "legend", "layout", "title", "description"],
+		"roadmap",
+	);
 	const legend = roadmap.legend ?? defaultRoadmapSettings.legend;
 	if (typeof legend !== "boolean") {
 		throw new RoadmapFrontmatterError("The roadmap legend setting must be a boolean.");
+	}
+	const title = roadmap.title;
+	if (title !== undefined && typeof title !== "string") {
+		throw new RoadmapFrontmatterError("The roadmap title must be a string.");
+	}
+	const description = roadmap.description;
+	if (description !== undefined && typeof description !== "string") {
+		throw new RoadmapFrontmatterError("The roadmap description must be a string.");
 	}
 	return {
 		theme: parseTheme(roadmap.theme),
 		background: parseBackground(roadmap.background),
 		tags: parseTags(roadmap.tags),
 		legend,
+		layout: parseLayout(roadmap.layout),
+		...(title?.trim() ? { title: title.trim() } : {}),
+		...(description?.trim() ? { description: description.trim() } : {}),
+	};
+}
+
+function parseLayout(value: FrontmatterValue | undefined): RoadmapSettings["layout"] {
+	if (value === undefined) return defaultRoadmapSettings.layout;
+	if (!isMap(value)) {
+		throw new RoadmapFrontmatterError("The roadmap layout must be a mapping.");
+	}
+	assertKnownKeys(value, ["spread", "columns", "spacing"], "layout");
+	const spread = value.spread;
+	if (spread !== undefined && (typeof spread !== "number" || spread < 0.6 || spread > 2)) {
+		throw new RoadmapFrontmatterError("The layout spread must be a number between 0.6 and 2.");
+	}
+	const columns = value.columns;
+	if (
+		columns !== undefined &&
+		(typeof columns !== "number" || !Number.isInteger(columns) || columns < 1)
+	) {
+		throw new RoadmapFrontmatterError("The layout columns must be a whole number of at least 1.");
+	}
+	const spacing = value.spacing;
+	if (spacing !== undefined && spacing !== "compact" && spacing !== "cozy" && spacing !== "roomy") {
+		throw new RoadmapFrontmatterError('The layout spacing must be "compact", "cozy", or "roomy".');
+	}
+	return {
+		...(spread !== undefined ? { spread } : {}),
+		...(columns !== undefined ? { columns } : {}),
+		...(spacing !== undefined ? { spacing } : {}),
 	};
 }

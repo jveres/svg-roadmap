@@ -7,6 +7,83 @@ import type { TypographyTheme } from "./types.ts";
 
 const source = "# Title\n\n* Chapter\n  * Topic [recommended]\n    * Child\n";
 
+describe("document layout settings", () => {
+	const grid =
+		"# T\n\n* Chapter\n  + Col one\n    * A\n  * Col two\n    * B\n  * Col three\n    * C\n";
+
+	test("the canvas crops to content on both axes", () => {
+		const generated = generateRoadmap(source);
+		const contentRight = Math.max(
+			...generated.layout.elements.map((element) => element.x + element.width),
+		);
+		const contentLeft = Math.min(...generated.layout.elements.map((element) => element.x));
+		// No dead bands: content starts at the padding and the canvas ends
+		// just past the rightmost element, regardless of the working width.
+		expect(contentLeft).toBeLessThan(60);
+		expect(generated.layout.width - contentRight).toBeLessThan(60);
+	});
+
+	test("layout spread widens the chart's horizontal reach; API knobs win", () => {
+		const busy = [
+			"# T",
+			"",
+			"* Chapter",
+			...[1, 2, 3, 4].flatMap((n) => [
+				`  * Topic number ${n} with a label`,
+				...[1, 2, 3].map((child) => `    * Child ${n}.${child} content`),
+			]),
+		].join("\n");
+		const cozy = generateRoadmap(busy);
+		const wide = generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 1.6\n---\n${busy}`);
+		expect(wide.layout.width).toBeGreaterThan(cozy.layout.width);
+		// Explicit API knobs override the spread-derived values.
+		const apiWins = generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 1.6\n---\n${busy}`, {
+			layout: { groupGap: 176, branchGap: 40 },
+		});
+		expect(apiWins.layout.width).toBeLessThan(wide.layout.width);
+	});
+
+	test("layout columns wraps grids into chunks", () => {
+		const unlimited = generateRoadmap(grid);
+		const wrapped = generateRoadmap(`---\nroadmap:\n  layout:\n    columns: 1\n---\n${grid}`);
+		expect(wrapped.layout.height).toBeGreaterThan(unlimited.layout.height);
+	});
+
+	test("spacing scales the rhythm coherently", () => {
+		const compact = generateRoadmap(
+			`---\nroadmap:\n  layout:\n    spacing: compact\n---\n${source}`,
+		);
+		const cozy = generateRoadmap(source);
+		const roomy = generateRoadmap(`---\nroadmap:\n  layout:\n    spacing: roomy\n---\n${source}`);
+		expect(compact.layout.height).toBeLessThan(cozy.layout.height);
+		expect(cozy.layout.height).toBeLessThan(roomy.layout.height);
+	});
+
+	test("title and description reach the accessible SVG; API wins", () => {
+		const fromDocument = generateRoadmap(
+			`---\nroadmap:\n  title: Authored title\n  description: Authored description\n---\n${source}`,
+		);
+		expect(fromDocument.svg).toContain(">Authored title</title>");
+		expect(fromDocument.svg).toContain(">Authored description</desc>");
+		const apiWins = generateRoadmap(`---\nroadmap:\n  title: Authored title\n---\n${source}`, {
+			render: { title: "Host title" },
+		});
+		expect(apiWins.svg).toContain(">Host title</title>");
+	});
+
+	test("invalid layout values fail with helpful messages", () => {
+		expect(() =>
+			generateRoadmap(`---\nroadmap:\n  layout:\n    spread: 0.2\n---\n${source}`),
+		).toThrowError(/spread must be a number between 0.6 and 2/u);
+		expect(() =>
+			generateRoadmap(`---\nroadmap:\n  layout:\n    spacing: dense\n---\n${source}`),
+		).toThrowError(/spacing must be "compact", "cozy", or "roomy"/u);
+		expect(() =>
+			generateRoadmap(`---\nroadmap:\n  layout:\n    colums: 2\n---\n${source}`),
+		).toThrowError(/colums/u);
+	});
+});
+
 describe("theme customization options", () => {
 	test("halftone board pattern renders staggered dots", () => {
 		const generated = generateRoadmap(source, {
@@ -108,8 +185,14 @@ roadmap:
 
 # Motion
 
-* Chapter
-  * Topic
+* Chapter one
+  * A reasonably wide topic label
+  * Another topic beside it
+  * A third topic for body
+
+* Chapter two
+  * More content to give the canvas room
+  * Where background artifacts can settle
 `;
 		const animated = generateRoadmap(animatedSource);
 		expect(animated.layout.backgroundArtifacts.length).toBeGreaterThan(0);

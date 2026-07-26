@@ -159,12 +159,38 @@ export interface RoadmapTagSetting {
 	readonly foreground?: string;
 }
 
+/** How dense the chart's vertical rhythm is; `cozy` is the default. */
+export type RoadmapSpacing = "compact" | "cozy" | "roomy";
+
+/**
+ * Document-authored layout intent. Deliberately curated: real authoring
+ * decisions only (canvas proportion, grid width, overall density) — never
+ * raw solver gaps, which would let a document lay out a broken chart.
+ */
+export interface RoadmapLayoutSettings {
+	/**
+	 * Scales the layout's working corridor (default `1`): wider spread makes
+	 * a wider, shorter chart. The canvas always crops to the content, so
+	 * spread trades proportions, never promises pixels.
+	 */
+	readonly spread?: number;
+	/** Maximum grid columns per row before the grid wraps into chunks. */
+	readonly columns?: number;
+	/** Scales the rhythm gaps coherently; solver clearances stay fixed. */
+	readonly spacing?: RoadmapSpacing;
+}
+
 export interface RoadmapSettings {
 	readonly theme: RoadmapThemeSettings;
 	readonly background: RoadmapBackgroundSettings;
 	readonly tags: Readonly<Record<string, RoadmapTagSetting>>;
 	/** Whether the tag legend renders. Defaults to `true`. */
 	readonly legend: boolean;
+	readonly layout: RoadmapLayoutSettings;
+	/** Accessible chart title; defaults to the document's H1. */
+	readonly title?: string;
+	/** Accessible chart description. */
+	readonly description?: string;
 }
 
 export interface RoadmapDocument {
@@ -280,6 +306,13 @@ export interface LayoutNode extends Rect {
 	groupId?: string;
 	/** Detail-note Markdown, emitted verbatim as `data-roadmap-note`. */
 	readonly note?: string;
+	/**
+	 * The card's padding tokens, the single source of truth for content air.
+	 * Shape fitting (capsule ends, blob bulge) adds clearance on top of
+	 * these, never substitutes its own constants.
+	 */
+	readonly paddingX?: number;
+	readonly paddingY?: number;
 	/** The theme card shape this node is painted with; drives frame fitting. */
 	readonly frameShape?: "rounded" | "chamfered" | "capsule" | "organic" | "cameo" | "petal";
 }
