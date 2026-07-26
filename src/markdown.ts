@@ -482,6 +482,48 @@ function countTopics(topics: readonly RoadmapTopic[]): { count: number; maxDepth
 	return { count, maxDepth };
 }
 
+/**
+ * Assigns chart marker numbers to footnotes in order of first reference,
+ * walking the document exactly as it reads. References paint the ordinal
+ * and referenced definitions carry it, so the footnotes block below the
+ * chart lists rows in marker order; unreferenced definitions stay unmarked.
+ */
+function numberFootnotes(
+	steps: readonly RoadmapStep[],
+	footnotes: readonly FootnoteDefinition[],
+): void {
+	const ordinals = new Map<string, number>();
+	const visit = (nodes: readonly InlineNode[]): void => {
+		for (const node of nodes) {
+			if (node.type === "footnoteReference") {
+				const ordinal = ordinals.get(node.label) ?? ordinals.size + 1;
+				ordinals.set(node.label, ordinal);
+				(node as { ordinal?: number }).ordinal = ordinal;
+				continue;
+			}
+			if ("children" in node) visit(node.children);
+		}
+	};
+	const visitTopics = (topics: readonly RoadmapTopic[]): void => {
+		for (const topic of topics) {
+			visit(topic.content);
+			visit(topic.description);
+			visitTopics(topic.children);
+		}
+	};
+	for (const step of steps) {
+		visit(step.content);
+		if (step.type === "chapter") {
+			visit(step.description);
+			for (const group of step.groups) visitTopics(group.topics);
+		}
+	}
+	for (const definition of footnotes) {
+		const ordinal = ordinals.get(definition.label);
+		if (ordinal !== undefined) (definition as { ordinal?: number }).ordinal = ordinal;
+	}
+}
+
 function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): RoadmapDocument {
 	let sequence = 0;
 	const context: ParseContext = {
@@ -546,6 +588,8 @@ function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): Roadmap
 				break;
 		}
 	}
+
+	numberFootnotes(steps, footnotes);
 
 	let topics = 0;
 	let maxDepth = 0;

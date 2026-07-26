@@ -7,7 +7,7 @@ import {
 	rectRight,
 	unionRectangles,
 } from "./core/geometry.ts";
-import { inlineToPlainText, measureTrackedText, wrapInline } from "./core/inline.ts";
+import { inlineToPlainText, measureText, measureTrackedText, wrapInline } from "./core/inline.ts";
 import { lightTheme } from "./theme.ts";
 import type {
 	CardTheme,
@@ -75,6 +75,7 @@ interface RequiredLayoutOptions {
 	/** Grows the cropped canvas; the chart centers in the extra room. */
 	readonly canvasScale: number;
 	readonly showLegend: boolean;
+	readonly showFootnotes: boolean;
 }
 
 const defaults: RequiredLayoutOptions = {
@@ -109,6 +110,7 @@ const defaults: RequiredLayoutOptions = {
 	clusterColumns: 1,
 	canvasScale: 1,
 	showLegend: true,
+	showFootnotes: true,
 };
 
 /** The gaps a document's `spacing` setting scales — vertical rhythm and
@@ -1695,6 +1697,96 @@ export function layoutRoadmap(
 		connectors.push({ id: `spine-${index}`, kind: "spine", from, to, depth: 0 });
 	}
 
+	// Footnotes gather below the chart like a figure's notes block: rows in
+	// marker order, each opening with its superscript ordinal, wrapped as
+	// one quiet legend-styled board at the content's left edge.
+	let footnotesBlock: LayoutNode | undefined;
+	if (options.showFootnotes) {
+		const referenced = document.footnotes
+			.filter((definition) => definition.ordinal !== undefined)
+			.sort((left, right) => (left.ordinal ?? 0) - (right.ordinal ?? 0));
+		if (referenced.length > 0) {
+			const noteTypography = theme.floatingNote.typography;
+			// Pin paint scales to 1: the note tier's optical squeeze would paint
+			// smaller than the box is sized for, and the slack would push the
+			// text off the legend's shared left column.
+			const typography: TypographyTheme = {
+				...noteTypography,
+				fontSize: Math.round(theme.legend.fontSize * 1.1),
+				fontStyle: "normal",
+				lineHeight: 1.45,
+				renderScale: 1,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			};
+			// The same inset convention the legend paints with, so a shared x
+			// puts both boards on one visual left rail.
+			const paddingX = theme.boards.legend.padding + 7;
+			const paddingY = theme.boards.legend.padding + 2;
+			const contentWidth = 620 - paddingX * 2;
+			// Each footnote wraps with a hanging indent: continuation lines
+			// start under the text, not under the marker.
+			const lines: TextLine[] = [];
+			for (const definition of referenced) {
+				const marker = String(definition.ordinal);
+				const indent =
+					measureText(
+						marker,
+						typography.fontSize * 0.75,
+						[],
+						typography.fontWeight,
+						typography.fontFamily,
+					) +
+					measureText(" ", typography.fontSize, [], typography.fontWeight, typography.fontFamily);
+				const nodes: InlineNode[] = [
+					{ type: "superscript", children: [{ type: "text", value: marker }] },
+					{ type: "text", value: " " },
+					...definition.content,
+				];
+				const budgets = Array.from({ length: 64 }, (_, index) =>
+					index === 0 ? contentWidth : contentWidth - indent,
+				);
+				const wrapped = wrapInline(
+					nodes,
+					contentWidth,
+					typography,
+					theme.inline.abbreviationIndicatorSize,
+					budgets,
+				);
+				for (const [index, line] of wrapped.entries()) {
+					lines.push(index === 0 ? line : { ...line, indent });
+				}
+			}
+			const text = layoutText(lines, typography, theme.inline.abbreviationIndicatorSize);
+			const width = Math.ceil(
+				Math.max(1, ...lines.map((line) => line.width + (line.indent ?? 0))) + paddingX * 2,
+			);
+			const block: LayoutNode = {
+				kind: "note",
+				role: "floating-note",
+				placement: "footnotes",
+				id: "footnotes",
+				depth: 0,
+				x: 0,
+				y: 0,
+				width,
+				height: Math.ceil(lines.length * text.lineHeight + paddingY * 2),
+				text: { ...text, align: "start" },
+				tags: [],
+			};
+			const contentBounds = unionRectangles(
+				elements.map((element) =>
+					element.kind === "note" ? paintedNodeFrameRectangle(element) : element,
+				),
+			);
+			block.x = contentBounds.x;
+			block.y = rectBottom(contentBounds) + options.stepGap;
+			elements.push(block);
+			occupied.push(inflateRectangle(block, options.overlapPadding));
+			footnotesBlock = block;
+		}
+	}
+
 	const legend = createLegend(document, theme, options);
 	if (legend) {
 		// The legend anchors to the chart's own top-left corner, not to the
@@ -1718,6 +1810,9 @@ export function layoutRoadmap(
 		const bandLeft = Math.min(Number.POSITIVE_INFINITY, ...cornerBand.map((rect) => rect.x));
 		legend.x = Math.min(chartBounds.x, bandLeft - options.overlapPadding * 2 - legend.width);
 		elements.push(legend);
+		// The two furniture blocks share one left rail: footnotes align under
+		// wherever the legend settled.
+		if (footnotesBlock) footnotesBlock.x = legend.x;
 	}
 	// Board hulls paint around their member cards with curve overshoot
 	// (organic bulge, scallops) that the group's layout rect knows nothing

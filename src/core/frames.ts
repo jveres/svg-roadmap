@@ -42,16 +42,21 @@ export function paintedTextLines(node: LayoutNode): PaintedTextLine[] {
 	const blockTop = node.y + (node.height - totalHeight) / 2;
 	const renderScaleX = node.text.renderScaleX ?? 1;
 
-	// Aligned blocks (milestone labels) keep the block's symmetric margin
-	// but rag their lines toward one edge instead of centering each line.
-	const widest = Math.max(0, ...node.text.lines.map((line) => line.width * scale * renderScaleX));
+	// Aligned blocks (milestone labels, footnotes) keep the block's
+	// symmetric margin but rag their lines toward one edge instead of
+	// centering each line; a line's hanging indent shifts it further in.
+	const widest = Math.max(
+		0,
+		...node.text.lines.map((line) => (line.width + (line.indent ?? 0)) * scale * renderScaleX),
+	);
 	const margin = Math.max(0, (node.width - widest) / 2);
 	return node.text.lines.map((line, index): PaintedTextLine => {
 		const y = blockTop + index * lineHeight;
 		const width = line.width * scale * renderScaleX;
+		const indent = (line.indent ?? 0) * scale * renderScaleX;
 		const x =
 			node.text.align === "start"
-				? node.x + margin
+				? node.x + margin + indent
 				: node.text.align === "end"
 					? node.x + node.width - margin - width
 					: node.x + (node.width - width) / 2;
@@ -228,9 +233,15 @@ function cachedContentFrame(node: LayoutNode, create: () => Rect): Rect {
 }
 
 export function paintedNodeFrameRectangle(node: LayoutNode): Rect {
-	// Milestone labels paint a plain pill exactly on their layout box; the
-	// content-fitted note frames would report a bubble that isn't there.
-	if (node.kind !== "note" || node.placement === "milestone-label") return node;
+	// Milestone labels and the footnotes board paint on their layout box;
+	// the content-fitted note frames would report a bubble that isn't there.
+	if (
+		node.kind !== "note" ||
+		node.placement === "milestone-label" ||
+		node.placement === "footnotes"
+	) {
+		return node;
+	}
 	return cachedContentFrame(node, () =>
 		node.frameShape === "capsule" ? fittedCapsuleFrame(node) : fittedNoteContentRectangle(node),
 	);

@@ -744,7 +744,9 @@ function renderText(node: LayoutNode, theme: RoadmapTheme, prefix: string): stri
 	// Milestone labels own their alignment (ragged toward the station), which
 	// flowing paint would override with per-line centering — they always
 	// paint positioned, whatever the theme prefers.
-	if (node.placement === "milestone-label") return renderPositionedText(node, theme, prefix);
+	if (node.placement === "milestone-label" || node.placement === "footnotes") {
+		return renderPositionedText(node, theme, prefix);
+	}
 	if ((theme.textPainting ?? "positioned") === "positioned") {
 		return renderPositionedText(node, theme, prefix);
 	}
@@ -1021,13 +1023,31 @@ function renderNoteMarker(node: LayoutNode, theme: RoadmapTheme): string {
 	return `<path class="roadmap__note-marker" d="M ${roundCoordinate(x - fold)} ${y} L ${x} ${roundCoordinate(y - fold)} L ${x} ${y} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
 }
 
+/**
+ * The footnotes board wears the legend's exact framing — same board theme,
+ * same inset convention — so the two furniture blocks read as one family
+ * and share a left rail when layout aligns their x.
+ */
+function footnotesBoard(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+	const board = theme.boards.legend;
+	const inner = {
+		x: node.x + board.padding + 7,
+		y: node.y + board.padding + 2,
+		width: node.width - (board.padding + 7) * 2,
+		height: node.height - (board.padding + 2) * 2,
+	};
+	const path = boardPath(board, [inner], board.padding, board.padding);
+	const outline = boardOutline(board);
+	return `<path class="roadmap__footnotes-board" d="${path}" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"${outline}/>`;
+}
+
 function renderNode(
 	node: LayoutNode,
 	theme: RoadmapTheme,
 	prefix: string,
 	noteMarkers = false,
 ): string {
-	const role = elementRole(node);
+	const role = node.placement === "footnotes" ? "footnotes" : elementRole(node);
 	const tags = node.tags.join(",");
 	const source = node.sourceRange
 		? `${node.sourceRange.start.line}:${node.sourceRange.start.column}-${node.sourceRange.end.line}:${node.sourceRange.end.column}`
@@ -1035,13 +1055,17 @@ function renderNode(
 	const card = cardTheme(node, theme);
 	// Milestone labels are station signage, not comment bubbles: a quiet
 	// pill tinted with the spine's own paint, so it reads as part of the
-	// line in every theme and mode.
+	// line in every theme and mode. The footnotes block borrows the
+	// legend's board treatment, reading as chart furniture rather than a
+	// comment.
 	const frame =
 		node.placement === "milestone-label"
 			? `<rect class="roadmap__milestone-label" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${roundCoordinate(node.height / 2)}" fill="${cssToken("connector-spine-color")}" fill-opacity="0.16"/>`
-			: card
-				? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
-				: "";
+			: node.placement === "footnotes"
+				? footnotesBoard(node, theme, prefix)
+				: card
+					? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
+					: "";
 	// The detail note travels once, as raw Markdown in data-roadmap-note —
 	// exactly what the author wrote. Turning it into rich text is the host's
 	// concern (the workbench renders it with comrak); the chart itself never
@@ -1744,15 +1768,15 @@ export function renderRoadmapSvg(
 		.filter((element): element is LayoutGroup => element.kind === "group")
 		.map((group) => renderGroup(group, layout.elements, theme, prefix))
 		.join("");
+	const legends = layout.elements
+		.filter((element): element is LayoutLegend => element.kind === "legend")
+		.map((legend) => renderLegend(legend, theme, prefix))
+		.join("");
 	const nodes = layout.elements
 		.filter(
 			(element): element is LayoutNode => element.kind !== "group" && element.kind !== "legend",
 		)
 		.map((node) => renderNode(node, theme, prefix, options.noteMarkers === true))
-		.join("");
-	const legends = layout.elements
-		.filter((element): element is LayoutLegend => element.kind === "legend")
-		.map((legend) => renderLegend(legend, theme, prefix))
 		.join("");
 	const responsiveStyle = options.responsive === false ? "" : ' style="max-width:100%;height:auto"';
 	const userCss = options.css ? `\n${escapeStyleText(options.css)}` : "";

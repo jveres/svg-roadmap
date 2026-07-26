@@ -39,7 +39,7 @@ roadmap:
 
 # Feature ++_Tour_++ :sparkles:
 
-:bulb: Everything this chart uses is plain Markdown plus a small front-matter block. **Bold**, _italic_, ==highlights==, ++inserts++, ~~strikethrough~~, `code`, and [links](https://github.com/jveres/roadmap-next) all work inside any text.
+:bulb: Everything this chart uses is plain Markdown plus a small front-matter block.[^md] **Bold**, _italic_, ==highlights==, ++inserts++, ~~strikethrough~~, `code`, and [links](https://github.com/jveres/roadmap-next) all work inside any text.
 
 * :one: Structure
 *:beginner: Chapters come from top-level bullets. A `+` marker starts a ==grid==; nested bullets under a `*` grow ==trees== with connectors.*
@@ -104,5 +104,7 @@ roadmap:
 *[Accent slots]: Named theme colors (green, red, amber, blue, violet, neutral) that custom tags reference instead of hex codes.
 *[Emoji badges]: Tag badges can paint any emoji shortcode on a colored disc.
 *[Fallback badges]: Tags without a definition use the theme's unknown-tag style.
+[^md]: CommonMark plus the GitHub extensions — footnotes render as numbered markers with this block beneath the chart.
+
 *[Right-hand lines]: A `-` marker on the first nested item mirrors the tree lines to the right.
 *[Mirrored indent]: Right-side nesting spends its indent on the right edge, keeping cards left-flush.

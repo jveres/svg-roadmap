@@ -37,9 +37,11 @@ export function inlineToPlainText(nodes: readonly InlineNode[]): string {
 			case "lineBreak":
 				value += " ";
 				break;
-			case "footnoteReference":
-				value += `[${current.label}]`;
+			case "footnoteReference": {
+				const fallback = current.label.match(/^__inline_(\d+)$/u)?.[1] ?? `[${current.label}]`;
+				value += current.ordinal !== undefined ? String(current.ordinal) : fallback;
 				break;
+			}
 			default:
 				pending.push(...[...current.children].reverse());
 		}
@@ -173,9 +175,17 @@ function visitInline(nodes: readonly InlineNode[], state: RunState, runs: Inline
 			case "lineBreak":
 				runs.push({ text: "\n", marks: state.marks });
 				break;
-			case "footnoteReference":
-				runs.push({ text: `[${node.label}]`, marks: [...state.marks, "superscript"] });
+			case "footnoteReference": {
+				// The parser numbers footnotes in order of first reference; the
+				// marker paints that ordinal, matching the footnotes block. An
+				// unnumbered reference falls back to a de-machined label.
+				const fallback = node.label.match(/^__inline_(\d+)$/u)?.[1] ?? `[${node.label}]`;
+				runs.push({
+					text: node.ordinal !== undefined ? String(node.ordinal) : fallback,
+					marks: [...state.marks, "superscript"],
+				});
 				break;
+			}
 			case "tagChip":
 				// The chip is atomic: one run carrying the tag name; wrapping and
 				// painting size it through tagChipMetrics, never per character.
@@ -535,9 +545,14 @@ export function wrapInline(
 				continue;
 			}
 			let value = token;
+			// Super/subscript paints at 0.75em (see markAttributes); measuring
+			// at full size would make textLength stretch the small glyphs back
+			// to full-size advances.
 			const runFontSize = run.abbreviationIndicator
 				? abbreviationIndicatorSize
-				: typography.fontSize;
+				: run.marks.includes("superscript") || run.marks.includes("subscript")
+					? typography.fontSize * 0.75
+					: typography.fontSize;
 			let tokenWidth = measureRun(value, runFontSize, run.marks);
 			let line = lines.at(-1);
 			if (!line) continue;

@@ -679,6 +679,38 @@ Standalone note.
 		expect(hudi.x + hudi.width).toBe(openSource.x + openSource.width);
 	});
 
+	test("footnotes number by first reference and render as a block below the chart", () => {
+		const markdown = `A note referencing twice[^beta] and inline.^[Inline text wins order two.]
+
+* Chapter
+  * Topic[^beta]
+
+[^beta]: The named footnote, referenced first.
+`;
+		const generated = generateRoadmap(markdown);
+		// First reference order: [^beta] is 1, the inline footnote is 2.
+		const beta = generated.document.footnotes.find((note) => note.label === "beta");
+		expect(beta?.ordinal).toBe(1);
+		const block = generated.layout.elements.find(
+			(element) => "text" in element && element.placement === "footnotes",
+		);
+		expect(block).toBeDefined();
+		expect(generated.svg).toContain('data-roadmap-element="footnotes"');
+		expect(generated.svg).toContain("roadmap__footnotes-board");
+		expect(generated.svg).toContain("The named footnote, referenced first.");
+		expect(generated.svg).toContain("Inline text wins order two.");
+		// References paint bare ordinals, not machine labels.
+		expect(generated.svg).not.toContain("__inline_");
+		expect(generated.svg).not.toContain("[beta]");
+		// The block is opt-out and absent without footnotes.
+		expect(
+			generateRoadmapSvgSync(`---\nroadmap:\n  footnotes: false\n---\n\n${markdown}`),
+		).not.toContain("roadmap__footnotes-board");
+		expect(generateRoadmapSvgSync("* Chapter\n  * Topic")).not.toContain(
+			"roadmap__footnotes-board",
+		);
+	});
+
 	test("milestones render as spine stations with labels beside them", () => {
 		const generated = generateRoadmap(`* Chapter one
   * Topic

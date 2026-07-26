@@ -12,6 +12,7 @@ export const defaultRoadmapSettings: RoadmapSettings = {
 	tags: {},
 	legend: true,
 	noteMarkers: false,
+	footnotes: true,
 	layout: {},
 };
 
@@ -276,7 +277,17 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 	}
 	assertKnownKeys(
 		roadmap,
-		["theme", "background", "tags", "legend", "noteMarkers", "layout", "title", "description"],
+		[
+			"theme",
+			"background",
+			"tags",
+			"legend",
+			"noteMarkers",
+			"footnotes",
+			"layout",
+			"title",
+			"description",
+		],
 		"roadmap",
 	);
 	const legend = roadmap.legend ?? defaultRoadmapSettings.legend;
@@ -286,6 +297,10 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 	const noteMarkers = roadmap.noteMarkers ?? defaultRoadmapSettings.noteMarkers;
 	if (typeof noteMarkers !== "boolean") {
 		throw new RoadmapFrontmatterError("The roadmap noteMarkers setting must be a boolean.");
+	}
+	const footnotes = roadmap.footnotes ?? defaultRoadmapSettings.footnotes;
+	if (typeof footnotes !== "boolean") {
+		throw new RoadmapFrontmatterError("The roadmap footnotes setting must be a boolean.");
 	}
 	const title = roadmap.title;
 	if (title !== undefined && typeof title !== "string") {
@@ -301,6 +316,7 @@ export function parseRoadmapFrontmatter(source: string | undefined): RoadmapSett
 		tags: parseTags(roadmap.tags),
 		legend,
 		noteMarkers,
+		footnotes,
 		layout: parseLayout(roadmap.layout),
 		...(title?.trim() ? { title: title.trim() } : {}),
 		...(description?.trim() ? { description: description.trim() } : {}),

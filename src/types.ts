@@ -54,6 +54,12 @@ export interface BreakInline {
 export interface FootnoteReferenceInline {
 	readonly type: "footnoteReference";
 	readonly label: string;
+	/**
+	 * Chart marker number, assigned in order of first reference across the
+	 * document; references paint this ordinal and the footnotes block lists
+	 * matching rows.
+	 */
+	readonly ordinal?: number;
 }
 
 /**
@@ -144,6 +150,9 @@ export type RoadmapStep = RoadmapHeading | RoadmapNote | RoadmapChapter | Roadma
 export interface FootnoteDefinition {
 	readonly label: string;
 	readonly content: readonly InlineNode[];
+	/** Marker number when the definition is referenced; unreferenced
+	 * definitions carry none and stay off the chart. */
+	readonly ordinal?: number;
 }
 
 export type RoadmapColorMode = "light" | "dark";
@@ -226,6 +235,8 @@ export interface RoadmapSettings {
 	 * content behind a click is discoverable. Defaults to `false`.
 	 */
 	readonly noteMarkers: boolean;
+	/** Whether the footnotes block renders under the chart. Defaults to `true`. */
+	readonly footnotes: boolean;
 	readonly layout: RoadmapLayoutSettings;
 	/** Accessible chart title; defaults to the document's H1. */
 	readonly title?: string;
@@ -277,6 +288,8 @@ export interface TextLineSegment {
 export interface TextLine {
 	readonly width: number;
 	readonly segments: readonly TextLineSegment[];
+	/** Extra left inset for this line (hanging indents); unscaled units. */
+	readonly indent?: number;
 }
 
 export type InlineMark =
@@ -324,6 +337,7 @@ export interface LayoutNode extends Rect {
 		| "standalone"
 		| "floating-note"
 		| "milestone-label"
+		| "footnotes"
 		| "chapter"
 		| "grid-description"
 		| "tree-description"
@@ -768,6 +782,7 @@ export interface RoadmapLayoutOptions {
 	/** Final-canvas growth factor; the chart centers in the extra room. */
 	readonly canvasScale?: number;
 	readonly showLegend?: boolean;
+	readonly showFootnotes?: boolean;
 }
 
 export interface RoadmapRenderOptions {

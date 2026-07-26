@@ -68,6 +68,7 @@ function generateFromDocument(
 	// first; explicit API options still win, legend included.
 	const layout = layoutRoadmap(document, theme, {
 		showLegend: document.settings.legend,
+		showFootnotes: document.settings.footnotes,
 		...documentLayoutOptions(document.settings.layout),
 		...options.layout,
 	});
