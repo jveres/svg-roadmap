@@ -259,7 +259,30 @@ function createCardNode(
 			naturalContentWidth(content, card.typography, abbreviationIndicatorSize) + 0.5,
 		),
 	);
-	const lines = wrapInline(content, targetWidth, card.typography, abbreviationIndicatorSize);
+	let lines = wrapInline(content, targetWidth, card.typography, abbreviationIndicatorSize);
+	// Comment bubbles read best when the ragged block follows the hull:
+	// narrower first and last lines, widest middle. Re-wrap with a sine
+	// width profile derived from the flat line count, iterating once more if
+	// the count shifts; short blocks keep the flat wrap.
+	if (kind === "note" && lines.length >= 3) {
+		const profile = (count: number): number[] =>
+			Array.from({ length: count }, (_, index) => {
+				const position = (index + 0.5) / count;
+				return targetWidth * (0.78 + 0.22 * Math.sin(Math.PI * position));
+			});
+		for (let pass = 0; pass < 2; pass += 1) {
+			const shaped = wrapInline(
+				content,
+				targetWidth,
+				card.typography,
+				abbreviationIndicatorSize,
+				profile(lines.length),
+			);
+			const settled = shaped.length === lines.length;
+			lines = shaped;
+			if (settled) break;
+		}
+	}
 	const measuredWidth = Math.max(minContentWidth, ...lines.map((line) => line.width));
 	const text = layoutText(lines, card.typography, abbreviationIndicatorSize);
 	// Notes wrap at the typography's nominal size but paint at renderScale;
@@ -601,10 +624,10 @@ function attachTopicChildren(
 		Math.max(candidate.rect.y, container.y),
 	);
 	context.elements.push(cluster.group, ...cluster.nodes);
-	// Organic hulls paint up to ~8px beyond the group rect; siblings must
-	// clear the painted bulge, not just the box, or adjacent child clusters
-	// visually overlap.
-	context.occupied.push(inflateRectangle(cluster.group, 6));
+	// Organic hulls paint up to ~8px beyond the group rect on each side;
+	// siblings must clear both bulges plus visible daylight, not just the
+	// boxes, or adjacent child clusters read as touching.
+	context.occupied.push(inflateRectangle(cluster.group, 12));
 	// The reference renderer leaves a small gap so links never touch the
 	// parent topic card.
 	const linkGap = 4;

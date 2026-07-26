@@ -131,7 +131,9 @@ change SVG topology.
 
 Notes and chapter descriptions use **content-fitted frames**: the painted
 frame hugs the wrapped text rather than the layout box, so bubbles keep
-consistent padding at any line count. Comment padding is a two-token
+consistent padding at any line count. Blocks of three lines or more wrap
+to a sine width profile — narrower first and last lines, widest middle —
+so the ragged text block follows the bubble's own geometry. Comment padding is a two-token
 contract shared by every theme — the card's `paddingX`/`paddingY` — and
 shape fitting adds clearance on top of those tokens (the blob's bulge, the
 capsule's curve), never substitutes its own constants. Capsule note frames

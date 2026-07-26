@@ -693,8 +693,10 @@ describe("SVG rendering boundaries", () => {
 
 	it.each([
 		{
-			label: "four-line rich text",
-			expectedLines: 4,
+			// Shaped bubble wrapping narrows the first and last lines, so this
+			// block settles one line taller than a flat wrap would.
+			label: "five-line rich text",
+			expectedLines: 5,
 			source:
 				"This is a ==prototype== of a simple collaborative tool for generating **roadmap chart (tm)** from [markdown](https://commonmark.org) text. Text styles: _italic_, **bold**, ~sub~, ^sup^, etc. All [GitHub emojis](https://github.com) supported: :poop: :tada: :boom: :100: and [shortcuts](https://example.com): 8-) :-@ +-",
 		},

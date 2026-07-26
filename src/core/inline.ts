@@ -402,9 +402,14 @@ export function wrapInline(
 	maxWidth: number,
 	typography: TypographyTheme,
 	abbreviationIndicatorSize = typography.fontSize * 0.75,
+	lineWidths?: readonly number[],
 ): TextLine[] {
 	const runs = flattenInline(nodes);
 	const lines: { width: number; segments: TextLineSegment[] }[] = [{ width: 0, segments: [] }];
+	// Shaped wrapping: each line may carry its own width budget (a bubble is
+	// narrow at the top and bottom, widest in the middle); lines past the
+	// plan fall back to the flat maximum.
+	const widthFor = (index: number): number => lineWidths?.[index] ?? maxWidth;
 	const pushLine = (): void => {
 		if ((lines.at(-1)?.segments.length ?? 0) > 0) lines.push({ width: 0, segments: [] });
 	};
@@ -436,7 +441,7 @@ export function wrapInline(
 			let line = lines.at(-1);
 			if (!line) continue;
 			if (/^\s+$/u.test(value) && line.segments.length === 0) continue;
-			if (/^[.,:;!?…]+$/u.test(value) && line.width + tokenWidth > maxWidth) {
+			if (/^[.,:;!?…]+$/u.test(value) && line.width + tokenWidth > widthFor(lines.length - 1)) {
 				const previous = line.segments.at(-1);
 				if (previous && !/^\s*$/u.test(previous.text) && line.segments.length > 1) {
 					line.segments.pop();
@@ -448,18 +453,23 @@ export function wrapInline(
 					line.width = previous.width;
 				}
 			}
-			if (line.width + tokenWidth > maxWidth && line.segments.length > 0 && !/^\s+$/u.test(value)) {
+			if (
+				line.width + tokenWidth > widthFor(lines.length - 1) &&
+				line.segments.length > 0 &&
+				!/^\s+$/u.test(value)
+			) {
 				pushLine();
 				line = lines.at(-1);
 				if (!line) continue;
 			}
 
-			while (tokenWidth > maxWidth && textGraphemes(value).length > 1) {
+			while (tokenWidth > widthFor(lines.length - 1) && textGraphemes(value).length > 1) {
 				const characters = [...textGraphemes(value)];
 				let split = 1;
 				while (
 					split < characters.length &&
-					measureRun(characters.slice(0, split + 1).join(""), runFontSize, run.marks) <= maxWidth
+					measureRun(characters.slice(0, split + 1).join(""), runFontSize, run.marks) <=
+						widthFor(lines.length - 1)
 				) {
 					split += 1;
 				}
