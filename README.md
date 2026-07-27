@@ -3,7 +3,7 @@
 <!-- Regenerate the figures with `pnpm generate:readme-sample`. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme-sample-dark.svg">
-  <img alt="A compact frontend learning roadmap rendered by SVG Roadmap in the Arcade theme" src="docs/readme-sample-light.svg" width="730">
+  <img alt="The workbench feature-tour sample rendered by SVG Roadmap in the Arcade theme" src="docs/readme-sample-light.svg" width="640">
 </picture>
 
 SVG Roadmap turns Markdown text into a deterministic, standalone SVG chart.
