@@ -489,6 +489,11 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#menuButton.setAttribute("aria-expanded", "true");
 		document.addEventListener("pointerdown", this.#onOutsidePointer, true);
 		document.addEventListener("keydown", this.#onMenuKey, true);
+		// Any scroll dismisses an open menu, as popups conventionally do.
+		// Scroll events do not cross the shadow boundary, so the canvas pane
+		// needs its own listener beside the document-level one.
+		document.addEventListener("scroll", this.#onAnyScroll, true);
+		this.#canvas.addEventListener("scroll", this.#onAnyScroll, true);
 	}
 
 	#closeMenu(): void {
@@ -497,6 +502,8 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#menuButton.setAttribute("aria-expanded", "false");
 		document.removeEventListener("pointerdown", this.#onOutsidePointer, true);
 		document.removeEventListener("keydown", this.#onMenuKey, true);
+		document.removeEventListener("scroll", this.#onAnyScroll, true);
+		this.#canvas.removeEventListener("scroll", this.#onAnyScroll, true);
 	}
 
 	readonly #onOutsidePointer = (event: Event): void => {
@@ -507,6 +514,10 @@ export class RoadmapPreviewElement extends HTMLElement {
 
 	readonly #onMenuKey = (event: KeyboardEvent): void => {
 		if (event.key === "Escape") this.#closeMenu();
+	};
+
+	readonly #onAnyScroll = (): void => {
+		this.#closeMenu();
 	};
 
 	#syncModeIcon(): void {

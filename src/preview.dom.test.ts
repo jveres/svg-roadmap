@@ -105,6 +105,11 @@ describe("<roadmap-preview>", () => {
 		expect(element.getAttribute("mode")).toBe("system");
 		modeCycle.click();
 		expect(element.getAttribute("mode")).toBe("light");
+		// Scrolling anywhere dismisses the open menu, as popups conventionally do.
+		expect(menu.hidden).toBe(false);
+		element.shadowRoot?.querySelector('[part="canvas"]')?.dispatchEvent(new Event("scroll"));
+		expect(menu.hidden).toBe(true);
+		expect(menuButton.getAttribute("aria-expanded")).toBe("false");
 	});
 
 	test("attaches interactivity by default and forwards selection events", async () => {
