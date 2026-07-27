@@ -405,6 +405,7 @@ const interactiveCss = `
 	font-size:11px;font-weight:600;line-height:1.5;text-align:left}
 .roadmap-topic-detail__tag--plain{padding:2px 9px}
 .roadmap-topic-detail__tag-disc{width:15px;height:15px;flex:none;display:block}
+.roadmap-topic-detail__tag-disc+.roadmap-topic-detail__tag-disc{margin-left:-9px}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
 .roadmap-topic-detail__note p{margin:0 0 6px}
 .roadmap-topic-detail__note p:last-child{margin-bottom:0}
@@ -1348,21 +1349,29 @@ export function attachRoadmapInteractivity(
 		const label = hostDocument.createElement("span");
 		label.textContent = tag;
 		const selector = tag.replaceAll(/["\\]/gu, "\\$&");
-		const badge =
-			svg.querySelector(
-				`.roadmap__tag-chip[data-tag="${selector}"] [data-roadmap-element="badge"]`,
-			) ??
-			svg.querySelector(
+		// A tag may carry several badges (theme TagStyle.badges is an array —
+		// "personal recommendation" pairs a heart with a check); the legend
+		// row renders them all, so it is the preferred harvest source. An
+		// inline prose chip carries only the first badge and is the fallback.
+		const badges = [
+			...svg.querySelectorAll(
 				`.roadmap__legend-row[data-tag="${selector}"] [data-roadmap-element="badge"]`,
+			),
+		];
+		if (badges.length === 0) {
+			const inline = svg.querySelector(
+				`.roadmap__tag-chip[data-tag="${selector}"] [data-roadmap-element="badge"]`,
 			);
+			if (inline) badges.push(inline);
+		}
 		const view = hostDocument.defaultView;
-		if (badge && view) {
-			const circle = badge.querySelector("circle");
-			const use = badge.querySelector("use");
-			const size = Number(circle?.getAttribute("r") ?? 0) * 2 || Number(use?.getAttribute("width"));
-			const paintSource = circle ?? use;
-			const accent = paintSource ? view.getComputedStyle(paintSource).fill : "";
-			if (size > 0) {
+		if (view) {
+			for (const badge of badges) {
+				const circle = badge.querySelector("circle");
+				const use = badge.querySelector("use");
+				const size =
+					Number(circle?.getAttribute("r") ?? 0) * 2 || Number(use?.getAttribute("width"));
+				if (size <= 0) continue;
 				const disc = hostDocument.createElementNS(svgNamespace, "svg");
 				disc.setAttribute("class", "roadmap-topic-detail__tag-disc");
 				disc.setAttribute("viewBox", `0 0 ${size} ${size}`);
@@ -1386,6 +1395,8 @@ export function attachRoadmapInteractivity(
 				disc.append(artwork);
 				chip.append(disc);
 			}
+			const first = badges[0]?.querySelector("circle") ?? badges[0]?.querySelector("use");
+			const accent = first ? view.getComputedStyle(first).fill : "";
 			if (accent && accent !== "none") {
 				chip.style.color = accent;
 				chip.style.background = `color-mix(in srgb, ${accent} 14%, transparent)`;

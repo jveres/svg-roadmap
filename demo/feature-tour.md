@@ -31,6 +31,10 @@ roadmap:
     optional:
       icon: question
       accent: blue
+    certified:
+      icon: [check, star]
+      accent: [green, amber]
+      label: Certified path
     deprecated:
       icon: warning
       accent: neutral
@@ -68,9 +72,12 @@ roadmap:
       > shows a detail note is waiting behind the click, like this one.
 
 * :two: Inline styling
-*:beginner: Emphasis works everywhere: **strong**, _emphasis_, ==highlight==, ++insert++, `inline code`, and ~~strikethrough~~. Term definitions get dotted underlines.^[Footnotes render as small superscript markers.]*
+*:beginner: Emphasis works everywhere: **strong**, _emphasis_, ==highlight==, ++insert++, `inline code`, ~~strikethrough~~, plus H~2~O subscripts and x^2^ superscripts. Term definitions get dotted underlines.^[Footnotes render as small superscript markers.]*
   * Emoji :tada:
     * Shortcodes :rocket: [core]
+    * Raw Unicode 🎯 [core]
+      > A raw emoji renders exactly like its shortcode — 🎯 and `:dart:` are
+      > the same embedded artwork, identical in every viewer.
     * GitHub set :joystick: [optional]
   * Term definitions [core]
     > Definitions get dotted underlines and tooltips; notes like this get a
@@ -86,6 +93,9 @@ roadmap:
   * Built-in icons [core]
   * Emoji badges [experimental]
   * Accent slots [advanced]
+  * Stacked tags [core, advanced]
+  * Multi-icon tags [certified]
+  * Multi-badge built-ins [personal recommendation]
   * Hidden from legend [deprecated]
   * Fallback badges [mystery]
 
@@ -103,6 +113,9 @@ roadmap:
 *[Note markers]: An opt-in folded-corner mark on any box that carries a detail note.
 *[Accent slots]: Named theme colors (green, red, amber, blue, violet, neutral) that custom tags reference instead of hex codes.
 *[Emoji badges]: Tag badges can paint any emoji shortcode on a colored disc.
+*[Stacked tags]: A comma-separated `[tag one, tag two]` annotation gives one topic several badges.
+*[Multi-icon tags]: A front-matter `icon: [check, star]` list stacks several badges on a single tag, with accents paired by position.
+*[Multi-badge built-ins]: The built-in tag catalog ships with every theme; `personal recommendation` pairs a heart with a check on a single tag.
 *[Fallback badges]: Tags without a definition use the theme's unknown-tag style.
 [^md]: CommonMark plus the GitHub extensions — footnotes render as numbered markers with this block beneath the chart.
 

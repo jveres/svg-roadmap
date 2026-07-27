@@ -12,7 +12,7 @@ const { generateRoadmapSvg } = await import(join(root, "dist/node.js"));
 const markdown = await readFile(join(root, "demo/feature-tour.md"), "utf8");
 for (const mode of ["light", "dark"]) {
 	const svg = await generateRoadmapSvg(markdown, {
-		theme: { preset: "arcade", mode },
+		theme: { preset: "sci-fi", mode },
 	});
 	const target = join(root, `docs/readme-sample-${mode}.svg`);
 	await writeFile(target, svg);

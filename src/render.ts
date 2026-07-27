@@ -441,8 +441,13 @@ function renderNodeBadges(node: LayoutNode, theme: RoadmapTheme, prefix: string)
 		cardTheme(node, theme)?.shape === "capsule" ? (node.height / 2) * (1 - Math.SQRT1_2) : 0;
 	const startX = rectRight(node) - size * 0.5 - capsuleInset;
 	const y = node.y - size * 0.5 + capsuleInset;
+	// Badge order mirrors the legend: definition order runs left to right and
+	// a later badge paints over its predecessor; the cluster stays anchored
+	// to the card's top-right corner.
 	return badges
-		.map((badge, index) => renderBadge(badge, startX - index * advance, y, size, prefix))
+		.map((badge, index) =>
+			renderBadge(badge, startX - (badges.length - 1 - index) * advance, y, size, prefix),
+		)
 		.join("");
 }
 

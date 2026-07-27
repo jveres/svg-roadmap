@@ -821,29 +821,37 @@ function humanizeTagName(tag: string): string {
 
 function documentTagStyle(tag: string, setting: RoadmapTagSetting, theme: RoadmapTheme): TagStyle {
 	const fallback = theme.badges.unknown.badges[0];
-	// Named slots win, so `accent: green` means the theme's green in every
-	// mode; anything else color-like is used literally.
-	const slot = setting.accent ? theme.badges.accents?.[setting.accent] : undefined;
-	const literal = !slot && setting.accent ? colorAccent(setting.accent) : undefined;
-	const accent = slot ?? literal;
-	const background = setting.background ?? accent?.background ?? fallback?.background ?? "#777982";
-	const foreground = setting.foreground ?? accent?.foreground ?? fallback?.foreground ?? "#ffffff";
-	// Per-tag paint token: tags sharing an icon keep independent colors, and
-	// CSS overrides get a semantic handle (--roadmap-badge-tag-<name>-…).
-	const token = `tag-${tag}`;
-	let badge: BadgeStyle;
-	if (setting.icon?.startsWith(":")) {
-		const shortcode = setting.icon.slice(1, -1);
-		badge = emojiArtwork(shortcode)
-			? { emoji: canonicalShortcode(shortcode), background, foreground, token }
-			: { icon: fallback?.icon ?? "question", background, foreground, token };
-	} else {
-		const icon = builtInBadgeIcons.find((name) => name === setting.icon);
-		badge = { icon: icon ?? fallback?.icon ?? "question", background, foreground, token };
-	}
+	const icons = Array.isArray(setting.icon) ? setting.icon : [setting.icon];
+	const accents = Array.isArray(setting.accent) ? setting.accent : [setting.accent];
+	const badges = icons.map((entry, index): BadgeStyle => {
+		// Accents pair with icons by position; a shorter accent list repeats
+		// its last entry. Named slots win, so `accent: green` means the
+		// theme's green in every mode; anything else color-like is literal.
+		const accentName = accents[Math.min(index, accents.length - 1)];
+		const slot = accentName ? theme.badges.accents?.[accentName] : undefined;
+		const literal = !slot && accentName ? colorAccent(accentName) : undefined;
+		const accent = slot ?? literal;
+		const background =
+			setting.background ?? accent?.background ?? fallback?.background ?? "#777982";
+		const foreground =
+			setting.foreground ?? accent?.foreground ?? fallback?.foreground ?? "#ffffff";
+		// Per-tag paint token: tags sharing an icon keep independent colors,
+		// and CSS overrides get a semantic handle (--roadmap-badge-tag-<name>-…).
+		// Every badge past the first gets its own token, or its var()
+		// declaration would collide with the first badge's colors.
+		const token = index === 0 ? `tag-${tag}` : `tag-${tag}-${index + 1}`;
+		if (entry?.startsWith(":")) {
+			const shortcode = entry.slice(1, -1);
+			return emojiArtwork(shortcode)
+				? { emoji: canonicalShortcode(shortcode), background, foreground, token }
+				: { icon: fallback?.icon ?? "question", background, foreground, token };
+		}
+		const icon = builtInBadgeIcons.find((name) => name === entry);
+		return { icon: icon ?? fallback?.icon ?? "question", background, foreground, token };
+	});
 	return {
 		label: setting.label ?? humanizeTagName(tag),
-		badges: [badge],
+		badges,
 		...(setting.legend !== undefined ? { legend: setting.legend } : {}),
 	};
 }

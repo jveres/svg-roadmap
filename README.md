@@ -3,7 +3,7 @@
 <!-- Regenerate the figures with `pnpm generate:readme-sample`. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme-sample-dark.svg">
-  <img alt="The workbench feature-tour sample rendered by SVG Roadmap in the Arcade theme" src="docs/readme-sample-light.svg" width="640">
+  <img alt="The workbench feature-tour sample rendered by SVG Roadmap in the Sci-fi theme" src="docs/readme-sample-light.svg" width="640">
 </picture>
 
 SVG Roadmap turns Markdown text into a deterministic, standalone SVG chart.
@@ -486,6 +486,9 @@ roadmap:
     experimental:
       icon: ":rocket:"      # any emoji shortcode paints on a colored disc
       accent: amber
+    certified:
+      icon: [heart, check]  # an icon list stacks one badge per entry
+      accent: [red, green]  # paired by position; a shorter list repeats its last
     internal:
       icon: x
       legend: false         # taggable, but kept out of the legend
@@ -494,7 +497,9 @@ roadmap:
 
 `accent` also accepts a literal CSS color (`accent: "#ffe066"`); named slots
 win when both interpretations exist, and hex accents derive a readable
-foreground automatically.
+foreground automatically. An `icon` list stacks several badges on one tag —
+the same shape as built-in multi-badge tags like `personal recommendation` —
+with `accent` entries paired to icons by position.
 
 Topics then use the tags exactly like built-ins: `Topic name [advanced]`.
 Declared tags join the legend in the theme's style; undeclared tags keep

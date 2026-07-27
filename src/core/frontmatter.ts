@@ -201,6 +201,45 @@ function parseTagColor(value: FrontmatterValue | undefined, context: string): st
 	return value;
 }
 
+/**
+ * A YAML-style flow sequence (`[heart, check]`) written as a scalar value.
+ * Returns the trimmed entries, or `undefined` when the value is not a list.
+ * Entries are plain scalars; quote the whole list when an entry contains
+ * `#` (`accent: "[red, #22c55e]"`), or the inline-comment rule truncates it.
+ */
+function parseFlowList(value: FrontmatterValue, context: string): string[] | undefined {
+	if (typeof value !== "string" || !value.startsWith("[")) return undefined;
+	if (!value.endsWith("]")) {
+		throw new RoadmapFrontmatterError(`The ${context} list is missing its closing "]".`);
+	}
+	const entries = value
+		.slice(1, -1)
+		.split(",")
+		.map((entry) => entry.trim());
+	if (entries.length === 0 || entries.some((entry) => !entry)) {
+		throw new RoadmapFrontmatterError(`The ${context} list must hold comma-separated entries.`);
+	}
+	return entries;
+}
+
+function assertTagIcon(name: string, icon: string): void {
+	const known =
+		(builtInBadgeIcons as readonly string[]).includes(icon) || shortcodeIconPattern.test(icon);
+	if (!known) {
+		throw new RoadmapFrontmatterError(
+			`The tag "${name}" icon must be one of ${builtInBadgeIcons.join(", ")} or an emoji shortcode such as ":rocket:".`,
+		);
+	}
+}
+
+function assertTagAccent(name: string, accent: string): void {
+	if (!(/^[a-z][a-z0-9-]*$/u.test(accent) || colorPattern.test(accent))) {
+		throw new RoadmapFrontmatterError(
+			`The tag "${name}" accent must be an accent slot name or a plain CSS color.`,
+		);
+	}
+}
+
 function parseTag(name: string, value: FrontmatterValue): RoadmapTagSetting {
 	if (!isMap(value)) {
 		throw new RoadmapFrontmatterError(`The tag "${name}" must be a mapping of tag settings.`);
@@ -210,25 +249,40 @@ function parseTag(name: string, value: FrontmatterValue): RoadmapTagSetting {
 		["icon", "accent", "label", "legend", "background", "foreground"],
 		`tag "${name}"`,
 	);
-	const icon = value.icon;
-	if (icon !== undefined) {
-		const known =
-			typeof icon === "string" &&
-			((builtInBadgeIcons as readonly string[]).includes(icon) || shortcodeIconPattern.test(icon));
-		if (!known) {
-			throw new RoadmapFrontmatterError(
-				`The tag "${name}" icon must be one of ${builtInBadgeIcons.join(", ")} or an emoji shortcode such as ":rocket:".`,
-			);
+	let icon: string | readonly string[] | undefined;
+	if (value.icon !== undefined) {
+		const list = parseFlowList(value.icon, `tag "${name}" icon`);
+		if (list) {
+			for (const entry of list) assertTagIcon(name, entry);
+			icon = list;
+		} else {
+			if (typeof value.icon !== "string") {
+				throw new RoadmapFrontmatterError(`The tag "${name}" icon must be a string or a list.`);
+			}
+			assertTagIcon(name, value.icon);
+			icon = value.icon;
 		}
 	}
-	const accent = value.accent;
-	if (
-		accent !== undefined &&
-		(typeof accent !== "string" ||
-			!(/^[a-z][a-z0-9-]*$/u.test(accent) || colorPattern.test(accent)))
-	) {
+	let accent: string | readonly string[] | undefined;
+	if (value.accent !== undefined) {
+		const list = parseFlowList(value.accent, `tag "${name}" accent`);
+		if (list) {
+			for (const entry of list) assertTagAccent(name, entry);
+			accent = list;
+		} else {
+			if (typeof value.accent !== "string") {
+				throw new RoadmapFrontmatterError(`The tag "${name}" accent must be a string or a list.`);
+			}
+			assertTagAccent(name, value.accent);
+			accent = value.accent;
+		}
+	}
+	// Accents pair with icons by position; more accents than icons would
+	// silently drop entries, which reads like a typo worth surfacing.
+	const iconCount = Array.isArray(icon) ? icon.length : 1;
+	if (Array.isArray(accent) && accent.length > iconCount) {
 		throw new RoadmapFrontmatterError(
-			`The tag "${name}" accent must be an accent slot name or a plain CSS color.`,
+			`The tag "${name}" declares more accents than icons (${accent.length} > ${iconCount}).`,
 		);
 	}
 	const label = value.label;

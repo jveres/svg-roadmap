@@ -185,10 +185,18 @@ export interface RoadmapBackgroundSettings {
  * through an abstract accent slot so the tag adapts to every theme and mode.
  */
 export interface RoadmapTagSetting {
-	/** Built-in badge icon name or an emoji shortcode such as `":rocket:"`. */
-	readonly icon?: string;
-	/** Theme accent slot supplying the badge colors. */
-	readonly accent?: string;
+	/**
+	 * Built-in badge icon name or an emoji shortcode such as `":rocket:"`.
+	 * A list (`icon: [heart, check]` in front matter) stacks one badge per
+	 * entry, like the built-in multi-badge tags.
+	 */
+	readonly icon?: string | readonly string[];
+	/**
+	 * Theme accent slot supplying the badge colors. With an icon list this
+	 * may also be a list, paired by position; a shorter list repeats its
+	 * last accent for the remaining icons.
+	 */
+	readonly accent?: string | readonly string[];
 	/** Legend text; defaults to the humanized tag name. */
 	readonly label?: string;
 	/** Set to `false` to keep the tag out of the legend. */

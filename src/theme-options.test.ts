@@ -484,6 +484,35 @@ roadmap:
 		expect(generated.svg).toContain("--roadmap-badge-tag-branded-foreground:#fedcba");
 	});
 
+	test("an icon list stacks one badge per entry with positional accents", () => {
+		const generated = generateRoadmap(
+			"---\nroadmap:\n  tags:\n    certified:\n      icon: [heart, check, star]\n      accent: [red, green]\n---\n\n# T\n\n* C\n  * Topic [certified]\n",
+		);
+		// One paint token per badge — shared tokens would collide in CSS.
+		expect(generated.svg).toContain("--roadmap-badge-tag-certified-background:#c75c5c");
+		expect(generated.svg).toContain("--roadmap-badge-tag-certified-2-background:#76c479");
+		// A shorter accent list repeats its last entry for remaining icons.
+		expect(generated.svg).toContain("--roadmap-badge-tag-certified-3-background:#76c479");
+		const badges = generated.svg.match(/roadmap__badge--tag-certified(?:-\d)?/gu) ?? [];
+		expect(new Set(badges).size).toBe(3);
+	});
+
+	test("more accents than icons is a front-matter error", () => {
+		expect(() =>
+			generateRoadmap(
+				"---\nroadmap:\n  tags:\n    odd:\n      icon: [heart]\n      accent: [red, green]\n---\n\n# T\n\n* C\n  * A\n",
+			),
+		).toThrow(/more accents than icons/u);
+	});
+
+	test("a malformed icon list is a front-matter error", () => {
+		expect(() =>
+			generateRoadmap(
+				"---\nroadmap:\n  tags:\n    odd:\n      icon: [heart, sparkles-bad-name]\n---\n\n# T\n\n* C\n  * A\n",
+			),
+		).toThrow(/icon must be one of/u);
+	});
+
 	test("theme identity is preserved when no document tags are declared", () => {
 		const generated = generateRoadmap(source);
 		expect(generated.theme).toBe(lightTheme);
