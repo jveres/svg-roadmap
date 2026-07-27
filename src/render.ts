@@ -1415,7 +1415,9 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 					: ` transform="matrix(${metrics.renderScaleX} 0 0 ${metrics.renderScaleY} ${textX * (1 - metrics.renderScaleX)} ${baseline * (1 - metrics.renderScaleY)})"`;
 			const spacing =
 				metrics.letterSpacing === 0 ? "" : ` letter-spacing="${metrics.letterSpacing}"`;
-			return `${badges}<text class="roadmap__legend-label" x="${textX}" y="${baseline}"${transform}${spacing} font-family="${escapeXml(metrics.fontFamily)}" font-size="${fontSize}" font-weight="${metrics.fontWeight}" font-style="${metrics.fontStyle}" fill="${cssToken("legend-text")}">${escapeXml(item.label)}</text>`;
+			// The row wrapper names its tag so host UIs (the interactive detail
+			// panel's chips) can harvest the badge artwork for a given tag.
+			return `<g class="roadmap__legend-row" data-tag="${escapeXml(item.tag)}">${badges}<text class="roadmap__legend-label" x="${textX}" y="${baseline}"${transform}${spacing} font-family="${escapeXml(metrics.fontFamily)}" font-size="${fontSize}" font-weight="${metrics.fontWeight}" font-style="${metrics.fontStyle}" fill="${cssToken("legend-text")}">${escapeXml(item.label)}</text></g>`;
 		})
 		.join("");
 	const pathScaleX = 1.01;

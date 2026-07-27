@@ -336,11 +336,12 @@ const interactiveCss = `
 .roadmap-progress-summary-anchor[data-at$="right"]{justify-content:flex-end}
 .roadmap-progress-summary-anchor[data-at$="left"]{justify-content:flex-start}
 .roadmap-progress-summary-anchor[data-at^="bottom"] .roadmap-progress-summary{transform:translateY(-100%)}
-.roadmap-progress-summary{pointer-events:auto;align-self:flex-start;width:190px;padding:10px 12px;border-radius:9px;
+.roadmap-progress-summary{pointer-events:auto;align-self:flex-start;position:relative;box-sizing:border-box;
+	width:216px;padding:10px 12px;border-radius:9px;
 	--_summary-border:var(--roadmap-summary-border,rgba(90,110,125,.25));
 	--_summary-background:var(--roadmap-summary-background,rgba(255,255,255,.72));
 	--_summary-color:var(--roadmap-summary-color,#2b3742);
-	--_summary-track:var(--roadmap-summary-track,rgba(90,110,125,.16));
+	--_summary-track:var(--roadmap-summary-track,rgba(90,110,125,.07));
 	--_accent:var(--roadmap-progress-accent,#1289a7);
 	--_done:var(--roadmap-progress-done,#2aa876);
 	border:1px solid var(--_summary-border);
@@ -354,14 +355,21 @@ const interactiveCss = `
 	--_summary-border:var(--roadmap-summary-border,rgba(160,180,195,.22));
 	--_summary-background:var(--roadmap-summary-background,rgba(26,34,43,.72));
 	--_summary-color:var(--roadmap-summary-color,#dbe5ec);
-	--_summary-track:var(--roadmap-summary-track,rgba(160,180,195,.18));
+	--_summary-track:var(--roadmap-summary-track,rgba(160,180,195,.09));
 	box-shadow:0 6px 22px rgba(0,0,0,.45)}
 }
-.roadmap-progress-summary__top{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.roadmap-progress-summary--manipulating{user-select:none;-webkit-user-select:none}
+.roadmap-progress-summary--manipulating .roadmap-progress-summary__top{cursor:grabbing}
+.roadmap-progress-summary__resize{position:absolute;right:1px;bottom:1px;width:14px;height:14px;
+	cursor:nwse-resize;border-radius:0 0 8px 0;
+	background:
+		linear-gradient(135deg,transparent 55%,var(--_summary-border) 55%,var(--_summary-border) 62%,transparent 62%,transparent 72%,var(--_summary-border) 72%,var(--_summary-border) 79%,transparent 79%)}
+.roadmap-progress-summary__top{display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:grab}
 .roadmap-progress-summary__count{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .roadmap-progress-summary .roadmap-progress-summary__reset{margin-left:auto;border:0;border-radius:5px;
 	background:transparent;cursor:pointer;color:inherit;opacity:.55;font:inherit;padding:0 4px}
-.roadmap-progress-summary .roadmap-progress-summary__reset:hover{opacity:1;background:transparent;color:inherit}
+.roadmap-progress-summary .roadmap-progress-summary__reset:hover:not(:disabled){opacity:1;background:transparent;color:inherit}
+.roadmap-progress-summary .roadmap-progress-summary__reset:disabled{opacity:.22;cursor:default}
 .roadmap-progress-summary__bar{display:block;height:7px;border-radius:99px;margin-bottom:8px;
 	background:var(--_summary-track);overflow:hidden}
 .roadmap-progress-summary__bar i{display:block;height:100%;width:0;
@@ -391,10 +399,12 @@ const interactiveCss = `
 	border-radius:99px;background:var(--_summary-track);overflow:hidden}
 .roadmap-topic-detail__column .roadmap-topic-detail__column-bar i{display:block;height:100%;
 	border-radius:99px;background:var(--_done);transition:width .25s}
-.roadmap-topic-detail__tags{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}
-.roadmap-topic-detail__tag{display:inline-flex;align-items:center;max-width:100%;padding:1.5px 8px;
-	border-radius:99px;border:1px solid var(--_summary-border);font-size:10px;font-weight:600;
-	letter-spacing:.06em;text-transform:uppercase;opacity:.85;line-height:1.35;text-align:left}
+.roadmap-topic-detail__tags{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.roadmap-topic-detail__tag{display:inline-flex;align-items:center;gap:5px;max-width:100%;
+	padding:2px 9px 2px 3px;border-radius:99px;background:var(--_summary-track);
+	font-size:11px;font-weight:600;line-height:1.5;text-align:left}
+.roadmap-topic-detail__tag--plain{padding:2px 9px}
+.roadmap-topic-detail__tag-disc{width:15px;height:15px;flex:none;display:block}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
 .roadmap-topic-detail__note p{margin:0 0 6px}
 .roadmap-topic-detail__note p:last-child{margin-bottom:0}
@@ -418,7 +428,8 @@ function ensureStyles(target: Element): void {
 	// element), where document-level sheets cannot reach.
 	const root = target.getRootNode();
 	const hostDocument = target.ownerDocument;
-	const scope = root instanceof hostDocument.defaultView!.ShadowRoot ? root : hostDocument.head;
+	const view = hostDocument.defaultView;
+	const scope = view && root instanceof view.ShadowRoot ? root : hostDocument.head;
 	const existing = [...scope.children].find((child) => child.id === styleElementId);
 	if (existing) {
 		// A stale sheet from an earlier module version must not win: refresh
@@ -1000,6 +1011,7 @@ export function attachRoadmapInteractivity(
 				count: HTMLElement;
 				bar: HTMLElement;
 				rows: Record<RoadmapProgressState, HTMLElement>;
+				reset: HTMLButtonElement;
 		  }
 		| undefined;
 	if (options.summary !== false && trackProgress && svg.parentElement) {
@@ -1071,7 +1083,7 @@ export function attachRoadmapInteractivity(
 				dress(
 					"--_summary-track",
 					"--roadmap-summary-track",
-					`color-mix(in srgb, ${border} 35%, transparent)`,
+					`color-mix(in srgb, ${border} 8%, transparent)`,
 				);
 			}
 			dress("--_accent", "--roadmap-progress-accent", themeToken("--roadmap-inline-link"));
@@ -1086,11 +1098,147 @@ export function attachRoadmapInteractivity(
 			handleReset();
 		};
 		reset.addEventListener("click", onReset);
+
+		// The panel can be pulled anywhere over the chart and resized by its
+		// corner grip; both survive re-renders and reloads beside the progress
+		// itself, under `${storageKey}:panel`. Placement rides a transform on
+		// top of the sticky corner anchor, so the panel keeps floating with
+		// the scroll after a drag.
+		const panelStateKey = `${storageKey}:panel`;
+		const placement: { x?: number; y?: number; width?: number; height?: number } = {};
+		if (storage) {
+			try {
+				const raw: unknown = JSON.parse(storage.getItem(panelStateKey) ?? "{}");
+				if (raw && typeof raw === "object") {
+					// Only finite numbers may land in inline styles; anything else
+					// in storage falls back to the anchored corner.
+					for (const key of ["x", "y", "width", "height"] as const) {
+						const value = (raw as Record<string, unknown>)[key];
+						if (typeof value === "number" && Number.isFinite(value)) placement[key] = value;
+					}
+				}
+			} catch {
+				// Corrupt placement falls back to the anchored corner.
+			}
+		}
+		const baseShift = position.startsWith("bottom") ? " translateY(-100%)" : "";
+		const applyPlacement = (): void => {
+			panel.style.transform =
+				placement.x || placement.y
+					? `translate(${placement.x ?? 0}px, ${placement.y ?? 0}px)${baseShift}`
+					: "";
+			panel.style.width = placement.width ? `${placement.width}px` : "";
+			if (placement.height) {
+				panel.style.height = `${placement.height}px`;
+				panel.style.overflow = "hidden auto";
+			} else {
+				panel.style.height = "";
+				panel.style.overflow = "";
+			}
+		};
+		applyPlacement();
+		const savePlacement = (): void => {
+			if (!storage) return;
+			try {
+				storage.setItem(panelStateKey, JSON.stringify(placement));
+			} catch {
+				// Placement simply does not persist without storage.
+			}
+		};
+		// One manipulation at a time; preventDefault on pointerdown keeps the
+		// browser from starting a text selection under the moving pointer.
+		let manipulating = false;
+		const manipulate = (
+			event: PointerEvent,
+			target: HTMLElement,
+			onMove: (dx: number, dy: number) => void,
+		): void => {
+			if (manipulating) return;
+			manipulating = true;
+			event.preventDefault();
+			panel.classList.add("roadmap-progress-summary--manipulating");
+			target.setPointerCapture(event.pointerId);
+			const fromX = event.clientX;
+			const fromY = event.clientY;
+			const move = (moveEvent: PointerEvent): void => {
+				moveEvent.preventDefault();
+				onMove(moveEvent.clientX - fromX, moveEvent.clientY - fromY);
+			};
+			const finish = (): void => {
+				manipulating = false;
+				panel.classList.remove("roadmap-progress-summary--manipulating");
+				target.removeEventListener("pointermove", move);
+				target.removeEventListener("pointerup", finish);
+				target.removeEventListener("pointercancel", finish);
+				savePlacement();
+			};
+			target.addEventListener("pointermove", move);
+			target.addEventListener("pointerup", finish);
+			target.addEventListener("pointercancel", finish);
+		};
+		const onDragStart = (event: PointerEvent): void => {
+			// Only the top row drags; the reset button inside it keeps its click.
+			const origin = event.target instanceof Element ? event.target : null;
+			if (event.button !== 0 || origin?.closest("button")) return;
+			const startX = placement.x ?? 0;
+			const startY = placement.y ?? 0;
+			manipulate(event, top, (dx, dy) => {
+				placement.x = Math.round(startX + dx);
+				placement.y = Math.round(startY + dy);
+				applyPlacement();
+			});
+		};
+		top.addEventListener("pointerdown", onDragStart);
+		const grip = hostDocument.createElement("div");
+		grip.className = "roadmap-progress-summary__resize";
+		grip.setAttribute("aria-hidden", "true");
+		panel.append(grip);
+		const onResizeStart = (event: PointerEvent): void => {
+			if (event.button !== 0) return;
+			const rect = panel.getBoundingClientRect();
+			const startWidth = rect.width;
+			const startHeight = rect.height;
+			const startX = placement.x ?? 0;
+			// A right-anchored panel grows leftward from the corner; shifting it
+			// by the width delta pins the left edge so the grip tracks the
+			// pointer instead of running away from it.
+			const rightAnchored = position.endsWith("right");
+			manipulate(event, grip, (dx, dy) => {
+				const width = Math.min(560, Math.max(176, Math.round(startWidth + dx)));
+				const height = Math.min(920, Math.max(120, Math.round(startHeight + dy)));
+				placement.width = width;
+				placement.height = height;
+				if (rightAnchored) placement.x = startX + (width - startWidth);
+				applyPlacement();
+			});
+		};
+		grip.addEventListener("pointerdown", onResizeStart);
+		// The grip is absolute against the panel's padding box, which scrolls
+		// with the content once a manual height makes the panel a scroller;
+		// compensating by scrollTop keeps it pinned to the visible corner.
+		const syncGrip = (): void => {
+			grip.style.bottom = `${1 - panel.scrollTop}px`;
+		};
+		panel.addEventListener("scroll", syncGrip, { passive: true });
+		const onAutoSize = (): void => {
+			// Double-clicking the grip drops the manual size; the panel returns
+			// to hugging its content at the default width. Position stays.
+			delete placement.width;
+			delete placement.height;
+			applyPlacement();
+			savePlacement();
+		};
+		grip.addEventListener("dblclick", onAutoSize);
+
 		disposers.push(() => {
 			reset.removeEventListener("click", onReset);
+			top.removeEventListener("pointerdown", onDragStart);
+			grip.removeEventListener("pointerdown", onResizeStart);
+			grip.removeEventListener("dblclick", onAutoSize);
+			panel.removeEventListener("scroll", syncGrip);
 			anchor.remove();
 		});
-		summaryElements = { count, bar: fill, rows };
+		summaryElements = { count, bar: fill, rows, reset };
 		summaryPanel = panel;
 	}
 
@@ -1102,6 +1250,7 @@ export function attachRoadmapInteractivity(
 		for (const state of ["in-progress", "done", "skipped"] as const) {
 			summaryElements.rows[state].textContent = String(counts[state]);
 		}
+		summaryElements.reset.disabled = Object.keys(states).length === 0;
 	};
 
 	const detailFor = (id: string, group: SVGGElement): RoadmapTopicDetail => {
@@ -1188,6 +1337,65 @@ export function attachRoadmapInteractivity(
 		syncStrike(id, group);
 	};
 
+	// A topic tag renders as the same chip the chart paints inline: the tag's
+	// badge disc beside its name on a soft accent pill. The badge artwork and
+	// accent are harvested from the chart itself — an inline chip if the tag
+	// appears in prose, the legend row otherwise — so the panel chip always
+	// matches the rendered theme. Unharvestable tags fall back to a plain pill.
+	const tagChip = (tag: string): HTMLElement => {
+		const chip = hostDocument.createElement("span");
+		chip.className = "roadmap-topic-detail__tag";
+		const label = hostDocument.createElement("span");
+		label.textContent = tag;
+		const selector = tag.replaceAll(/["\\]/gu, "\\$&");
+		const badge =
+			svg.querySelector(
+				`.roadmap__tag-chip[data-tag="${selector}"] [data-roadmap-element="badge"]`,
+			) ??
+			svg.querySelector(
+				`.roadmap__legend-row[data-tag="${selector}"] [data-roadmap-element="badge"]`,
+			);
+		const view = hostDocument.defaultView;
+		if (badge && view) {
+			const circle = badge.querySelector("circle");
+			const use = badge.querySelector("use");
+			const size = Number(circle?.getAttribute("r") ?? 0) * 2 || Number(use?.getAttribute("width"));
+			const paintSource = circle ?? use;
+			const accent = paintSource ? view.getComputedStyle(paintSource).fill : "";
+			if (size > 0) {
+				const disc = hostDocument.createElementNS(svgNamespace, "svg");
+				disc.setAttribute("class", "roadmap-topic-detail__tag-disc");
+				disc.setAttribute("viewBox", `0 0 ${size} ${size}`);
+				disc.setAttribute("aria-hidden", "true");
+				const artwork = badge.cloneNode(true) as SVGGElement;
+				// The badge sits at its chart position; the mini viewport wants
+				// it at the origin.
+				artwork.removeAttribute("transform");
+				// Badge paints are var(--roadmap-…) tokens scoped to the chart
+				// svg; outside it they would collapse to black. Stamp the
+				// resolved paints from the in-chart originals onto the clone.
+				const originals = [badge, ...badge.querySelectorAll("*")];
+				const clones = [artwork, ...artwork.querySelectorAll("*")];
+				originals.forEach((original, index) => {
+					const target = clones[index];
+					if (!target) return;
+					const computed = view.getComputedStyle(original);
+					if (original.hasAttribute("fill")) target.setAttribute("fill", computed.fill);
+					if (original.hasAttribute("color")) target.setAttribute("color", computed.color);
+				});
+				disc.append(artwork);
+				chip.append(disc);
+			}
+			if (accent && accent !== "none") {
+				chip.style.color = accent;
+				chip.style.background = `color-mix(in srgb, ${accent} 14%, transparent)`;
+			}
+		}
+		if (chip.childElementCount === 0) chip.classList.add("roadmap-topic-detail__tag--plain");
+		chip.append(label);
+		return chip;
+	};
+
 	// The detail section lives inside the summary panel: title, a state
 	// selector, tags, the rich note rebuilt from the embedded model, term
 	// definitions, and the resource link.
@@ -1245,12 +1453,7 @@ export function attachRoadmapInteractivity(
 		if (detail.tags.length > 0) {
 			const tags = hostDocument.createElement("div");
 			tags.className = "roadmap-topic-detail__tags";
-			for (const tag of detail.tags) {
-				const chip = hostDocument.createElement("span");
-				chip.className = "roadmap-topic-detail__tag";
-				chip.textContent = tag;
-				tags.append(chip);
-			}
+			for (const tag of detail.tags) tags.append(tagChip(tag));
 			detailSection.append(tags);
 		}
 		if (detail.note) {
