@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 import type { InlineNode, TypographyTheme } from "../types.ts";
-import { applyAbbreviations, inlineToPlainText, measureText, wrapInline } from "./inline.ts";
+import {
+	applyAbbreviations,
+	flattenInline,
+	inlineToPlainText,
+	measureText,
+	wrapInline,
+} from "./inline.ts";
 
 const typography: TypographyTheme = {
 	color: "#000000",
@@ -41,6 +47,50 @@ describe("inline abbreviations", () => {
 		});
 
 		expect(abbreviationValues(result)).toEqual(["API"]);
+	});
+});
+
+describe("raw emoji shortcode tagging", () => {
+	test("tags raw Unicode emoji with their canonical shortcodes", () => {
+		const runs = flattenInline([{ type: "text", value: "Play 1\ufe0f\u20e3 now \u{1f680}" }]);
+		expect(runs).toEqual([
+			{ text: "Play ", marks: [] },
+			{ text: "1\ufe0f\u20e3", marks: [], shortcode: "one" },
+			{ text: " now ", marks: [] },
+			{ text: "\u{1f680}", marks: [], shortcode: "rocket" },
+		]);
+	});
+
+	test("resolves aliases to canonical shortcodes and keeps FE0F-less keycaps", () => {
+		// U+0031 U+20E3 — a keycap missing its variation selector still maps.
+		const runs = flattenInline([{ type: "text", value: "1\u20e3" }]);
+		expect(runs).toEqual([{ text: "1\u20e3", marks: [], shortcode: "one" }]);
+	});
+
+	test("keeps code spans and unmapped pictographs literal", () => {
+		expect(flattenInline([{ type: "code", value: "1\ufe0f\u20e3" }])).toEqual([
+			{ text: "1\ufe0f\u20e3", marks: ["code"] },
+		]);
+		// A lone combining keycap has no base character and maps to nothing.
+		expect(flattenInline([{ type: "text", value: "\u20e3" }])).toEqual([
+			{ text: "\u20e3", marks: [] },
+		]);
+	});
+
+	test("emoji inside links keep their destination", () => {
+		const runs = flattenInline([
+			{
+				type: "link",
+				destination: "https://example.com",
+				children: [{ type: "text", value: "\u{1f3c1} finish" }],
+			},
+		]);
+		expect(runs[0]).toEqual({
+			text: "\u{1f3c1}",
+			marks: [],
+			shortcode: "checkered_flag",
+			destination: "https://example.com",
+		});
 	});
 });
 

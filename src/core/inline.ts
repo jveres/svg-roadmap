@@ -5,7 +5,7 @@ import type {
 	TextLineSegment,
 	TypographyTheme,
 } from "../types.ts";
-import { gemojiEmoji } from "./emoji/gemoji-data.ts";
+import { gemojiCanonical, gemojiEmoji } from "./emoji/gemoji-data.ts";
 
 export interface InlineRun {
 	readonly text: string;
@@ -227,10 +227,68 @@ function visitInline(nodes: readonly InlineNode[], state: RunState, runs: Inline
 	}
 }
 
+// Reverse gemoji lookup: an emoji string (with or without its FE0F variation
+// selectors) to its canonical shortcode. Built once, on first raw emoji.
+let emojiShortcodes: Map<string, string> | undefined;
+
+function emojiShortcodeFor(grapheme: string): string | undefined {
+	if (!emojiShortcodes) {
+		emojiShortcodes = new Map();
+		for (const [id, emoji] of Object.entries(gemojiEmoji)) {
+			const canonical = gemojiCanonical[id] ?? id;
+			for (const key of [emoji, emoji.replaceAll("\ufe0f", "")]) {
+				if (!emojiShortcodes.has(key)) emojiShortcodes.set(key, canonical);
+			}
+		}
+	}
+	return emojiShortcodes.get(grapheme) ?? emojiShortcodes.get(grapheme.replaceAll("\ufe0f", ""));
+}
+
+/**
+ * Tags raw Unicode emoji with their canonical shortcodes, so `1️⃣` renders
+ * exactly like `:one:`: vendored artwork when it is registered — atomic, and
+ * immune to tracked lettering splitting a keycap or ZWJ cluster — with the
+ * platform glyph as the unchanged fallback. Code spans stay literal, and
+ * clusters outside the gemoji set keep rendering as plain text.
+ */
+function tagRawEmoji(runs: readonly InlineRun[]): InlineRun[] {
+	const result: InlineRun[] = [];
+	for (const run of runs) {
+		if (
+			run.shortcode !== undefined ||
+			run.tag !== undefined ||
+			run.abbreviationIndicator === true ||
+			run.marks.includes("code") ||
+			!pictographPattern.test(run.text)
+		) {
+			result.push(run);
+			continue;
+		}
+		let buffer = "";
+		const flush = (): void => {
+			if (buffer) {
+				result.push({ ...run, text: buffer });
+				buffer = "";
+			}
+		};
+		for (const grapheme of textGraphemes(run.text)) {
+			const shortcode = pictographPattern.test(grapheme) ? emojiShortcodeFor(grapheme) : undefined;
+			if (shortcode) {
+				flush();
+				result.push({ ...run, text: grapheme, shortcode });
+			} else {
+				buffer += grapheme;
+			}
+		}
+		flush();
+	}
+	return result;
+}
+
 export function flattenInline(nodes: readonly InlineNode[]): InlineRun[] {
 	const runs: InlineRun[] = [];
 	visitInline(nodes, { marks: [] }, runs);
-	return runs;
+	return tagRawEmoji(runs);
 }
 
 const arialCharacters =

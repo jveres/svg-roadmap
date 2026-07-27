@@ -519,8 +519,12 @@ without shipping megabytes by default.
 - Every other GitHub shortcode resolves to its Unicode character and renders
   with the viewer's platform emoji font.
 - Unknown names stay as literal `:text:`.
-- Raw Unicode emoji typed directly into the Markdown always render as platform
-  glyphs.
+- Raw Unicode emoji typed directly into the Markdown render exactly like
+  their shortcode equivalents: an emoji that maps to a known shortcode uses
+  the same embedded artwork (so `1️⃣` and `:one:` are identical, and tracked
+  display lettering cannot split a keycap or ZWJ cluster), while clusters
+  outside the set render as platform glyphs. Emoji inside code spans stay
+  literal.
 
 Register the opt-in GitHub pack to upgrade the entire shortcode set to
 embedded artwork. The pack is a separate entry point (about 1 MB gzipped), and
