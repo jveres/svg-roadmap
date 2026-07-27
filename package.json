@@ -44,6 +44,10 @@
 		"./viewer": {
 			"types": "./dist/viewer.d.ts",
 			"import": "./dist/viewer.js"
+		},
+		"./preview": {
+			"types": "./dist/preview.d.ts",
+			"import": "./dist/preview.js"
 		}
 	},
 	"files": [

@@ -9,6 +9,7 @@ export default defineConfig({
 				"emoji-github": "src/emoji-github.ts",
 				interactive: "src/interactive.ts",
 				viewer: "src/viewer.ts",
+				preview: "src/preview.ts",
 			},
 			formats: ["es"],
 		},
