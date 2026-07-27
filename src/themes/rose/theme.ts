@@ -98,7 +98,7 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 			radius: 3,
 			shadow: true,
 			paddingX: 15,
-			typography: { color: ink, fontFamily: bodyFontFamily },
+			typography: { color: ink, fontFamily: bodyFontFamily, renderScaleX: 1, renderScaleY: 1 },
 		},
 		nestedTopic: {
 			shape: "rounded",
@@ -123,6 +123,8 @@ export const roseLightTheme: RoadmapTheme = createTheme(
 				fontFamily: displayFontFamily,
 				fontWeight: 700,
 				letterSpacing: 0.8,
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

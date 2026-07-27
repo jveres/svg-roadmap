@@ -90,7 +90,13 @@ export const retroLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1.5,
 			radius: 10,
 			shadow: true,
-			typography: { color: cocoa, fontFamily: bodyFontFamily, fontWeight: 500 },
+			typography: {
+				color: cocoa,
+				fontFamily: bodyFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "rounded",
@@ -116,6 +122,8 @@ export const retroLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 700,
 				letterSpacing: 0.6,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

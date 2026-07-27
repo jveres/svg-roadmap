@@ -99,7 +99,13 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1.5,
 			radius: 7,
 			shadow: true,
-			typography: { color: "#241740", fontFamily: monoFontFamily, fontWeight: 500 },
+			typography: {
+				color: "#241740",
+				fontFamily: monoFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "chamfered",
@@ -131,6 +137,8 @@ export const arcadeLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 700,
 				letterSpacing: 0.8,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

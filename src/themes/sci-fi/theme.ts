@@ -91,7 +91,13 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 			fill: "#f9fdff",
 			stroke: "#78b8d4",
 			radius: 8,
-			typography: { color: "#17364d", fontFamily: displayFontFamily, letterSpacing: 0.3 },
+			typography: {
+				color: "#17364d",
+				fontFamily: displayFontFamily,
+				letterSpacing: 0.3,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "capsule",
@@ -113,6 +119,8 @@ export const sciFiLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 700,
 				letterSpacing: 1.2,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

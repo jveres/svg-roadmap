@@ -60,6 +60,8 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				color: "#f2f5f8",
 				fontFamily: monoFontFamily,
 				fontWeight: 600,
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		note: {
@@ -90,7 +92,13 @@ export const proLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1,
 			radius: 4,
 			shadow: true,
-			typography: { color: "#242b34", fontFamily: bodyFontFamily, fontWeight: 500 },
+			typography: {
+				color: "#242b34",
+				fontFamily: bodyFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "rounded",
@@ -99,7 +107,13 @@ export const proLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1,
 			radius: 4,
 			shadow: false,
-			typography: { color: "#333c47", fontFamily: bodyFontFamily, fontWeight: 500 },
+			typography: {
+				color: "#333c47",
+				fontFamily: bodyFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		topicHeader: {
 			shape: "rounded",
@@ -115,6 +129,8 @@ export const proLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 600,
 				letterSpacing: 0.5,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {

@@ -97,7 +97,13 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 			strokeWidth: 1.5,
 			radius: 0,
 			shadow: true,
-			typography: { color: ink, fontFamily: monoFontFamily, fontWeight: 500 },
+			typography: {
+				color: ink,
+				fontFamily: monoFontFamily,
+				fontWeight: 500,
+				renderScaleX: 1,
+				renderScaleY: 1,
+			},
 		},
 		nestedTopic: {
 			shape: "rounded",
@@ -126,6 +132,8 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				fontWeight: 700,
 				letterSpacing: 1,
 				textTransform: "uppercase",
+				renderScaleX: 1,
+				renderScaleY: 1,
 			},
 		},
 		boards: {
