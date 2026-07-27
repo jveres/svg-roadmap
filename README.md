@@ -289,6 +289,8 @@ const { svg } = renderRoadmapDocument(document, {
 
 `packRoadmapDocument(document)` produces the versioned envelope the viewer
 accepts, and `generateRoadmap(...).document` is the document it packs.
+`pnpm pack:artifact <roadmap.md> <artifact.json>` does the whole step from
+the command line.
 
 `svg-roadmap/preview` builds a complete embed on top of the viewer: the
 `<roadmap-preview>` custom element renders an artifact with PDF-viewer-style
