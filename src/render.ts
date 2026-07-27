@@ -861,7 +861,12 @@ function renderCardFrame(
 		const inner = insetRectangle(rectangle, card.detailInset);
 		const paint = `class="roadmap__frame-detail" fill="none" stroke="${cssToken(`${token}-border`)}" stroke-width="var(--roadmap-frame-detail-width,0.7)" stroke-opacity="var(--roadmap-frame-detail-opacity,0.45)" pointer-events="none"`;
 		if (card.shape === "chamfered") {
-			return `<path ${paint} d="${chamferedRectanglePath(inner, Math.max(0, card.radius - card.detailInset))}"/>`;
+			// A parallel offset of a 45° chamfer: shrinking the cut by the full
+			// inset pulls the diagonal to inset/√2 of the straight-edge gap and
+			// the keyline touches the frame at the corners. Reducing the cut by
+			// inset·(2 − √2) keeps the gap uniform on every edge.
+			const cut = Math.max(0, card.radius - card.detailInset * (2 - Math.SQRT2));
+			return `<path ${paint} d="${chamferedRectanglePath(inner, cut)}"/>`;
 		}
 		if (card.shape === "petal") return `<path ${paint} d="${petalCardPath(inner)}"/>`;
 		if (card.shape === "capsule") {
@@ -1013,13 +1018,40 @@ function renderNoteMarker(node: LayoutNode, theme: RoadmapTheme): string {
 		// A wedge inside the frame whose hypotenuse runs parallel to the
 		// chamfer cut, so the mark shares the box geometry instead of
 		// floating in the cut-away corner outside it.
-		const cut = style.size ?? Math.max(4, card.radius);
-		const gap = 1.6;
-		const cornerX = roundCoordinate(node.x + node.width - gap);
-		const cornerY = roundCoordinate(node.y + node.height - gap);
-		const innerX = roundCoordinate(node.x + node.width - gap - cut);
-		const innerY = roundCoordinate(node.y + node.height - gap - cut);
-		return `<path class="roadmap__note-marker" d="M ${innerX} ${cornerY} L ${cornerX} ${innerY} L ${innerX} ${innerY} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
+		const clampCut = (rect: Rect, requested: number): number =>
+			Math.max(2, Math.min(requested, rect.width / 4, rect.height / 3));
+		const hair = 0.35; // the detail keyline hairline's half-width
+		let cornerX: number;
+		let cornerY: number;
+		let cut: number;
+		if (card.detailInset !== undefined) {
+			// Fuse with the keyline by replicating its exact painted geometry —
+			// including the chamfer path's cut clamping — then overlapping the
+			// hairline by its half-width on every edge, so no antialiased seam
+			// of light can appear at fractional pixels.
+			const inner = insetRectangle(
+				{ x: node.x, y: node.y, width: node.width, height: node.height },
+				card.detailInset,
+			);
+			const keylineCut = clampCut(inner, card.radius - card.detailInset * (2 - Math.SQRT2));
+			cornerX = inner.x + inner.width + hair;
+			cornerY = inner.y + inner.height + hair;
+			cut = style.size ?? keylineCut + hair * (2 + Math.SQRT2);
+		} else {
+			// Without a keyline, a modest cell-sized wedge half a stroke off
+			// the frame's true (clamped) chamfer.
+			const gap = (card.strokeWidth ?? 1) / 2 + 0.4;
+			cornerX = node.x + node.width - gap;
+			cornerY = node.y + node.height - gap;
+			const frameCut = clampCut(
+				{ x: node.x, y: node.y, width: node.width, height: node.height },
+				card.radius,
+			);
+			cut = style.size ?? Math.min(8, Math.max(4, frameCut));
+		}
+		const innerX = roundCoordinate(cornerX - cut);
+		const innerY = roundCoordinate(cornerY - cut);
+		return `<path class="roadmap__note-marker" d="M ${innerX} ${roundCoordinate(cornerY)} L ${roundCoordinate(cornerX)} ${innerY} L ${innerX} ${innerY} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;
 	}
 	const fold = style.size ?? Math.min(9, Math.max(6, Math.round(node.height * 0.28)));
 	return `<path class="roadmap__note-marker" d="M ${roundCoordinate(x - fold)} ${y} L ${x} ${roundCoordinate(y - fold)} L ${x} ${y} Z" fill="${fill}" fill-opacity="${opacity}" aria-hidden="true"/>`;

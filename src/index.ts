@@ -1,15 +1,11 @@
-import { documentLayoutOptions, layoutRoadmap } from "./layout.ts";
 import { initializeRoadmapMarkdown, parseRoadmapMarkdown, RoadmapParser } from "./markdown.ts";
-import { renderRoadmapSvg } from "./render.ts";
-import { applyDocumentTags } from "./theme.ts";
-import { resolveTheme } from "./themes/catalog.ts";
 import type {
 	CreateRoadmapGeneratorOptions,
 	GeneratedRoadmap,
 	GenerateRoadmapOptions,
-	RoadmapDocument,
 	SynchronousGenerateRoadmapOptions,
 } from "./types.ts";
+import { renderRoadmapDocument } from "./viewer.ts";
 
 export type { ComrakOptions, InitInput, SyncInitInput } from "comrak-wasm";
 export {
@@ -52,42 +48,14 @@ export { retroDarkTheme, retroLightTheme, retroTheme } from "./themes/retro/them
 export { roseDarkTheme, roseLightTheme, roseTheme } from "./themes/rose/theme.ts";
 export { sciFiDarkTheme, sciFiLightTheme, sciFiTheme } from "./themes/sci-fi/theme.ts";
 export type * from "./types.ts";
-
-function generateFromDocument(
-	document: RoadmapDocument,
-	options: SynchronousGenerateRoadmapOptions,
-): GeneratedRoadmap {
-	const documentTheme = document.settings.theme.mode
-		? { preset: document.settings.theme.preset, mode: document.settings.theme.mode }
-		: { preset: document.settings.theme.preset };
-	const resolved = resolveTheme(options.theme ?? documentTheme, options.themes);
-	// Document-defined tags extend the theme's taxonomy; identity is
-	// preserved when the front matter declares none.
-	const theme = applyDocumentTags(resolved, document.settings.tags);
-	// Document-authored layout intent (width, columns, spacing) resolves
-	// first; explicit API options still win, legend included.
-	const layout = layoutRoadmap(document, theme, {
-		showLegend: document.settings.legend,
-		showFootnotes: document.settings.footnotes,
-		...documentLayoutOptions(document.settings.layout),
-		...options.layout,
-	});
-	const animatedBackground =
-		options.render?.animatedBackground ?? document.settings.background.animated;
-	const gradients = options.render?.gradients ?? document.settings.theme.gradients;
-	const noteMarkers = options.render?.noteMarkers ?? document.settings.noteMarkers;
-	const title = options.render?.title ?? document.settings.title;
-	const description = options.render?.description ?? document.settings.description;
-	const svg = renderRoadmapSvg(layout, theme, {
-		...options.render,
-		...(animatedBackground !== undefined ? { animatedBackground } : {}),
-		...(gradients !== undefined ? { gradients } : {}),
-		...(noteMarkers ? { noteMarkers } : {}),
-		...(title !== undefined ? { title } : {}),
-		...(description !== undefined ? { description } : {}),
-	});
-	return { document, layout, svg, theme };
-}
+export {
+	openRoadmapDocument,
+	packRoadmapDocument,
+	type RoadmapDocumentEnvelope,
+	RoadmapDocumentError,
+	renderRoadmapDocument,
+	roadmapDocumentFormat,
+} from "./viewer.ts";
 
 export function generateRoadmap(
 	markdown: string,
@@ -96,7 +64,7 @@ export function generateRoadmap(
 	const document = parseRoadmapMarkdown(markdown, {
 		...(options.markdown ? { markdown: options.markdown } : {}),
 	});
-	return generateFromDocument(document, options);
+	return renderRoadmapDocument(document, options);
 }
 
 export class RoadmapGenerator implements Disposable {
@@ -107,7 +75,7 @@ export class RoadmapGenerator implements Disposable {
 	}
 
 	generate(markdown: string, options: SynchronousGenerateRoadmapOptions = {}): GeneratedRoadmap {
-		return generateFromDocument(this.#parser.parse(markdown), options);
+		return renderRoadmapDocument(this.#parser.parse(markdown), options);
 	}
 
 	generateSvg(markdown: string, options: SynchronousGenerateRoadmapOptions = {}): string {

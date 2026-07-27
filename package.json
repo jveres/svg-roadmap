@@ -40,6 +40,10 @@
 		"./interactive": {
 			"types": "./dist/interactive.d.ts",
 			"import": "./dist/interactive.js"
+		},
+		"./viewer": {
+			"types": "./dist/viewer.d.ts",
+			"import": "./dist/viewer.js"
 		}
 	},
 	"files": [
