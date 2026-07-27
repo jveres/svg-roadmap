@@ -1,18 +1,13 @@
 import { mdToHtml } from "comrak-wasm";
 import {
 	builtInThemes,
-	createRoadmapGenerator,
+	initializeRoadmapMarkdown,
 	installDomMeasurement,
-	type RoadmapColorMode,
-	type RoadmapGenerator,
-	type RoadmapThemeSelection,
+	RoadmapParser,
 	registerEmojiArtwork,
 } from "../src/index.ts";
-import {
-	attachRoadmapInteractivity,
-	attachRoadmapSpotlight,
-	type RoadmapInteractivityHandle,
-} from "../src/interactive.ts";
+import "../src/preview.ts";
+import type { RoadmapPreviewElement } from "../src/preview.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import elektromosGitar from "./elektromos-gitar.md?raw";
 import featureTour from "./feature-tour.md?raw";
@@ -63,18 +58,6 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 const defaultSampleId = "sweep-1.0";
 const fallbackPreset = "fun";
 
-/** Preset labels for the picker; anything unlisted falls back to its id. */
-const presetLabels: Readonly<Record<string, string>> = {
-	fun: "Fun",
-	"sci-fi": "Sci-fi",
-	rose: "Rose",
-	print: "Print",
-	pro: "Pro",
-	retro: "Retro",
-	arcade: "Arcade",
-	ascii: "ASCII",
-};
-
 const presetIds = Object.keys(builtInThemes);
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -97,30 +80,6 @@ app.innerHTML = `
 						.join("")}
 				</select>
 			</label>
-			<label class="theme-picker">Theme
-				<select id="theme-preset">
-					${presetIds
-						.map(
-							(id) =>
-								`<option value="${id}"${id === fallbackPreset ? " selected" : ""}>${presetLabels[id] ?? id}</option>`,
-						)
-						.join("")}
-				</select>
-			</label>
-			<label class="theme-picker">Mode
-				<select id="color-mode">
-					<option value="system" selected>System</option>
-					<option value="light">Light</option>
-					<option value="dark">Dark</option>
-				</select>
-			</label>
-			<label class="theme-picker interact-toggle">Interactive
-				<input id="interactive" type="checkbox" />
-			</label>
-			<label class="theme-picker interact-toggle">Spotlight
-				<input id="spotlight" type="checkbox" />
-			</label>
-			<button id="download" type="button">Download SVG</button>
 		</div>
 	</header>
 	<main id="workbench" class="workbench">
@@ -142,17 +101,9 @@ app.innerHTML = `
 			</div>
 			<textarea id="source" spellcheck="false" aria-label="Roadmap Markdown"></textarea>
 		</section>
-		<section class="preview-panel" aria-labelledby="preview-title">
-			<div class="panel-heading">
-				<h2 id="preview-title">SVG preview</h2>
-				<div class="zoom-controls" role="group" aria-label="Canvas zoom">
-					<button id="zoom-out" class="panel-reset zoom-button" type="button" aria-label="Zoom out">−</button>
-					<button id="zoom-reset" class="panel-reset zoom-button zoom-level" type="button" title="Reset zoom">100%</button>
-					<button id="zoom-in" class="panel-reset zoom-button" type="button" aria-label="Zoom in">+</button>
-				</div>
-				<span id="dimensions"></span>
-			</div>
-			<div id="preview" class="preview" aria-live="polite"></div>
+		<section class="preview-panel" aria-label="SVG preview">
+			<p id="parse-error" class="error" role="alert" hidden></p>
+			<roadmap-preview id="preview" class="preview" aria-live="polite"></roadmap-preview>
 		</section>
 	</main>
 `;
@@ -167,23 +118,31 @@ const source = requiredElement<HTMLTextAreaElement>("#source");
 const editorDirty = requiredElement<HTMLElement>("#editor-dirty");
 const resetSource = requiredElement<HTMLButtonElement>("#reset-source");
 const sampleSelect = requiredElement<HTMLSelectElement>("#sample");
-const themePresetSelect = requiredElement<HTMLSelectElement>("#theme-preset");
-const colorModeSelect = requiredElement<HTMLSelectElement>("#color-mode");
-const preview = requiredElement<HTMLDivElement>("#preview");
+const preview = requiredElement<RoadmapPreviewElement>("#preview");
+const parseError = requiredElement<HTMLParagraphElement>("#parse-error");
 const stats = requiredElement<HTMLSpanElement>("#stats");
-const dimensions = requiredElement<HTMLSpanElement>("#dimensions");
-const download = requiredElement<HTMLButtonElement>("#download");
 const workbench = requiredElement<HTMLElement>("#workbench");
-const interactiveToggle = requiredElement<HTMLInputElement>("#interactive");
-const spotlightToggle = requiredElement<HTMLInputElement>("#spotlight");
 const toggleEditor = requiredElement<HTMLButtonElement>("#toggle-editor");
-const zoomIn = requiredElement<HTMLButtonElement>("#zoom-in");
-const zoomOut = requiredElement<HTMLButtonElement>("#zoom-out");
-const zoomReset = requiredElement<HTMLButtonElement>("#zoom-reset");
 const previewOnlyClass = "workbench--preview-only";
 let editorHidden = false;
 
 const draftStorageKey = (id: string): string => `roadmap-workbench-draft:${id}`;
+const previewStorageKey = (id: string): string => `workbench:${id}`;
+
+// The element scopes progress as `<storage-key>:progress`; earlier workbench
+// builds used `workbench-progress:<sample>`. Carry existing progress over
+// once so upgrading does not lose anyone's checkmarks.
+for (const id of Object.keys(samples)) {
+	try {
+		const legacy = localStorage.getItem(`workbench-progress:${id}`);
+		const target = `${previewStorageKey(id)}:progress`;
+		if (legacy !== null && localStorage.getItem(target) === null) {
+			localStorage.setItem(target, legacy);
+		}
+	} catch {
+		// Storage may be unavailable; migration is best-effort.
+	}
+}
 
 function syncDirtyState(): void {
 	const sample = samples[sampleSelect.value];
@@ -216,9 +175,7 @@ function loadSample(id: string): void {
 		// Fall through to the pristine sample.
 	}
 	source.value = draft ?? sample.source;
-	if ([...themePresetSelect.options].some((option) => option.value === sample.preset)) {
-		themePresetSelect.value = sample.preset;
-	}
+	if (presetIds.includes(sample.preset)) preview.setAttribute("theme", sample.preset);
 	syncDirtyState();
 }
 
@@ -231,7 +188,6 @@ interface WorkbenchSettings {
 	readonly editorHidden?: boolean;
 	readonly interactive?: boolean;
 	readonly spotlight?: boolean;
-	readonly zoom?: number;
 }
 
 function loadStoredSettings(): WorkbenchSettings {
@@ -248,12 +204,11 @@ function saveSettings(): void {
 			settingsStorageKey,
 			JSON.stringify({
 				sample: sampleSelect.value,
-				theme: themePresetSelect.value,
-				mode: colorModeSelect.value,
+				theme: preview.getAttribute("theme") ?? fallbackPreset,
+				mode: preview.getAttribute("mode") ?? "system",
 				editorHidden,
-				interactive: interactiveToggle.checked,
-				zoom,
-				spotlight: spotlightToggle.checked,
+				interactive: preview.hasAttribute("interactive"),
+				spotlight: preview.hasAttribute("spotlight"),
 			} satisfies WorkbenchSettings),
 		);
 	} catch {
@@ -285,96 +240,32 @@ function setEditorHidden(hidden: boolean): void {
 const storedSettings = loadStoredSettings();
 applyStoredValue(sampleSelect, storedSettings.sample);
 loadSample(sampleSelect.value);
-applyStoredValue(themePresetSelect, storedSettings.theme);
-applyStoredValue(colorModeSelect, storedSettings.mode);
 setEditorHidden(storedSettings.editorHidden === true);
-interactiveToggle.checked = storedSettings.interactive === true;
-spotlightToggle.checked = storedSettings.spotlight === true;
-let svg = "";
+
+// The element's own menu is the settings surface; the workbench only seeds
+// stored values and keys per-sample storage. Interactive follows the element
+// default (on) unless a stored session switched it off.
+preview.setAttribute("storage-key", previewStorageKey(sampleSelect.value));
+preview.setAttribute(
+	"theme",
+	presetIds.includes(storedSettings.theme ?? "")
+		? (storedSettings.theme as string)
+		: fallbackPreset,
+);
+preview.setAttribute("mode", storedSettings.mode ?? "system");
+if (storedSettings.interactive !== undefined) {
+	preview.toggleAttribute("interactive", storedSettings.interactive);
+}
+preview.toggleAttribute("spotlight", storedSettings.spotlight === true);
+
+// Settings changed through the menu persist across reloads.
+new MutationObserver(() => saveSettings()).observe(preview, {
+	attributes: true,
+	attributeFilter: ["theme", "mode", "interactive", "spotlight"],
+});
+
 let renderTimer: number | undefined;
-let generator: RoadmapGenerator | undefined;
-const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
-
-function selectedMode(): RoadmapColorMode {
-	if (colorModeSelect.value === "system") return systemTheme.matches ? "dark" : "light";
-	return colorModeSelect.value === "dark" ? "dark" : "light";
-}
-
-function selectedTheme(): RoadmapThemeSelection {
-	const preset = themePresetSelect.value;
-	return {
-		preset: presetIds.includes(preset) ? preset : fallbackPreset,
-		mode: selectedMode(),
-	};
-}
-
-function suppressPreviewTitleTooltip(): void {
-	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
-	const title = previewSvg?.querySelector<SVGTitleElement>(":scope > title");
-	if (!previewSvg || !title) return;
-
-	const label = title.textContent?.trim();
-	if (label) previewSvg.setAttribute("aria-label", label);
-	const description = previewSvg.querySelector<SVGDescElement>(":scope > desc");
-	if (description?.id) previewSvg.setAttribute("aria-describedby", description.id);
-	previewSvg.removeAttribute("aria-labelledby");
-	title.remove();
-}
-
-/**
- * Canvas zoom: 1 fits the preview width (the SVG's natural responsive
- * behavior); other factors widen or shrink the canvas and the pane scrolls.
- * The factor survives re-renders, so theme and source edits keep the view.
- */
-let zoom = 1;
-{
-	const stored = Number(loadStoredSettings().zoom);
-	if (Number.isFinite(stored) && stored >= 0.25 && stored <= 4) zoom = stored;
-}
-
-function applyZoom(): void {
-	zoomReset.textContent = `${Math.round(zoom * 100)}%`;
-	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
-	if (!previewSvg) return;
-	if (zoom === 1) {
-		previewSvg.style.maxWidth = "100%";
-		previewSvg.style.width = "";
-		return;
-	}
-	// Zoom multiplies the size the chart actually displays at 100% — the
-	// natural width capped by the pane — not the pane width, which would
-	// let 80% grow a chart narrower than the pane.
-	const natural = Number(previewSvg.getAttribute("width")) || previewSvg.viewBox.baseVal.width;
-	const paneStyle = window.getComputedStyle(preview);
-	const pane =
-		preview.clientWidth -
-		Number.parseFloat(paneStyle.paddingLeft) -
-		Number.parseFloat(paneStyle.paddingRight);
-	const base = Math.min(natural, Math.max(100, pane));
-	previewSvg.style.maxWidth = "none";
-	previewSvg.style.width = `${Math.round(base * zoom)}px`;
-}
-
-function setZoom(value: number): void {
-	zoom = Math.min(4, Math.max(0.25, Math.round(value * 100) / 100));
-	applyZoom();
-	saveSettings();
-}
-
-zoomIn.addEventListener("click", () => setZoom(zoom * 1.25));
-zoomOut.addEventListener("click", () => setZoom(zoom / 1.25));
-zoomReset.addEventListener("click", () => setZoom(1));
-
-let interactivity: RoadmapInteractivityHandle | undefined;
-let detachSpotlight: (() => void) | undefined;
-
-function syncSpotlight(): void {
-	detachSpotlight?.();
-	detachSpotlight = undefined;
-	if (!spotlightToggle.checked) return;
-	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
-	if (previewSvg) detachSpotlight = attachRoadmapSpotlight(previewSvg);
-}
+let parser: RoadmapParser | undefined;
 
 /**
  * Scrolls the Markdown editor to a source line and selects it, so a click on
@@ -408,49 +299,20 @@ function revealSourceLine(line: number): void {
 	source.scrollTop = Math.max(0, (rows - 1) * lineHeight);
 }
 
-function syncInteractivity(): void {
-	interactivity?.dispose();
-	interactivity = undefined;
-	if (!interactiveToggle.checked) return;
-	const previewSvg = preview.querySelector<SVGSVGElement>(":scope > svg");
-	if (!previewSvg) return;
-	interactivity = attachRoadmapInteractivity(previewSvg, {
-		storageKey: `workbench-progress:${sampleSelect.value}`,
-		// Notes arrive as authored Markdown; rendering is the host's call.
-		// comrak escapes raw HTML by default, so the output is inert.
-		renderNote: (markdown) => mdToHtml(markdown),
-		// A selected topic also reveals its authored source in the editor.
-		onSelect: (detail) => {
-			if (detail?.sourceRange) revealSourceLine(detail.sourceRange.start.line);
-		},
-	});
-}
-
+/** Parses the editor's Markdown and hands the artifact to the preview. */
 function render(): void {
-	if (!generator) return;
+	if (!parser) return;
 	try {
-		const theme = selectedTheme();
-		document.documentElement.dataset.workbenchTheme = theme.mode;
-		const result = generator.generate(source.value, {
-			theme,
-			render: { idPrefix: "workbench-roadmap" },
-		});
-		svg = result.svg;
-		preview.innerHTML = svg;
-		applyZoom();
-		suppressPreviewTitleTooltip();
-		preview.dataset.theme = result.theme.name;
-		preview.dataset.mode = result.theme.mode;
-		stats.textContent = `${result.document.stats.chapters} chapters · ${result.document.stats.topics} topics · depth ${result.document.stats.maxDepth}`;
-		dimensions.textContent = `${result.layout.width} × ${result.layout.height}`;
-		syncInteractivity();
-		syncSpotlight();
+		const parsed = parser.parse(source.value);
+		parseError.hidden = true;
+		parseError.textContent = "";
+		preview.artifact = parsed;
+		stats.textContent = `${parsed.stats.chapters} chapters · ${parsed.stats.topics} topics · depth ${parsed.stats.maxDepth}`;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		preview.innerHTML = `<p class="error" role="alert"></p>`;
-		preview.querySelector(".error")?.append(document.createTextNode(message));
-		stats.textContent = "Render failed";
-		dimensions.textContent = "";
+		parseError.hidden = false;
+		parseError.textContent = message;
+		stats.textContent = "Parse failed";
 	}
 }
 
@@ -458,6 +320,16 @@ function scheduleRender(): void {
 	if (renderTimer !== undefined) window.clearTimeout(renderTimer);
 	renderTimer = window.setTimeout(render, 120);
 }
+
+preview.addEventListener("roadmap-render", (event) => {
+	const detail = (event as CustomEvent<{ mode: string }>).detail;
+	document.documentElement.dataset.workbenchTheme = detail.mode;
+});
+// A selected topic also reveals its authored source in the editor.
+preview.addEventListener("roadmap-select", (event) => {
+	const detail = (event as CustomEvent<{ sourceRange?: { start: { line: number } } }>).detail;
+	if (detail?.sourceRange) revealSourceLine(detail.sourceRange.start.line);
+});
 
 source.addEventListener("input", () => {
 	saveDraft();
@@ -472,61 +344,39 @@ resetSource.addEventListener("click", () => {
 });
 sampleSelect.addEventListener("change", () => {
 	loadSample(sampleSelect.value);
+	preview.setAttribute("storage-key", previewStorageKey(sampleSelect.value));
 	saveSettings();
 	render();
-});
-themePresetSelect.addEventListener("change", () => {
-	saveSettings();
-	render();
-});
-colorModeSelect.addEventListener("change", () => {
-	saveSettings();
-	render();
-});
-systemTheme.addEventListener("change", () => {
-	if (colorModeSelect.value === "system") render();
 });
 toggleEditor.addEventListener("click", () => {
 	setEditorHidden(!editorHidden);
 	saveSettings();
 });
-interactiveToggle.addEventListener("change", () => {
-	syncInteractivity();
-	saveSettings();
-});
-spotlightToggle.addEventListener("change", () => {
-	syncSpotlight();
-	saveSettings();
-});
-download.addEventListener("click", () => {
-	if (!svg) return;
-	const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = "roadmap.svg";
-	anchor.click();
-	URL.revokeObjectURL(url);
-});
 
 try {
+	// Notes arrive as authored Markdown; rendering is the host's call.
+	// comrak escapes raw HTML by default, so the output is inert.
+	preview.renderNote = (markdown) => mdToHtml(markdown);
 	// Measure with the browser's real fonts; late font loads re-render.
-	await installDomMeasurement({ onFontsChanged: () => render() });
-	generator = await createRoadmapGenerator();
+	await installDomMeasurement({ onFontsChanged: () => preview.refresh() });
+	await initializeRoadmapMarkdown();
+	parser = new RoadmapParser();
 	render();
 	// The full GitHub emoji tier loads lazily so first paint stays light;
 	// shortcodes beyond the core pack upgrade on the next render.
 	import("../src/emoji-github.ts")
 		.then(({ githubEmojiArtwork }) => {
 			registerEmojiArtwork(githubEmojiArtwork);
-			render();
+			preview.refresh();
 		})
 		.catch((error: unknown) => {
 			console.warn("GitHub emoji pack failed to load", error);
 		});
 } catch (error) {
 	const message = error instanceof Error ? error.message : String(error);
-	preview.textContent = `Unable to initialize comrak-wasm: ${message}`;
+	parseError.hidden = false;
+	parseError.textContent = `Unable to initialize comrak-wasm: ${message}`;
 	stats.textContent = "Initialization failed";
 }
 
-window.addEventListener("pagehide", () => generator?.dispose(), { once: true });
+window.addEventListener("pagehide", () => parser?.dispose(), { once: true });

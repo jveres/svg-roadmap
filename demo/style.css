@@ -308,6 +308,18 @@ textarea:focus-visible {
 	background: var(--panel-background);
 }
 
+.preview-panel {
+	grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.preview-panel > .error {
+	margin: 0;
+}
+
+.preview-panel > .error[hidden] {
+	display: none;
+}
+
 .panel-heading {
 	display: flex;
 	align-items: center;
@@ -317,21 +329,6 @@ textarea:focus-visible {
 	border-bottom: 1px solid var(--panel-heading-border);
 	color: var(--panel-heading-color);
 	background: var(--panel-heading-background);
-}
-
-.zoom-controls {
-	display: flex;
-	flex: none;
-	gap: 4px;
-}
-
-.zoom-controls .zoom-button {
-	min-width: 24px;
-}
-
-.zoom-controls .zoom-level {
-	min-width: 46px;
-	font-variant-numeric: tabular-nums;
 }
 
 .panel-heading h2 {
@@ -407,7 +404,25 @@ textarea {
 	accent-color: #1289a7;
 }
 
-.preview {
+/*
+ * The element's header is the pane's heading — title, dimensions, and the
+ * zoom/download controls all in one bar, styled like the other panel
+ * headings — and its canvas carries the framed checkerboard and scrolls.
+ */
+#preview::part(header) {
+	gap: 16px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--panel-heading-border);
+	color: var(--panel-heading-color);
+	background: var(--panel-heading-background);
+}
+
+#preview::part(title) {
+	color: var(--panel-heading-title);
+	font-size: 14px;
+}
+
+#preview::part(canvas) {
 	overflow: auto;
 	padding: 20px;
 	background:
@@ -423,11 +438,13 @@ textarea {
 	background-size: 12px 12px;
 }
 
-.preview > svg {
-	display: block;
-	margin: 0 auto;
-	border-radius: 4px;
-	box-shadow: 0 8px 30px var(--preview-shadow);
+.preview {
+	overflow: hidden;
+}
+
+.preview {
+	--roadmap-preview-chart-radius: 4px;
+	--roadmap-preview-chart-shadow: 0 8px 30px var(--preview-shadow);
 }
 
 .error {

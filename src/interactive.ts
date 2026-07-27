@@ -412,8 +412,14 @@ const interactiveCss = `
 .roadmap-topic-detail__link-icon svg{width:12px;height:12px;display:block}
 `;
 
-function ensureStyles(hostDocument: Document): void {
-	const existing = hostDocument.getElementById(styleElementId);
+function ensureStyles(target: Element): void {
+	// Styles land in the chart's own root — the document head normally, the
+	// shadow root when the chart lives inside a shadow host (the preview
+	// element), where document-level sheets cannot reach.
+	const root = target.getRootNode();
+	const hostDocument = target.ownerDocument;
+	const scope = root instanceof hostDocument.defaultView!.ShadowRoot ? root : hostDocument.head;
+	const existing = [...scope.children].find((child) => child.id === styleElementId);
 	if (existing) {
 		// A stale sheet from an earlier module version must not win: refresh
 		// its content instead of trusting whatever injected it first.
@@ -423,7 +429,7 @@ function ensureStyles(hostDocument: Document): void {
 	const style = hostDocument.createElement("style");
 	style.id = styleElementId;
 	style.textContent = interactiveCss;
-	hostDocument.head.appendChild(style);
+	scope.appendChild(style);
 }
 
 function topicTitle(group: SVGGElement): string {
@@ -729,7 +735,7 @@ const spotlightSources =
  * tracking. Returns a dispose function.
  */
 export function attachRoadmapSpotlight(svg: SVGSVGElement): () => void {
-	ensureStyles(svg.ownerDocument);
+	ensureStyles(svg);
 	svg.classList.add("roadmap--spotlight");
 	const prefix = svg.getAttribute("data-roadmap-instance") ?? "";
 	const nodes = [...svg.querySelectorAll<SVGGElement>("g.roadmap__node")];
@@ -929,7 +935,7 @@ export function attachRoadmapInteractivity(
 	options: AttachRoadmapInteractivityOptions = {},
 ): RoadmapInteractivityHandle {
 	const hostDocument = svg.ownerDocument;
-	ensureStyles(hostDocument);
+	ensureStyles(svg);
 
 	const prefix = svg.getAttribute("data-roadmap-instance") ?? "";
 	const chartTitle = svg.querySelector(":scope > title")?.textContent?.trim() || "roadmap";
