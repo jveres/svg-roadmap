@@ -1,16 +1,23 @@
 # SVG Roadmap
 
-SVG Roadmap turns Markdown text into a deterministic, standalone SVG chart. It
-keeps the visual language of the original roadmap generator while replacing its
-fixed topic/subtopic model and browser-only layout dependencies with a recursive
-model and a TypeScript core.
+<!-- Regenerate the figures with `pnpm generate:readme-sample`. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme-sample-dark.svg">
+  <img alt="A compact frontend learning roadmap rendered by SVG Roadmap in the Arcade theme" src="docs/readme-sample-light.svg" width="730">
+</picture>
+
+SVG Roadmap turns Markdown text into a deterministic, standalone SVG chart.
+A dependency-light TypeScript core parses familiar Markdown structure into a
+recursive topic model and lays it out without a DOM, canvas, or layout
+framework, so the same document renders identically in browsers, Node.js, and
+build tools.
 
 ## Features
 
 The library is designed for reusable rendering in browsers, Node.js, and build
 tools.
 
-- Parses Markdown with the local `comrak-wasm` package.
+- Parses Markdown with [comrak-wasm](https://github.com/jveres/comrak-wasm), Comrak compiled to WebAssembly.
 - Supports recursive topic trees without an application-level depth limit.
 - Generates SVG strings without a DOM, canvas, or layout framework.
 - Implements rectangle overlap checks, collision resolution, convex hulls, and
@@ -33,9 +40,10 @@ TypeScript are development dependencies.
 
 ## Install
 
-This workspace uses the sibling `../comrak-wasm` checkout during development.
-Place both repositories under the same parent directory, then install all
-packages with pnpm from `svg-roadmap`.
+This workspace uses a sibling checkout of
+[comrak-wasm](https://github.com/jveres/comrak-wasm) during development. Clone
+both repositories under the same parent directory, then install all packages
+with pnpm from `svg-roadmap`.
 
 ```text
 workspace/
@@ -260,6 +268,81 @@ on every mutation regardless of source — the built-in selector, your
 controls, or `reset()` — so a custom panel stays in sync without extra
 wiring. `summarizeProgress(states, total)` is exported as a pure helper for
 server-side or test use.
+
+## Embedding: viewer and `<roadmap-preview>`
+
+Only parsing needs the Wasm parser — layout and rendering are plain
+TypeScript. The `svg-roadmap/viewer` entry is that comrak-free half for
+browsers: it re-renders an already-parsed document, so a site can generate
+once (in a build step, an editor, or on a server) and ship a small JSON
+artifact instead of the generator.
+
+```ts
+import { openRoadmapDocument, renderRoadmapDocument } from "svg-roadmap/viewer";
+
+const artifact = await (await fetch("roadmap.json")).json();
+const document = openRoadmapDocument(artifact); // validates the envelope
+const { svg } = renderRoadmapDocument(document, {
+  theme: { mode: "dark" }, // re-theme at view time; document settings otherwise
+});
+```
+
+`packRoadmapDocument(document)` produces the versioned envelope the viewer
+accepts, and `generateRoadmap(...).document` is the document it packs.
+
+`svg-roadmap/preview` builds a complete embed on top of the viewer: the
+`<roadmap-preview>` custom element renders an artifact with PDF-viewer-style
+chrome — title bar, zoom controls, and a menu carrying appearance
+(light/dark/system), theme selection, the interactive layer (on by default),
+spotlight, and SVG download.
+
+Produce the artifact wherever generation runs — a build script, a CMS
+hook, an editor's save action:
+
+```ts
+// build-roadmap.mjs — run with Node.js
+import { writeFile } from "node:fs/promises";
+import { generateRoadmap, packRoadmapDocument } from "svg-roadmap";
+
+const { document } = generateRoadmap(markdown);
+await writeFile("public/roadmap.json", JSON.stringify(packRoadmapDocument(document)));
+```
+
+Then any web page embeds the fully featured preview with one element:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <script type="module">
+      // Via a bundler; with plain pages, point an import map or a CDN URL
+      // at the package's dist/preview.js instead.
+      import "svg-roadmap/preview";
+    </script>
+    <style>
+      roadmap-preview { height: 85vh; }
+    </style>
+  </head>
+  <body>
+    <roadmap-preview src="/roadmap.json" storage-key="frontend-roadmap"></roadmap-preview>
+  </body>
+</html>
+```
+
+Without a height the element grows with the chart; with one, the canvas
+pane scrolls and zooms inside it. The artifact can also arrive inline in a
+`<script type="application/roadmap+json">` child or through the `artifact`
+property — no fetch involved. Attributes mirror the menu: `theme`, `mode`,
+`interactive`, `spotlight`, plus `controls` to pick chrome pieces and
+`chromeless` to drop the bar entirely. `storage-key` scopes zoom and
+progress persistence per chart, `::part()` selectors style the chrome, and
+`roadmap-render`, `roadmap-select`, `roadmap-change`, and `roadmap-error`
+events feed host integrations. Viewers see the interactive layer
+immediately — progress tracking, the detail panel, keyboard operation —
+because it defaults on; a plain `chromeless` element renders just the
+chart. The workbench's preview pane is this element.
 
 ## Markdown conventions
 
@@ -659,8 +742,9 @@ The geometry exports include `rectanglesOverlap`, `resolveOverlaps`,
 
 ## Development
 
-The Vite workbench starts with a compact editable roadmap, renders it with both
-themes, and supports SVG download. Focused regression tests cover parsing,
+The Vite workbench pairs an editable Markdown pane with a live
+`<roadmap-preview>` element — sample documents, every theme and mode, the
+interactive layer, spotlight, zoom, and SVG download. Focused regression tests cover parsing,
 layout geometry, collision handling, and SVG rendering, and a layout-invariant
 suite renders a corpus of documents across every theme and rejects card,
 board, connector, and legend occlusions in the generated geometry.

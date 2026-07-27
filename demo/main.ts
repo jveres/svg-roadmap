@@ -9,7 +9,6 @@ import {
 import "../src/preview.ts";
 import type { RoadmapPreviewElement } from "../src/preview.ts";
 import aiArchitect from "./ai-architect.md?raw";
-import elektromosGitar from "./elektromos-gitar.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import linearFunctions from "./linear-functions.md?raw";
 import sweep10 from "./sweep-1.0.md?raw";
@@ -41,11 +40,6 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 	"linear-functions": {
 		label: "Linear Functions",
 		source: linearFunctions,
-		preset: "fun",
-	},
-	"elektromos-gitar": {
-		label: "Elektromos gitár",
-		source: elektromosGitar,
 		preset: "fun",
 	},
 	"feature-tour": {

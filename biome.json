@@ -1,7 +1,15 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
 	"files": {
-		"includes": ["**", "!dist", "!coverage", "!demo-dist", "!node_modules", "!src/core/emoji"]
+		"includes": [
+			"**",
+			"!dist",
+			"!coverage",
+			"!demo-dist",
+			"!node_modules",
+			"!src/core/emoji",
+			"!docs/*.svg"
+		]
 	},
 	"formatter": {
 		"enabled": true,

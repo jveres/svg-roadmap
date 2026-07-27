@@ -2,6 +2,8 @@
 	"name": "svg-roadmap",
 	"version": "0.1.0",
 	"description": "Dependency-light Markdown to SVG roadmap generator",
+	"license": "MIT",
+	"author": "János Veres",
 	"keywords": [
 		"markdown",
 		"roadmap",
@@ -52,6 +54,7 @@
 	},
 	"files": [
 		"dist",
+		"LICENSE",
 		"LICENSES",
 		"README.md"
 	],
@@ -67,6 +70,7 @@
 		"dev": "vite --config vite.demo.config.ts",
 		"format": "biome format --write .",
 		"generate:emoji": "node scripts/generate-emoji.mjs",
+		"generate:readme-sample": "node scripts/generate-readme-sample.mjs",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit",
