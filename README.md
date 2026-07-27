@@ -35,16 +35,16 @@ TypeScript are development dependencies.
 
 This workspace uses the sibling `../comrak-wasm` checkout during development.
 Place both repositories under the same parent directory, then install all
-packages with pnpm from `roadmap-next`.
+packages with pnpm from `svg-roadmap`.
 
 ```text
 workspace/
 ├── comrak-wasm/
-└── roadmap-next/
+└── svg-roadmap/
 ```
 
 ```sh
-cd roadmap-next
+cd svg-roadmap
 pnpm install
 ```
 

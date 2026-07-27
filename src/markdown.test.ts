@@ -117,7 +117,7 @@ roadmap:
 		expect(document.stats.topics).toBe(128);
 	});
 
-	test("parses representative roadmap-next semantics", () => {
+	test("parses representative svg-roadmap semantics", () => {
 		const markdown = `# Roadmap
 
 * Chapter One

@@ -39,7 +39,7 @@ roadmap:
 
 # Feature ++_Tour_++ :sparkles:
 
-:bulb: Everything this chart uses is plain Markdown plus a small front-matter block.[^md] **Bold**, _italic_, ==highlights==, ++inserts++, ~~strikethrough~~, `code`, and [links](https://github.com/jveres/roadmap-next) all work inside any text.
+:bulb: Everything this chart uses is plain Markdown plus a small front-matter block.[^md] **Bold**, _italic_, ==highlights==, ++inserts++, ~~strikethrough~~, `code`, and [links](https://github.com/jveres/svg-roadmap) all work inside any text.
 
 * :one: Structure
 *:beginner: Chapters come from top-level bullets. A `+` marker starts a ==grid==; nested bullets under a `*` grow ==trees== with connectors.*
