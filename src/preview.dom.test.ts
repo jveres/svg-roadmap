@@ -42,7 +42,7 @@ describe("<roadmap-preview>", () => {
 		// The default-on interactivity inserts a progress summary (with its own
 		// icon svg) ahead of the chart, so target the canvas's direct child.
 		const chart = (): SVGElement | null | undefined =>
-			element.shadowRoot?.querySelector(".canvas > svg");
+			element.shadowRoot?.querySelector(".chart-stage > svg");
 		expect(chart()?.getAttribute("data-roadmap-theme")).toBe("fun");
 		expect(chart()?.getAttribute("data-roadmap-mode")).toBe("light");
 

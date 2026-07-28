@@ -1721,6 +1721,11 @@ const artifactMotionAxes: readonly MotionAxes[] = Array.from(
 /**
  * Samples the harmonic tables into shared CSS keyframe variants; twelve
  * linear steps preserve the curve without per-artifact keyframe bloat.
+ * Note the cost model: browsers without composited SVG animations (Safari's
+ * legacy engine) repaint the subtree every frame while these run. The
+ * <roadmap-preview> element therefore lifts animated artifacts out of the
+ * svg into GPU-composited HTML layers; the in-svg animation remains for the
+ * standalone file, where smoothness wins over idle cost.
  */
 function artifactMotionKeyframes(intensity: number): string {
 	const steps = 12;

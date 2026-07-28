@@ -120,12 +120,34 @@ button.menu-item:hover { background: color-mix(in srgb, currentColor 10%, transp
 .mode-cycle { display: inline-flex; align-items: center; justify-content: center; width: 28px; padding: 0; }
 .mode-cycle svg { display: block; }
 .canvas { flex: 1; min-height: 0; overflow: auto; }
-.canvas svg {
-	display: block;
+/* An offscreen or hidden chart pauses its ambient animations — they repaint
+   the SVG continuously, so an invisible chart must not heat the machine. */
+.canvas--asleep svg *,
+.canvas--asleep .chart-artifact-layer svg { animation-play-state: paused !important; }
+.chart-stage {
+	position: relative;
+	width: fit-content;
 	margin: 0 auto;
 	border-radius: var(--roadmap-preview-chart-radius, 0);
 	box-shadow: var(--roadmap-preview-chart-shadow, none);
 }
+.chart-stage > svg { display: block; border-radius: inherit; }
+/* Lifted mode: animated background artifacts leave the svg (which would
+   repaint on the CPU every frame in engines without composited SVG
+   animation) and run as GPU-composited layers behind a transparent-canvas
+   chart. The svg keeps its own copies for standalone downloads; here they
+   just stop painting. */
+.chart-stage--lifted > svg { position: relative; z-index: 1; }
+.chart-stage--lifted > svg .roadmap__background-artifact { display: none; }
+.chart-stage--lifted > svg .roadmap__canvas { fill: transparent; }
+.chart-artifact-layer {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+}
+.chart-artifact-layer svg { position: absolute; overflow: visible; }
 `;
 
 /** Icon-only appearance states; clicking the button cycles through them. */
@@ -355,6 +377,17 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#queueRender();
 	}
 
+	// Ambient chart animations pause while the element is offscreen or the
+	// document is hidden; they repaint the SVG subtree continuously, so an
+	// invisible chart should cost nothing.
+	#visible = true;
+	#sleepObserver: IntersectionObserver | undefined;
+
+	readonly #syncSleep = (): void => {
+		const awake = this.#visible && !this.ownerDocument.hidden;
+		this.#canvas.classList.toggle("canvas--asleep", !awake);
+	};
+
 	connectedCallback(): void {
 		// Interactive defaults on and spotlight defaults off: a bare embed gets
 		// clickable topics with zero attributes. Only the first connect seeds the
@@ -369,11 +402,22 @@ export class RoadmapPreviewElement extends HTMLElement {
 		}
 		if (this.hasAttribute("src")) void this.#load(this.getAttribute("src") ?? "");
 		this.#zoom = this.#storedZoom() ?? 1;
+		if (typeof IntersectionObserver === "function") {
+			this.#sleepObserver = new IntersectionObserver((entries) => {
+				this.#visible = entries.at(-1)?.isIntersecting ?? true;
+				this.#syncSleep();
+			});
+			this.#sleepObserver.observe(this);
+		}
+		this.ownerDocument.addEventListener("visibilitychange", this.#syncSleep);
 		this.#queueRender();
 	}
 
 	disconnectedCallback(): void {
 		this.#closeMenu();
+		this.#sleepObserver?.disconnect();
+		this.#sleepObserver = undefined;
+		this.ownerDocument.removeEventListener("visibilitychange", this.#syncSleep);
 		this.#teardown();
 		this.#systemMode?.removeEventListener("change", this.#onSystemMode);
 		this.#systemMode = undefined;
@@ -463,7 +507,7 @@ export class RoadmapPreviewElement extends HTMLElement {
 
 	#applyZoom(): void {
 		this.#zoomLevel.textContent = `${Math.round(this.#zoom * 100)}%`;
-		const svg = this.#canvas.querySelector("svg");
+		const svg = this.#chartSvg();
 		if (!svg) return;
 		if (this.#zoom === 1) {
 			svg.style.maxWidth = "100%";
@@ -531,8 +575,104 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#modeCycle.setAttribute("aria-label", label);
 	}
 
+	#chartSvg(): SVGSVGElement | null {
+		return this.#canvas.querySelector(".chart-stage > svg");
+	}
+
+	/**
+	 * Moves animated background artifacts onto GPU-composited layers. Inside
+	 * the svg, an animated transform repaints the subtree on the CPU every
+	 * frame in engines without composited SVG animation (Safari's shipping
+	 * engine) — measured at most of a core for ambient drift. As positioned
+	 * HTML-context elements, the same artifacts rasterize once and move on
+	 * the compositor for free. The svg keeps its own animated copies (hidden
+	 * here by stylesheet) so a downloaded chart is unchanged.
+	 */
+	#liftAnimatedArtifacts(stage: HTMLElement): void {
+		const svg = stage.querySelector(":scope > svg");
+		if (!svg) return;
+		const artifacts = [...svg.querySelectorAll("g.roadmap__background-artifact")];
+		if (artifacts.length === 0 || !svg.querySelector(".roadmap__background-artifact-motion")) {
+			return;
+		}
+		const chartRect = svg.getBoundingClientRect();
+		const measurable =
+			chartRect.width > 0 &&
+			typeof (artifacts[0] as SVGGraphicsElement).getBBox === "function" &&
+			typeof globalThis.requestAnimationFrame === "function";
+		if (!measurable) return; // headless DOMs keep the in-svg animation
+		const layer = this.ownerDocument.createElement("div");
+		layer.className = "chart-artifact-layer";
+		layer.setAttribute("aria-hidden", "true");
+		const namespace = "http://www.w3.org/2000/svg";
+		for (const artifact of artifacts) {
+			const graphic = artifact as SVGGraphicsElement;
+			const rect = graphic.getBoundingClientRect();
+			if (!(rect.width > 0) || !(rect.height > 0)) continue;
+			let box: DOMRect;
+			try {
+				box = graphic.getBBox();
+			} catch {
+				continue;
+			}
+			const mini = this.ownerDocument.createElementNS(namespace, "svg");
+			mini.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
+			const clone = graphic.cloneNode(true) as SVGGElement;
+			// The placement transform is expressed by the layer position; the
+			// motion moves to the mini root, where the compositor animates it.
+			clone.removeAttribute("transform");
+			// Artifact paints are var(--roadmap-…) tokens scoped to the chart
+			// svg; outside it they would collapse to black. Stamp the resolved
+			// paints from the in-chart originals onto the clone.
+			const view = this.ownerDocument.defaultView;
+			if (view) {
+				const originals = [graphic, ...graphic.querySelectorAll("*")];
+				const clones = [clone, ...clone.querySelectorAll("*")];
+				originals.forEach((original, index) => {
+					const target = clones[index];
+					if (!target) return;
+					const computed = view.getComputedStyle(original);
+					if (original.hasAttribute("fill")) target.setAttribute("fill", computed.fill);
+					if (original.hasAttribute("stroke")) target.setAttribute("stroke", computed.stroke);
+					for (const property of ["opacity", "fill-opacity", "stroke-opacity"] as const) {
+						if (original.hasAttribute(property)) {
+							target.setAttribute(property, computed.getPropertyValue(property));
+						}
+					}
+				});
+				// Class-driven opacity on the artifact group travels as an
+				// attribute, since the class rules stay behind in the svg.
+				const rootOpacity = view.getComputedStyle(graphic).opacity;
+				if (rootOpacity !== "1") clone.setAttribute("opacity", rootOpacity);
+			}
+			const motion = clone.querySelector(".roadmap__background-artifact-motion");
+			if (motion instanceof SVGElement) {
+				mini.setAttribute("class", "roadmap__background-artifact-motion");
+				mini.setAttribute("style", motion.getAttribute("style") ?? "");
+				motion.removeAttribute("class");
+				motion.removeAttribute("style");
+			}
+			mini.style.left = `${((rect.left - chartRect.left) / chartRect.width) * 100}%`;
+			mini.style.top = `${((rect.top - chartRect.top) / chartRect.height) * 100}%`;
+			mini.style.width = `${(rect.width / chartRect.width) * 100}%`;
+			mini.style.height = `${(rect.height / chartRect.height) * 100}%`;
+			mini.append(clone);
+			layer.append(mini);
+		}
+		if (!layer.childElementCount) return;
+		// The layer sits behind the chart; the chart's canvas rect goes
+		// transparent and the stage supplies the color underneath.
+		const canvasColor = this.ownerDocument.defaultView
+			?.getComputedStyle(svg)
+			.getPropertyValue("--roadmap-canvas-background")
+			.trim();
+		if (canvasColor) stage.style.background = canvasColor;
+		stage.classList.add("chart-stage--lifted");
+		stage.insertBefore(layer, svg);
+	}
+
 	#download(): void {
-		const svg = this.#canvas.querySelector("svg");
+		const svg = this.#chartSvg();
 		if (!svg) return;
 		const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
 		const link = document.createElement("a");
@@ -599,12 +739,16 @@ export class RoadmapPreviewElement extends HTMLElement {
 		// and immune to HTML-parser quirks (happy-dom drops SVG children on
 		// innerHTML, and browsers apply HTML parsing rules there).
 		const parsed = new DOMParser().parseFromString(generated.svg, "image/svg+xml");
-		this.#canvas.replaceChildren(document.importNode(parsed.documentElement, true));
+		const stage = document.createElement("div");
+		stage.className = "chart-stage";
+		stage.append(document.importNode(parsed.documentElement, true));
+		this.#canvas.replaceChildren(stage);
+		this.#liftAnimatedArtifacts(stage);
 		this.#suppressRootTooltip();
 		this.#title.textContent = generated.layout.title;
 		this.#applyZoom();
 
-		const svg = this.#canvas.querySelector("svg");
+		const svg = this.#chartSvg();
 		if (svg && this.hasAttribute("interactive")) {
 			const progressKey = this.#storageKey("progress");
 			this.#interactivity = attachRoadmapInteractivity(svg, {
