@@ -462,12 +462,9 @@ describe("SVG rendering boundaries", () => {
 		expect(svg).toContain("--roadmap-badge-warning-background:#ffd54f");
 		expect(svg).toContain('stdDeviation="var(--roadmap-soft-shadow-blur)"');
 		expect(svg).toContain('values="var(--roadmap-soft-shadow-saturation)"');
-		expect(svg).toContain(
 		// Strokes scale with the chart; non-scaling-stroke would paint borders
 		// several times too thick on charts fitted to small screens.
 		expect(svg).not.toContain("non-scaling-stroke");
-		);
-		expect(svg).not.toContain(".roadmap__connector{vector-effect:non-scaling-stroke}");
 	});
 
 	it("should paint document-tag references in notes as inline chips", () => {
