@@ -404,7 +404,7 @@ const interactiveCss = `
 	padding:2px 9px 2px 3px;border-radius:99px;background:var(--_summary-track);
 	font-size:11px;font-weight:600;line-height:1.5;text-align:left}
 .roadmap-topic-detail__tag--plain{padding:2px 9px}
-.roadmap-topic-detail__tag-disc{width:15px;height:15px;flex:none;display:block;overflow:visible}
+.roadmap-topic-detail__tag-disc{width:17px;height:17px;flex:none;display:block}
 .roadmap-topic-detail__tag-disc+.roadmap-topic-detail__tag-disc{margin-left:-9px}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
 .roadmap-topic-detail__note p{margin:0 0 6px}
@@ -1374,7 +1374,10 @@ export function attachRoadmapInteractivity(
 				if (size <= 0) continue;
 				const disc = hostDocument.createElementNS(svgNamespace, "svg");
 				disc.setAttribute("class", "roadmap-topic-detail__tag-disc");
-				disc.setAttribute("viewBox", `0 0 ${size} ${size}`);
+				// A one-unit margin keeps the artwork off the viewport edge:
+				// Safari ignores overflow:visible on svg, and its fractional
+				// box rounding would otherwise shave the disc's bottom.
+				disc.setAttribute("viewBox", `-1 -1 ${size + 2} ${size + 2}`);
 				disc.setAttribute("aria-hidden", "true");
 				const artwork = badge.cloneNode(true) as SVGGElement;
 				// The badge sits at its chart position; the mini viewport wants

@@ -135,7 +135,7 @@ export const proLightTheme: RoadmapTheme = createTheme(
 		},
 		boards: {
 			topic: {
-				shape: "rounded",
+				shape: "stepped",
 				pattern: "grid",
 				background: "#eef1f5",
 				hatch: "#c3ccd6",
