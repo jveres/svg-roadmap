@@ -1374,10 +1374,16 @@ function renderConnector(
 		return `<path id="${prefix}-${safeId(connector.id)}" class="roadmap__connector roadmap__connector--tree-line" data-roadmap-element="tree-line" data-depth="${connector.depth}" d="${path}" fill="none" stroke="${cssToken(`connector-${token}-color`)}" stroke-width="1" stroke-opacity="${cssToken(`connector-${token}-opacity`)}" stroke-linecap="butt"/>`;
 	}
 	const endShape = connectorTheme.endShape ?? "none";
+	// Spine and chapter connectors paint under the boards, whose border
+	// stroke would cover a tip resting exactly on the edge; their end shapes
+	// retreat by a border-width hair. Topic links paint above their cards
+	// and keep touching.
+	const underlayBackoff = connector.kind === "topicToChildren" ? 0 : 1.2;
 	const trim =
 		endShape !== "none" && connectorTheme.routing !== "braided"
 			? connectorMarkerSize(connectorTheme.width) *
-				markerAnchor(endShape, connectorTheme.endShapeJoin ?? "overlap").trimFactor
+					markerAnchor(endShape, connectorTheme.endShapeJoin ?? "overlap").trimFactor +
+				underlayBackoff
 			: 0;
 	const routed = trim > 0 ? trimConnectorEnd(connector, trim, connectorTheme.routing) : connector;
 	// Lane offsets are solved against the untrimmed midpoint; re-anchor them
