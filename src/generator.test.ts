@@ -52,7 +52,7 @@ describe("roadmap generation", () => {
 		expect(first).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/u);
 		expect(first).toContain('data-roadmap-element="chapter"');
 		expect(first).toContain('data-depth="4"');
-		expect(first).toContain("<title");
+		expect(first).toContain('aria-label="');
 		expect(first).not.toContain("foreignObject");
 		expect(first).not.toContain("<script");
 	});

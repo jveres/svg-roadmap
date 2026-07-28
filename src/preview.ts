@@ -744,7 +744,6 @@ export class RoadmapPreviewElement extends HTMLElement {
 		stage.append(document.importNode(parsed.documentElement, true));
 		this.#canvas.replaceChildren(stage);
 		this.#liftAnimatedArtifacts(stage);
-		this.#suppressRootTooltip();
 		this.#title.textContent = generated.layout.title;
 		this.#applyZoom();
 
@@ -775,23 +774,6 @@ export class RoadmapPreviewElement extends HTMLElement {
 				},
 			}),
 		);
-	}
-
-	/**
-	 * The chart's accessible root `<title>` doubles as a hover tooltip over
-	 * the whole SVG in browsers; move it onto aria attributes so assistive
-	 * tech keeps the name without the tooltip following the pointer.
-	 */
-	#suppressRootTooltip(): void {
-		const svg = this.#canvas.querySelector("svg");
-		const title = svg?.querySelector(":scope > title");
-		if (!svg || !title) return;
-		const label = title.textContent?.trim();
-		if (label) svg.setAttribute("aria-label", label);
-		const description = svg.querySelector(":scope > desc");
-		if (description?.id) svg.setAttribute("aria-describedby", description.id);
-		svg.removeAttribute("aria-labelledby");
-		title.remove();
 	}
 }
 

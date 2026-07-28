@@ -225,12 +225,12 @@ describe("document layout settings", () => {
 		const fromDocument = generateRoadmap(
 			`---\nroadmap:\n  title: Authored title\n  description: Authored description\n---\n${source}`,
 		);
-		expect(fromDocument.svg).toContain(">Authored title</title>");
+		expect(fromDocument.svg).toContain('aria-label="Authored title"');
 		expect(fromDocument.svg).toContain(">Authored description</desc>");
 		const apiWins = generateRoadmap(`---\nroadmap:\n  title: Authored title\n---\n${source}`, {
 			render: { title: "Host title" },
 		});
-		expect(apiWins.svg).toContain(">Host title</title>");
+		expect(apiWins.svg).toContain('aria-label="Host title"');
 	});
 
 	test("invalid layout values fail with helpful messages", () => {

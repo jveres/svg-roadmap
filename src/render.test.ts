@@ -18,8 +18,8 @@ import type {
 } from "./types.ts";
 
 function svgPrefix(svg: string): string {
-	const prefix = svg.match(/<title id="([^"]+)-title">/u)?.[1];
-	if (!prefix) throw new Error("SVG title prefix was not found");
+	const prefix = svg.match(/data-roadmap-instance="([^"]+)"/u)?.[1];
+	if (!prefix) throw new Error("SVG instance prefix was not found");
 	return prefix;
 }
 

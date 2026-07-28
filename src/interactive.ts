@@ -950,7 +950,13 @@ export function attachRoadmapInteractivity(
 	ensureStyles(svg);
 
 	const prefix = svg.getAttribute("data-roadmap-instance") ?? "";
-	const chartTitle = svg.querySelector(":scope > title")?.textContent?.trim() || "roadmap";
+	// The accessible name lives on aria-label (the root <title> element is
+	// gone — browsers rendered it as a hover tooltip); older charts still
+	// carry the element, so it stays as the fallback for stable storage keys.
+	const chartTitle =
+		svg.getAttribute("aria-label")?.trim() ||
+		svg.querySelector(":scope > title")?.textContent?.trim() ||
+		"roadmap";
 	const storageKey = options.storageKey ?? `svg-roadmap-progress:${chartTitle}`;
 	const storage =
 		options.storage === undefined

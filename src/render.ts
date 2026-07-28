@@ -1009,7 +1009,7 @@ function boardPath(
  * degenerates to the plain rectangle.
  */
 function steppedBoardPath(rectangles: readonly Rect[], padding: number): string {
-	const columns: { left: number; right: number; bottom: number }[] = [];
+	let columns: { left: number; right: number; bottom: number }[] = [];
 	for (const rect of [...rectangles].sort((a, b) => a.x - b.x)) {
 		const right = rectRight(rect);
 		const bottom = rectBottom(rect);
@@ -1022,10 +1022,24 @@ function steppedBoardPath(rectangles: readonly Rect[], padding: number): string 
 			columns.push({ left: rect.x, right, bottom });
 		}
 	}
+	// A wide card can stretch its column over a neighbour; coalesce until
+	// the columns are disjoint, or steps would cut across covered cards.
 	columns.sort((a, b) => a.left - b.left);
+	columns = columns.reduce<typeof columns>((disjoint, column) => {
+		const last = disjoint.at(-1);
+		if (last && column.left < last.right) {
+			last.right = Math.max(last.right, column.right);
+			last.bottom = Math.max(last.bottom, column.bottom);
+		} else {
+			disjoint.push(column);
+		}
+		return disjoint;
+	}, []);
 	const top = Math.min(...rectangles.map((rect) => rect.y)) - padding;
 	// A step's vertical clears the deeper neighbour by the same padding the
-	// bottom keeps, so the rule hugs every card edge at one distance.
+	// bottom keeps, so the rule hugs every card edge at one distance. The
+	// vertical only exists below the shallower column's bottom, so it can
+	// reach into that column's horizontal range without touching its cards.
 	const stepX = (index: number): number => {
 		const leftColumn = columns[index];
 		const rightColumn = columns[index + 1];
@@ -1822,7 +1836,6 @@ export function renderRoadmapSvg(
 	const description =
 		options.description ?? `A visual roadmap with topic depth ${layout.maxDepth}.`;
 	const prefix = safeId(options.idPrefix ?? defaultIdPrefix(layout, theme, title, description));
-	const titleId = `${prefix}-title`;
 	const descriptionId = `${prefix}-description`;
 	const className = ["roadmap", options.className].filter(Boolean).join(" ");
 	const sortedConnectors = [...layout.connectors].sort((left, right) => {
@@ -1884,8 +1897,7 @@ export function renderRoadmapSvg(
 	const responsiveStyle = options.responsive === false ? "" : ' style="max-width:100%;height:auto"';
 	const userCss = options.css ? `\n${escapeStyleText(options.css)}` : "";
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="${titleId} ${descriptionId}"${responsiveStyle}>
-	<title id="${titleId}">${escapeXml(title)}</title>
+	return `<svg xmlns="http://www.w3.org/2000/svg" class="${escapeXml(className)}" data-roadmap-instance="${prefix}" data-roadmap-theme="${escapeXml(theme.name)}" data-roadmap-mode="${theme.mode}" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" preserveAspectRatio="xMidYMin meet" role="img" aria-label="${escapeXml(title)}" aria-describedby="${descriptionId}"${responsiveStyle}>
 	<desc id="${descriptionId}">${escapeXml(description)}</desc>
 	<style>${themeCssVariables(theme, prefix)}${baseStyles()}${animationStyles}${userCss}</style>
 	${renderDefinitions(prefix, theme, usedEmojiShortcodes(layout, theme), layout.connectors)}

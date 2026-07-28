@@ -32,8 +32,9 @@ tools.
 - Supports the full GitHub emoji shortcode set: popular shortcodes render as
   deterministic embedded SVG symbols, the rest as platform glyphs, with an
   opt-in pack that upgrades every GitHub shortcode to embedded artwork.
-- Produces accessible SVG with `<title>`, `<desc>`, safe links, and no
-  `foreignObject` elements.
+- Produces accessible SVG named via `aria-label` (no tooltip-creating root
+  `<title>`), described via `<desc>`, with safe links and no `foreignObject`
+  elements.
 
 `comrak-wasm` is the only runtime dependency. Vite, Vitest, Biome, and
 TypeScript are development dependencies.
@@ -393,7 +394,7 @@ roadmap:
     preset: sci-fi
     mode: dark
     # gradients: true  # render the theme's gradient capabilities (fun: rainbow spine + hulls)
-  title: Engineering roadmap 2026     # accessible <title>; defaults to the H1
+  title: Engineering roadmap 2026     # accessible name; defaults to the H1
   description: Our path to production # accessible <desc>
   layout:
     clusterColumns: 2   # topic columns in tree clusters (1 or 2); default 1
