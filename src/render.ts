@@ -1682,10 +1682,13 @@ function renderDefinitions(
 }
 
 function baseStyles(): string {
-	return `.roadmap__node,.roadmap__group,.roadmap__legend{vector-effect:non-scaling-stroke}
-	.roadmap__background-artifacts{pointer-events:none}
+	// Strokes scale with the chart. non-scaling-stroke (screen-pixel widths)
+	// once kept hairlines visible in scaled-down embeds, but a chart fitted
+	// to a phone then paints borders several times too thick relative to its
+	// shrunken content — and modern display densities keep scaled hairlines
+	// legible without it.
+	return `.roadmap__background-artifacts{pointer-events:none}
 	.roadmap__background-artifact{opacity:var(--roadmap-background-artifact-opacity,1)}
-	.roadmap__background-artifact *{vector-effect:non-scaling-stroke}
 	.roadmap__frame-shadow{transform:translate(var(--roadmap-shadow-offset-x),var(--roadmap-shadow-offset-y));pointer-events:none}
 	.roadmap__text text{dominant-baseline:auto}
 	.roadmap__link{text-decoration:none}

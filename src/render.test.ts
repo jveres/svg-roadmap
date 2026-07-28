@@ -463,7 +463,9 @@ describe("SVG rendering boundaries", () => {
 		expect(svg).toContain('stdDeviation="var(--roadmap-soft-shadow-blur)"');
 		expect(svg).toContain('values="var(--roadmap-soft-shadow-saturation)"');
 		expect(svg).toContain(
-			".roadmap__node,.roadmap__group,.roadmap__legend{vector-effect:non-scaling-stroke}",
+		// Strokes scale with the chart; non-scaling-stroke would paint borders
+		// several times too thick on charts fitted to small screens.
+		expect(svg).not.toContain("non-scaling-stroke");
 		);
 		expect(svg).not.toContain(".roadmap__connector{vector-effect:non-scaling-stroke}");
 	});
