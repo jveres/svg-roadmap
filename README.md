@@ -663,8 +663,8 @@ background artifacts. Names use semantic roles, for example
 
 Theme geometry is typed alongside paint. Every card role selects a rounded,
 chamfered, capsule, organic, cameo, or petal frame; boards select organic,
-rounded, chamfered, or scalloped hulls and themed patterned or unpatterned
-backgrounds; and each connector kind, including the main spine, selects curved,
+rounded, chamfered, scalloped, or stepped hulls — stepped bottoms follow
+each column's last row — and themed patterned or unpatterned backgrounds; and each connector kind, including the main spine, selects curved,
 orthogonal, straight, or braided routing. These values can change SVG topology
 and therefore are configured through a theme rather than a CSS token.
 

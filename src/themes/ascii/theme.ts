@@ -138,13 +138,14 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 		},
 		boards: {
 			topic: {
-				shape: "rounded",
+				shape: "stepped",
 				pattern: "none",
 				background: paper,
 				hatch: paper,
 				hatchOpacity: 0,
 				stroke: rule,
 				strokeWidth: 1.25,
+				radius: 0,
 				padding: 16,
 			},
 			nested: {
@@ -155,6 +156,7 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				hatchOpacity: 0,
 				stroke: "#8a8474",
 				strokeWidth: 1,
+				radius: 0,
 				padding: 12,
 			},
 			legend: {
@@ -165,6 +167,7 @@ export const asciiLightTheme: RoadmapTheme = createTheme(
 				hatchOpacity: 0,
 				stroke: "#8a8474",
 				strokeWidth: 1,
+				radius: 0,
 				padding: 8,
 			},
 		},

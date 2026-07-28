@@ -568,7 +568,7 @@ export interface CardTheme {
 }
 
 export interface BoardTheme {
-	readonly shape: "organic" | "rounded" | "chamfered" | "scalloped";
+	readonly shape: "organic" | "rounded" | "chamfered" | "scalloped" | "stepped";
 	readonly pattern:
 		| "crosshatch"
 		| "grid"
@@ -597,6 +597,8 @@ export interface BoardTheme {
 	/** Optional ruled outline around the board; boards are borderless by default. */
 	readonly stroke?: string;
 	readonly strokeWidth?: number;
+	/** Corner radius for rounded hulls; defaults to `min(4, padding / 3)`. */
+	readonly radius?: number;
 	readonly padding: number;
 }
 

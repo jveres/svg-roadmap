@@ -197,7 +197,7 @@ textarea:focus-visible {
  * overflow:auto box that never actually scrolls captures sticky and pins
  * nothing.
  */
-@media (min-width: 761px) {
+@media (min-width: 901px) {
 	html,
 	body,
 	#app {
@@ -349,13 +349,17 @@ textarea:focus-visible {
 }
 
 .panel-heading span {
+	overflow: hidden;
+	min-width: 0;
 	font-size: 12px;
 	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 /*
- * Editor collapsed: the preview takes the remaining width and the editor
- * keeps a narrow rail, so the chevron that collapsed it stays in place.
+ * Editor collapsed: the editor hides its textarea; the collapse treatment
+ * differs per layout below.
  */
 .workbench--preview-only {
 	grid-template-columns: auto 1fr;
@@ -365,30 +369,42 @@ textarea:focus-visible {
 	grid-template-rows: 1fr;
 }
 
-.workbench--preview-only .editor-panel .panel-heading {
-	flex-direction: column;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 14px;
-	padding: 10px 9px;
-	border-bottom: 0;
-}
-
-.workbench--preview-only .editor-panel h2 {
-	display: block;
-	margin: 0;
-	writing-mode: vertical-rl;
-	font-size: 12.5px;
-	letter-spacing: 0.02em;
-}
-
-.workbench--preview-only .editor-panel textarea,
-.workbench--preview-only .editor-panel .panel-heading span {
+.workbench--preview-only .editor-panel textarea {
 	display: none;
 }
 
-.workbench--preview-only .panel-toggle svg {
-	transform: rotate(180deg);
+/*
+ * Desktop collapse: the preview takes the remaining width and the editor
+ * keeps a narrow vertical rail, so the chevron that collapsed it stays in
+ * place. The rail treatment applies exactly where the panels sit side by
+ * side — the stacked layout (≤900px) keeps the heading a plain horizontal
+ * bar in both states.
+ */
+@media (min-width: 901px) {
+	.workbench--preview-only .editor-panel .panel-heading {
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 14px;
+		padding: 10px 9px;
+		border-bottom: 0;
+	}
+
+	.workbench--preview-only .editor-panel h2 {
+		display: block;
+		margin: 0;
+		writing-mode: vertical-rl;
+		font-size: 12.5px;
+		letter-spacing: 0.02em;
+	}
+
+	.workbench--preview-only .editor-panel .panel-heading span {
+		display: none;
+	}
+
+	.workbench--preview-only .panel-toggle svg {
+		transform: rotate(180deg);
+	}
 }
 
 textarea {
@@ -484,21 +500,13 @@ textarea {
 	}
 
 	/*
-	 * Stacked panels collapse as an accordion, so the heading stays a normal
-	 * horizontal bar instead of turning into a vertical rail.
+	 * Stacked panels collapse as an accordion: the bar keeps its layout,
+	 * content, and height; only the chevron turns. The heading border goes
+	 * transparent (not away) so the height cannot shift, leaving the panel
+	 * divider as the single line under the collapsed bar.
 	 */
 	.workbench--preview-only .editor-panel .panel-heading {
-		flex-direction: row;
-		align-items: center;
-		gap: 16px;
-		padding: 10px 16px;
-		border-bottom: 1px solid var(--panel-heading-border);
-	}
-
-	.workbench--preview-only .editor-panel h2 {
-		margin-right: auto;
-		writing-mode: horizontal-tb;
-		font-size: 14px;
+		border-bottom-color: transparent;
 	}
 
 	.workbench--preview-only .panel-toggle svg {

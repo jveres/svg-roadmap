@@ -930,7 +930,7 @@ function chamferedRectanglePath(rectangle: Rect, requestedCut: number): string {
 }
 
 function roundedBoardRadius(board: BoardTheme): number {
-	return Math.min(4, board.padding / 3);
+	return board.radius ?? Math.min(4, board.padding / 3);
 }
 
 function roundedRectanglePath(rectangle: Rect, requestedRadius: number): string {
@@ -994,10 +994,61 @@ function boardPath(
 	blobPadding: number,
 ): string {
 	if (board.shape === "organic") return blobPath(rectangles, blobPadding);
+	if (board.shape === "stepped") return steppedBoardPath(rectangles, board.padding);
 	const enclosure = enclosingRectangle(rectangles, board.padding);
 	if (board.shape === "chamfered") return chamferedRectanglePath(enclosure, chamferCut);
 	if (board.shape === "rounded") return roundedRectanglePath(enclosure, roundedBoardRadius(board));
 	return scallopedRectanglePath(enclosure, board.padding);
+}
+
+/**
+ * Rectilinear skyline hull for column layouts: top and sides trace the
+ * enclosure while the bottom steps to follow each column's last row, so a
+ * grid with uneven columns is bounded snugly instead of swimming inside a
+ * tall rectangle. Columns cluster by horizontal overlap; a single column
+ * degenerates to the plain rectangle.
+ */
+function steppedBoardPath(rectangles: readonly Rect[], padding: number): string {
+	const columns: { left: number; right: number; bottom: number }[] = [];
+	for (const rect of [...rectangles].sort((a, b) => a.x - b.x)) {
+		const right = rectRight(rect);
+		const bottom = rectBottom(rect);
+		const column = columns.find((entry) => rect.x < entry.right && right > entry.left);
+		if (column) {
+			column.left = Math.min(column.left, rect.x);
+			column.right = Math.max(column.right, right);
+			column.bottom = Math.max(column.bottom, bottom);
+		} else {
+			columns.push({ left: rect.x, right, bottom });
+		}
+	}
+	columns.sort((a, b) => a.left - b.left);
+	const top = Math.min(...rectangles.map((rect) => rect.y)) - padding;
+	// A step's vertical clears the deeper neighbour by the same padding the
+	// bottom keeps, so the rule hugs every card edge at one distance.
+	const stepX = (index: number): number => {
+		const leftColumn = columns[index];
+		const rightColumn = columns[index + 1];
+		if (!leftColumn || !rightColumn) return 0;
+		return rightColumn.bottom >= leftColumn.bottom
+			? rightColumn.left - padding
+			: leftColumn.right + padding;
+	};
+	const left = (columns[0]?.left ?? 0) - padding;
+	const right = (columns[columns.length - 1]?.right ?? 0) + padding;
+	const commands = [
+		`M ${roundCoordinate(left)} ${roundCoordinate(top)}`,
+		`L ${roundCoordinate(right)} ${roundCoordinate(top)}`,
+	];
+	for (let index = columns.length - 1; index >= 0; index -= 1) {
+		const bottom = roundCoordinate((columns[index]?.bottom ?? top) + padding);
+		const stepRight = index === columns.length - 1 ? right : stepX(index);
+		const stepLeft = index === 0 ? left : stepX(index - 1);
+		commands.push(`L ${roundCoordinate(stepRight)} ${bottom}`);
+		commands.push(`L ${roundCoordinate(stepLeft)} ${bottom}`);
+	}
+	commands.push("Z");
+	return commands.join(" ");
 }
 
 /**

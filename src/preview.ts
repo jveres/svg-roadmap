@@ -59,7 +59,9 @@ const previewStyles = `
 .controls {
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	/* Controls keep one line; the title truncates instead of pushing them
+	   into a second row on narrow screens. */
+	flex: none;
 	gap: 6px;
 	margin-left: auto;
 }

@@ -404,7 +404,7 @@ const interactiveCss = `
 	padding:2px 9px 2px 3px;border-radius:99px;background:var(--_summary-track);
 	font-size:11px;font-weight:600;line-height:1.5;text-align:left}
 .roadmap-topic-detail__tag--plain{padding:2px 9px}
-.roadmap-topic-detail__tag-disc{width:15px;height:15px;flex:none;display:block}
+.roadmap-topic-detail__tag-disc{width:15px;height:15px;flex:none;display:block;overflow:visible}
 .roadmap-topic-detail__tag-disc+.roadmap-topic-detail__tag-disc{margin-left:-9px}
 .roadmap-topic-detail__note{margin:0 0 10px;font-size:12.5px;line-height:1.55}
 .roadmap-topic-detail__note p{margin:0 0 6px}

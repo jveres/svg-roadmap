@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="light dark" />
+		<title>iOS stroke probe</title>
+		<style>
+			body { font: 14px/1.5 system-ui; margin: 16px; }
+			section { margin-bottom: 28px; }
+			h2 { font-size: 15px; margin: 0 0 6px; }
+			p { margin: 0 0 8px; color: #555; font-size: 12.5px; }
+			svg { display: block; background: #faf7ef; border: 1px solid #ccc; }
+		</style>
+	</head>
+	<body>
+		<h1>iOS stroke probe</h1>
+		<p>
+			Compare the three sections on iPhone vs desktop. All rows draw the same
+			four strokes: A = literal 1.5, B = var() unitless 1.5, C = var() with
+			fallback, D = literal 1.25 path (connector-like), plus a halftone
+			shadow swatch.
+		</p>
+
+		<section>
+			<h2>1 — small SVG, natural size</h2>
+			<svg width="360" height="150" viewBox="0 0 360 150" style="--w: 1.5; --cw: 1.25" role="img">
+				<title>Stroke samples at natural size</title>
+				<rect x="10" y="10" width="150" height="30" fill="none" stroke="#26241f" stroke-width="1.5" />
+				<rect x="10" y="50" width="150" height="30" fill="none" stroke="#26241f" stroke-width="var(--w)" />
+				<rect x="10" y="90" width="150" height="30" fill="none" stroke="#26241f" stroke-width="var(--missing, 1.5)" />
+				<path d="M180 25 h150 M180 65 h150 M180 105 h150" fill="none" stroke="#26241f" stroke-width="var(--cw)" />
+				<defs>
+					<pattern id="ht1" width="3" height="3" patternUnits="userSpaceOnUse">
+						<rect width="3" height="3" fill="#faf7ef" />
+						<rect width="1.5" height="1.5" fill="#57534a" />
+						<rect x="1.5" y="1.5" width="1.5" height="1.5" fill="#57534a" />
+					</pattern>
+				</defs>
+				<rect x="10" y="128" width="320" height="14" fill="url(#ht1)" />
+			</svg>
+		</section>
+
+		<section>
+			<h2>2 — huge SVG (1440×2560 viewBox) scaled to 360px wide</h2>
+			<p>Rows repeat down the canvas; only the top is visible. If strokes here
+				look thicker or softer than section 1 at the same on-screen size, the
+				renderer is downscaling a capped rasterization.</p>
+			<svg width="360" height="150" viewBox="0 0 1440 600" style="--w: 6; --cw: 5" role="img">
+				<title>Stroke samples in a large scaled viewBox</title>
+				<!-- 4x the geometry, so on-screen size matches section 1 -->
+				<rect x="40" y="40" width="600" height="120" fill="none" stroke="#26241f" stroke-width="6" />
+				<rect x="40" y="200" width="600" height="120" fill="none" stroke="#26241f" stroke-width="var(--w)" />
+				<rect x="40" y="360" width="600" height="120" fill="none" stroke="#26241f" stroke-width="var(--missing, 6)" />
+				<path d="M720 100 h600 M720 260 h600 M720 420 h600" fill="none" stroke="#26241f" stroke-width="var(--cw)" />
+				<defs>
+					<pattern id="ht2" width="12" height="12" patternUnits="userSpaceOnUse">
+						<rect width="12" height="12" fill="#faf7ef" />
+						<rect width="6" height="6" fill="#57534a" />
+						<rect x="6" y="6" width="6" height="6" fill="#57534a" />
+					</pattern>
+				</defs>
+				<rect x="40" y="512" width="1280" height="56" fill="url(#ht2)" />
+			</svg>
+		</section>
+
+		<section>
+			<h2>3 — the real chart, ascii theme (scaled to fit)</h2>
+			<p>Loads the workbench renderer output; compare card borders against
+				connector lines.</p>
+			<div id="chart" style="max-width: 100%; overflow: auto"></div>
+		</section>
+
+		<section>
+			<h2>4 — the same chart zoomed to 140% (scroll inside the box)</h2>
+			<p>This mimics the preview's zoom (+): the svg gets an explicit pixel
+				width. Scroll to a grid; if card borders here look thicker relative
+				to connectors than in section 3, the zoomed path is the trigger.</p>
+			<div id="chart-zoomed" style="max-width: 100%; height: 70vh; overflow: auto"></div>
+		</section>
+
+		<script type="module">
+			import source from "/demo/sweep-1.1.md?raw";
+			import { generateRoadmapSvgSync, initializeRoadmapMarkdown } from "/src/index.ts";
+
+			await initializeRoadmapMarkdown();
+			const svg = generateRoadmapSvgSync(source, { theme: { preset: "ascii", mode: "light" } });
+			const chart = document.querySelector("#chart");
+			chart.innerHTML = svg;
+			const element = chart.querySelector("svg");
+			element.style.maxWidth = "100%";
+			element.style.height = "auto";
+			const zoomed = document.querySelector("#chart-zoomed");
+			zoomed.innerHTML = svg.replace('id="roadmap', 'id="zoomed-roadmap');
+			const zoomedSvg = zoomed.querySelector("svg");
+			const natural = Number(zoomedSvg.getAttribute("width")) || 1400;
+			zoomedSvg.style.maxWidth = "none";
+			zoomedSvg.style.width = `${Math.round(natural * 1.4)}px`;
+			zoomedSvg.style.height = "auto";
+		</script>
+	</body>
+</html>
