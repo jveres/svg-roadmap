@@ -186,36 +186,49 @@ textarea:focus-visible {
 	display: grid;
 	grid-template-columns: minmax(320px, 0.72fr) minmax(480px, 1.28fr);
 	gap: 1px;
-	min-height: calc(100vh - 83px);
 	background: var(--divider-color);
 }
 
 /*
- * Desktop is a full-height app: the toolbar pins, each panel scrolls its own
- * content. This also makes the preview the real scroll container, which
- * position:sticky overlays (the interactive progress panel) require — an
- * overflow:auto box that never actually scrolls captures sticky and pins
- * nothing.
+ * The app is viewport-height on every layout: the toolbar pins and the
+ * chart pane is the page's only scroll container — which position:sticky
+ * overlays (the interactive progress panel) require, and which keeps the
+ * page from growing scrollable on phones. dvh tracks iOS's collapsing
+ * browser chrome; the plain 100% height stays as the fallback.
  */
+html,
+body {
+	height: 100%;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+@supports (height: 100dvh) {
+	#app {
+		height: 100dvh;
+	}
+}
+
+.toolbar {
+	flex: none;
+}
+
+.workbench {
+	flex: 1;
+	min-height: 0;
+}
+
+.editor-panel,
+.preview-panel {
+	min-height: 0;
+}
+
 @media (min-width: 901px) {
-	html,
-	body,
-	#app {
-		height: 100%;
-	}
-
-	#app {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.toolbar {
-		flex: none;
-	}
-
 	.workbench {
-		flex: 1;
-		min-height: 0;
 		/* Grid tracks default to content-sized minimums; without the zero
 		   floors the panels grow past the viewport instead of scrolling. */
 		grid-template-rows: minmax(0, 1fr);
@@ -223,7 +236,6 @@ textarea:focus-visible {
 
 	.editor-panel,
 	.preview-panel {
-		min-height: 0;
 		grid-template-rows: auto minmax(0, 1fr);
 	}
 }
@@ -488,6 +500,7 @@ textarea {
 	.workbench,
 	.workbench--preview-only {
 		grid-template-columns: 1fr;
+		grid-template-rows: minmax(0, auto) minmax(0, 1fr);
 	}
 
 	/*

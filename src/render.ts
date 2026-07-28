@@ -82,7 +82,9 @@ function markerAnchor(
 ): { readonly refX: number; readonly trimFactor: number } {
 	if (join === "detached") {
 		if (endShape === "arrow") return { refX: 0, trimFactor: 0.8 };
-		if (endShape === "circle") return { refX: 0.6, trimFactor: 0.88 };
+		// The dot's leading edge stops a full hairline short of the endpoint,
+		// so a board rule under it (half a stroke wide) never gets overlapped.
+		if (endShape === "circle") return { refX: 0.6, trimFactor: 0.96 };
 		if (endShape === "diamond") return { refX: 1, trimFactor: 0.8 };
 		return { refX: 1, trimFactor: 0.78 };
 	}
@@ -124,6 +126,15 @@ function trimConnectorEnd(
 		}
 		const sign = Math.sign(to.y - from.y) || 1;
 		return { ...connector, to: { x: to.x, y: to.y - sign * trim } };
+	}
+	// Curved child links enter side ports; trim along the horizontal port
+	// axis, not the chord. A chord trim nearly cancels against the marker's
+	// tangent re-advance on bowed arrivals (and is almost all vertical on the
+	// steep S-curve), leaving the end shape hanging over the target's board
+	// rule; the axis trim keeps clearance at every arrival angle.
+	if (routing === "curved" && connector.kind === "topicToChildren") {
+		const sign = Math.sign(to.x - from.x) || 1;
+		return { ...connector, to: { x: to.x - sign * trim, y: to.y } };
 	}
 	const deltaX = to.x - from.x;
 	const deltaY = to.y - from.y;

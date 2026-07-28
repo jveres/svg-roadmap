@@ -553,8 +553,22 @@ export class RoadmapPreviewElement extends HTMLElement {
 	}
 
 	readonly #onOutsidePointer = (event: Event): void => {
-		const path = event.composedPath();
-		if (path.includes(this.#menu) || path.includes(this.#menuButton)) return;
+		// Geometric hit-testing instead of composedPath: at the document
+		// level the event target is retargeted to the shadow host, and some
+		// engines' touch paths do not surface the internal button — which
+		// closed the menu on pointerdown only for the click to reopen it.
+		if (event instanceof PointerEvent || event instanceof MouseEvent) {
+			const inside = (element: Element): boolean => {
+				const rect = element.getBoundingClientRect();
+				return (
+					event.clientX >= rect.left &&
+					event.clientX <= rect.right &&
+					event.clientY >= rect.top &&
+					event.clientY <= rect.bottom
+				);
+			};
+			if (inside(this.#menu) || inside(this.#menuButton)) return;
+		}
 		this.#closeMenu();
 	};
 
