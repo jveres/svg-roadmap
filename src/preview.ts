@@ -640,10 +640,12 @@ export class RoadmapPreviewElement extends HTMLElement {
 						}
 					}
 				});
-				// Class-driven opacity on the artifact group travels as an
-				// attribute, since the class rules stay behind in the svg.
-				const rootOpacity = view.getComputedStyle(graphic).opacity;
-				if (rootOpacity !== "1") clone.setAttribute("opacity", rootOpacity);
+				// Class-driven opacity must travel as inline style: the clone
+				// keeps its artifact class, whose opacity rule still matches it
+				// here — where the chart-scoped var() falls back to a fully
+				// opaque 1 — and a presentation attribute would lose to it.
+				(clone as unknown as { style: CSSStyleDeclaration }).style.opacity =
+					view.getComputedStyle(graphic).opacity;
 			}
 			const motion = clone.querySelector(".roadmap__background-artifact-motion");
 			if (motion instanceof SVGElement) {
