@@ -11,6 +11,8 @@ import type { RoadmapPreviewElement } from "../src/preview.ts";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import linearFunctions from "./linear-functions.md?raw";
+// The Sweep sources here are workbench snapshots; the canonical copies live
+// in sweep.engineering/roadmaps and are edited there.
 import sweep10 from "./sweep-1.0.md?raw";
 import sweep from "./sweep-1.1.md?raw";
 import "./style.css";

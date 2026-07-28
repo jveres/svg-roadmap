@@ -291,9 +291,21 @@ const interactiveCss = `
 .roadmap--interactive [data-roadmap-element="nested-topic"],
 .roadmap--interactive [data-roadmap-element="topic-header"]{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .roadmap--interactive .roadmap__milestone:not(.roadmap__milestone--reached) .roadmap__milestone-core{opacity:0.25}
-.roadmap--interactive [data-roadmap-element="topic"]:focus-visible,
-.roadmap--interactive [data-roadmap-element="nested-topic"]:focus-visible,
-.roadmap--interactive [data-roadmap-element="topic-header"]:focus-visible{outline:none}
+/* Plain :focus, not :focus-visible — Chrome's sticky input-modality
+   heuristic rings click-focused boxes after any keyboard use; the custom
+   frame stroke below is the keyboard focus treatment. */
+.roadmap--interactive [data-roadmap-element="topic"]:focus,
+.roadmap--interactive [data-roadmap-element="nested-topic"]:focus,
+.roadmap--interactive [data-roadmap-element="topic-header"]:focus{outline:none}
+/* Links outside wired topics (description blobs, step text) stay in the tab
+   order; give them the accent ring instead of the browser's heavy default. */
+.roadmap--interactive a:focus-visible{outline:1.5px solid var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));outline-offset:2px}
+/* Inside a wired topic the box carries the focus treatment; its anchor is
+   out of the tab order but still takes focus from mousedown (Chrome rings
+   focused SVG links, Safari does not) — never ring it. */
+.roadmap--interactive [data-roadmap-element="topic"] a:focus,
+.roadmap--interactive [data-roadmap-element="nested-topic"] a:focus,
+.roadmap--interactive [data-roadmap-element="topic-header"] a:focus{outline:none}
 .roadmap--spotlight .roadmap__node{transition:opacity .18s}
 .roadmap--spotlight [data-roadmap-element="topic"] .roadmap__frame,
 .roadmap--spotlight [data-roadmap-element="topic-header"] .roadmap__frame,
@@ -389,8 +401,9 @@ const interactiveCss = `
 .roadmap--interactive .roadmap__node--selected .roadmap__frame{stroke:var(--roadmap-progress-accent,var(--roadmap-inline-link,#1289a7));stroke-width:2.2;stroke-dasharray:5 3}
 .roadmap-topic-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--_summary-border);font-size:12.5px}
 .roadmap-topic-detail h3{margin:0 0 8px;font-size:14px;font-weight:700;letter-spacing:.01em;line-height:1.3}
-.roadmap-topic-detail__state{display:block;width:100%;margin:0 0 10px;font:inherit;font-size:12px;color:inherit;
-	padding:5px 8px;border-radius:7px;border:1px solid var(--_summary-border);background:transparent;cursor:pointer}
+.roadmap-topic-detail__state{display:block;width:100%;height:auto;margin:0 0 10px;font:inherit;font-size:12px;
+	line-height:normal;color:inherit;appearance:auto;-webkit-appearance:auto;background-image:none;
+	padding:5px 8px;border-radius:7px;border:1px solid var(--_summary-border);background-color:transparent;cursor:pointer}
 .roadmap-topic-detail__state:hover{border-color:var(--_accent)}
 .roadmap-topic-detail__state:focus-visible{outline:2px solid var(--_accent);outline-offset:1px}
 .roadmap-topic-detail__column{margin:0 0 10px}
@@ -1585,6 +1598,16 @@ export function attachRoadmapInteractivity(
 	const wire = (id: string, group: SVGGElement): void => {
 		group.setAttribute("tabindex", "0");
 		group.setAttribute("role", "button");
+		// The group is the topic's one keyboard surface — Enter follows its
+		// link, so the inner anchors would only add a second tab stop per
+		// topic and draw the browser's default focus ring (Chrome paints a
+		// heavy blue outline around focused SVG anchors).
+		for (const anchor of group.querySelectorAll("a")) {
+			anchor.setAttribute("tabindex", "-1");
+			disposers.push(() => {
+				anchor.removeAttribute("tabindex");
+			});
+		}
 		// The note travels in the SVG only as authored Markdown; now that the
 		// node is focusable, give assistive tech a lightly de-marked reading
 		// as its <desc>.

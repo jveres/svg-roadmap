@@ -65,7 +65,12 @@ const previewStyles = `
 	gap: 6px;
 	margin-left: auto;
 }
-button, select {
+/*
+ * Scoped to the header chrome: the interactive layer's panel renders inside
+ * the same shadow root, and its controls (the topic detail's progress select)
+ * size themselves — an unscoped height here clips their text.
+ */
+.header button, .header select {
 	height: 22px;
 	padding: 0 7px;
 	border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
@@ -75,10 +80,21 @@ button, select {
 	font: inherit;
 	cursor: pointer;
 }
-button:hover, select:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.header button:hover, .header select:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 .zoom-level { min-width: 46px; font-variant-numeric: tabular-nums; }
 .menu-wrap { position: relative; }
-.menu-toggle, .zoom-step { width: 22px; padding: 0; text-align: center; line-height: 1; }
+/* .header-scoped so these outrank the .header button chrome padding —
+   an icon-width button with 7px side padding squishes its content. Flex
+   centering, not text-align: glyph line boxes round to whole pixels and
+   drift a pixel off center depending on the button's own position. */
+.header .menu-toggle, .header .zoom-step {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	padding: 0;
+	line-height: 1;
+}
 .menu {
 	position: absolute;
 	top: calc(100% + 4px);
@@ -95,11 +111,14 @@ button:hover, select:hover { background: color-mix(in srgb, currentColor 10%, tr
 	box-shadow: 0 8px 24px color-mix(in srgb, currentColor 22%, transparent);
 }
 .menu[hidden] { display: none; }
-.menu-item {
+/* Outranks the .header chrome styling (menu rows are header descendants):
+   rows read as a menu, not as a stack of buttons. */
+.menu .menu-item {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
+	height: auto;
 	min-height: 26px;
 	padding: 2px 0 2px 8px;
 	border: 0;
@@ -114,11 +133,62 @@ button:hover, select:hover { background: color-mix(in srgb, currentColor 10%, tr
 .menu-item[hidden] { display: none; }
 div.menu-item { cursor: default; }
 button.menu-item:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
-.menu-item .check { width: 28px; text-align: center; opacity: 0; }
-.menu-item[aria-checked="true"] .check { opacity: 1; }
+/* Toggle rows carry a mini switch: a pill track whose thumb (punched from
+   the menu's canvas background) slides over when the row is checked. */
+.menu-item .check {
+	position: relative;
+	flex: none;
+	width: 26px;
+	height: 15px;
+	margin-right: 1px;
+	border-radius: 999px;
+	background: color-mix(in srgb, currentColor 25%, transparent);
+	transition: background 160ms ease;
+}
+.menu-item .check::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 11px;
+	height: 11px;
+	border-radius: 50%;
+	background: canvas;
+	transition: translate 160ms ease;
+}
+.menu-item[aria-checked="true"] .check {
+	background: var(--roadmap-preview-accent, #1289a7);
+}
+.menu-item[aria-checked="true"] .check::after { translate: 11px 0; }
+@media (prefers-reduced-motion: reduce) {
+	.menu-item .check, .menu-item .check::after { transition: none; }
+}
 .menu-item select { max-width: 110px; }
-.mode-cycle { display: inline-flex; align-items: center; justify-content: center; width: 28px; padding: 0; }
-.mode-cycle svg { display: block; }
+/*
+ * Symmetric select: the native dropdown arrow hugs the border with no
+ * inset of its own, so the 7px text padding reads lopsided. Drawing the
+ * chevron through a currentColor mask puts equal breathing room on both
+ * sides in every theme.
+ */
+.select-wrap { position: relative; display: inline-flex; }
+.header .select-wrap select { appearance: none; padding-right: 20px; }
+.select-wrap::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	right: 7px;
+	width: 9px;
+	height: 9px;
+	translate: 0 -50%;
+	pointer-events: none;
+	background: currentColor;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'%3E%3C/path%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* Square (22px matches the chrome control height); .header-scoped to
+   outrank the chrome padding, which would squish the icon. */
+.header .mode-cycle { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0; }
+.mode-cycle svg, .zoom-step svg { display: block; }
 .canvas { flex: 1; min-height: 0; overflow: auto; }
 /* An offscreen or hidden chart pauses its ambient animations — they repaint
    the SVG continuously, so an invisible chart must not heat the machine. */
@@ -243,7 +313,10 @@ export class RoadmapPreviewElement extends HTMLElement {
 		zoomOut.className = "zoom-step";
 		zoomOut.setAttribute("part", "zoom-out");
 		zoomOut.setAttribute("aria-label", "Zoom out");
-		zoomOut.textContent = "−";
+		// Drawn icons, not glyphs: the ink of "−"/"+" hangs on the font's math
+		// axis below the line-box center, so text renders a pixel low.
+		zoomOut.innerHTML =
+			'<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8h9"/></svg>';
 		zoomOut.addEventListener("click", () => this.#setZoom(this.#zoom / zoomLevels.step));
 		this.#zoomLevel = document.createElement("button");
 		this.#zoomLevel.setAttribute("part", "zoom-reset");
@@ -255,7 +328,8 @@ export class RoadmapPreviewElement extends HTMLElement {
 		zoomIn.className = "zoom-step";
 		zoomIn.setAttribute("part", "zoom-in");
 		zoomIn.setAttribute("aria-label", "Zoom in");
-		zoomIn.textContent = "+";
+		zoomIn.innerHTML =
+			'<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3.5 8h9M8 3.5v9"/></svg>';
 		zoomIn.addEventListener("click", () => this.#setZoom(this.#zoom * zoomLevels.step));
 		// Everything that is a setting lives behind one "…" menu, PDF-viewer
 		// style: appearance (icon cycles light → dark → system), theme,
@@ -297,7 +371,10 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#appearanceItem.append(this.#modeCycle);
 		this.#themeItem = menuRow("Theme");
 		this.#themeItem.setAttribute("part", "theme-item");
-		this.#themeItem.append(this.#themeSelect);
+		const themeWrap = document.createElement("span");
+		themeWrap.className = "select-wrap";
+		themeWrap.append(this.#themeSelect);
+		this.#themeItem.append(themeWrap);
 		const checkItem = (label: string, attribute: string, part: string): HTMLButtonElement => {
 			const item = document.createElement("button");
 			item.className = "menu-item";
@@ -307,7 +384,7 @@ export class RoadmapPreviewElement extends HTMLElement {
 			text.textContent = label;
 			const check = document.createElement("span");
 			check.className = "check";
-			check.textContent = "✓";
+			check.setAttribute("aria-hidden", "true");
 			item.append(text, check);
 			item.addEventListener("click", () => this.toggleAttribute(attribute));
 			return item;
