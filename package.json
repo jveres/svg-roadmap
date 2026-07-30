@@ -78,7 +78,7 @@
 		"verify": "pnpm run check && pnpm run typecheck && pnpm test && pnpm run build && pnpm run build:demo"
 	},
 	"dependencies": {
-		"comrak-wasm": "file:../comrak-wasm"
+		"comrak-wasm": "link:../comrak-wasm"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.4",

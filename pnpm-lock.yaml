@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       comrak-wasm:
-        specifier: file:../comrak-wasm
-        version: file:../comrak-wasm
+        specifier: link:../comrak-wasm
+        version: link:../comrak-wasm
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.4
@@ -439,10 +439,6 @@ packages:
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
-
-  comrak-wasm@file:../comrak-wasm:
-    resolution: {directory: ../comrak-wasm, type: directory}
-    engines: {node: '>=22'}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -1068,8 +1064,6 @@ snapshots:
       '@types/node': 26.1.1
 
   chai@6.2.2: {}
-
-  comrak-wasm@file:../comrak-wasm: {}
 
   convert-source-map@2.0.0: {}
 
