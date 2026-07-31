@@ -423,7 +423,11 @@ a number from `0` to `4` scales the motion. No scripts are involved,
 `prefers-reduced-motion` is respected, and each artifact gets its own phase and
 tempo. Programmatic `theme` options
 override the front-matter theme, which lets an editor follow the system color
-scheme without rewriting its source.
+scheme without rewriting its source. Hosts can also drive the background
+without front matter: `options.layout.background` merges over the
+document's background settings (the theme still decides whether it has
+an artifact capability at all), and `defaultRoadmapSettings` exports the
+baseline an embedder's controls should ghost.
 
 `layout` carries the document's curated layout intent. The canvas always
 crops to the chart's content on both axes — a roadmap with a single small
@@ -435,9 +439,15 @@ widest topic still sets the box width and every gap keeps its default.
 `spacing` scales the vertical rhythm gaps coherently (`compact` ×0.8,
 `roomy` ×1.25), and `canvas` grows the final canvas — both
 dimensions — around the centered chart: the chart itself does not change,
-and the margins become open ground for the theme's background artifacts. Solver clearances stay fixed in both, so a document can
+and the margins become open ground for the theme's background artifacts.
+The API's `options.layout.canvasScale` additionally takes the axis union
+`number | { x?, y? }`: a number scales both axes (the front-matter
+shorthand), the object grows each axis independently (capped at ×10 per
+axis; `canvasScaleAxes` exports the resolver). Solver clearances stay fixed in both, so a document can
 tune proportions but never lay out a broken chart; the raw gap values
-remain API-only (`options.layout`), and explicit API options always win
+remain API-only (`options.layout`, with the defaults exported as
+`layoutDefaults` so embedders can pin their UIs against them), and
+explicit API options always win
 over front matter. `title` and `description` set
 the SVG's accessible name and description, defaulting to the document's
 H1.

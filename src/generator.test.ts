@@ -57,6 +57,28 @@ describe("roadmap generation", () => {
 		expect(first).not.toContain("<script");
 	});
 
+	test("canvasScale takes the axis union — number scales both, {x}/{y} one", () => {
+		const dims = (svg: string): [number, number] => {
+			const m = /width="(\d+)" height="(\d+)"/u.exec(svg);
+			if (!m) throw new Error("no dims");
+			return [Number(m[1]), Number(m[2])];
+		};
+		const [w, h] = dims(generateRoadmapSvgSync(markdown));
+		const [w2, h2] = dims(generateRoadmapSvgSync(markdown, { layout: { canvasScale: 2 } }));
+		expect(w2).toBe(Math.ceil(w * 2));
+		expect(h2).toBe(Math.ceil(h * 2));
+		const [wx, hx] = dims(generateRoadmapSvgSync(markdown, { layout: { canvasScale: { x: 2 } } }));
+		expect(wx).toBe(Math.ceil(w * 2));
+		expect(hx).toBe(h); // the other axis untouched
+		const [wy, hy] = dims(generateRoadmapSvgSync(markdown, { layout: { canvasScale: { y: 2 } } }));
+		expect(wy).toBe(w);
+		expect(hy).toBe(Math.ceil(h * 2));
+		// The clamp holds per axis (an absurd factor cannot allocate
+		// an unbounded artifact field).
+		const [wc] = dims(generateRoadmapSvgSync(markdown, { layout: { canvasScale: { x: 99 } } }));
+		expect(wc).toBe(Math.ceil(w * 10));
+	});
+
 	test("API layout.background enables artifacts without frontmatter", () => {
 		// The document's background defaults to disabled; a HOST (an
 		// embedder's knob) can enable the theme's artifacts through

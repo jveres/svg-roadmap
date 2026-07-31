@@ -796,8 +796,13 @@ export interface RoadmapLayoutOptions {
 	 * capability at all).
 	 */
 	readonly background?: Partial<RoadmapBackgroundSettings>;
-	/** Final-canvas growth factor; the chart centers in the extra room. */
-	readonly canvasScale?: number;
+	/**
+	 * Final-canvas growth, the shorthand/longhand union: a number
+	 * scales both axes (the existing spelling); `{ x?, y? }` scales
+	 * each axis independently. The chart centers in the extra room
+	 * either way.
+	 */
+	readonly canvasScale?: number | { readonly x?: number; readonly y?: number };
 	readonly showLegend?: boolean;
 	readonly showFootnotes?: boolean;
 }

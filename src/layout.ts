@@ -158,8 +158,35 @@ export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapL
 	};
 }
 
+/** One axis factor, sanitized and capped (an absurd host value
+ * cannot allocate a practically unbounded artifact field). */
+const canvasAxis = (value: unknown): number =>
+	typeof value === "number" && Number.isFinite(value) ? Math.min(10, Math.max(1, value)) : 1;
+
+/**
+ * The canvasScale union resolved to per-axis factors: a number
+ * scales both (the shorthand), `{ x?, y? }` each independently.
+ */
+export function canvasScaleAxes(value: RoadmapLayoutOptions["canvasScale"]): {
+	x: number;
+	y: number;
+} {
+	if (typeof value === "object" && value !== null) {
+		return { x: canvasAxis(value.x), y: canvasAxis(value.y) };
+	}
+	const both = canvasAxis(value);
+	return { x: both, y: both };
+}
+
 function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
-	const resolved: RequiredLayoutOptions = { ...layoutDefaults, ...options };
+	// canvasScale may be the axis OBJECT — the growth site resolves
+	// the raw option through canvasScaleAxes; the Required record
+	// keeps the scalar default out of the spread's way.
+	const { canvasScale: _rawCanvasScale, ...scalarOptions } = options ?? {};
+	const resolved: RequiredLayoutOptions = {
+		...layoutDefaults,
+		...scalarOptions,
+	};
 	if (options?.branchGap !== undefined) {
 		Object.assign(resolved, {
 			branchGapLeftOuter: options.branchGapLeftOuter ?? options.branchGap,
@@ -180,10 +207,7 @@ function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
 	if (resolved.clusterColumns !== 1 && resolved.clusterColumns !== 2) {
 		Object.assign(resolved, { clusterColumns: 1 });
 	}
-	// canvasScale multiplies the finished canvas; cap it so an absurd host
-	// value cannot allocate a practically unbounded artifact field.
 	Object.assign(resolved, {
-		canvasScale: Math.min(10, Math.max(1, resolved.canvasScale)),
 		maxGridColumns: Math.max(1, resolved.maxGridColumns),
 	});
 	return resolved;
@@ -1872,12 +1896,14 @@ export function layoutRoadmap(
 	let height = Math.ceil(
 		Math.max(options.minHeight, rectBottom(movedBounds) + options.endPaddingY),
 	);
-	if (options.canvasScale > 1) {
-		// The canvas grows around the finished chart in both dimensions:
-		// content re-centers and the margins become open ground (the themes'
-		// background artifacts settle there). The chart itself is unchanged.
-		const grownWidth = Math.ceil(width * options.canvasScale);
-		const grownHeight = Math.ceil(height * options.canvasScale);
+	const canvasFactors = canvasScaleAxes(inputOptions?.canvasScale ?? options.canvasScale);
+	if (canvasFactors.x > 1 || canvasFactors.y > 1) {
+		// The canvas grows around the finished chart, PER AXIS (the
+		// shorthand scales both): content re-centers on each grown
+		// axis and the margins become open ground (the themes'
+		// background artifacts settle there). The chart is unchanged.
+		const grownWidth = Math.ceil(width * canvasFactors.x);
+		const grownHeight = Math.ceil(height * canvasFactors.y);
 		moveAll(elements, connectors, (grownWidth - width) / 2, (grownHeight - height) / 2);
 		shiftMilestones((grownWidth - width) / 2, (grownHeight - height) / 2);
 		width = grownWidth;

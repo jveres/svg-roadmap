@@ -16,14 +16,19 @@ export {
 } from "./core/dom-measurement.ts";
 export type { EmojiArtwork } from "./core/emoji-artwork.ts";
 export { registerEmojiArtwork } from "./core/emoji-artwork.ts";
+export { defaultRoadmapSettings } from "./core/frontmatter.ts";
 export * from "./core/geometry.ts";
 export {
 	type MeasurementProvider,
 	setMeasurementProvider,
 	type TextMeasurementStyle,
 } from "./core/inline.ts";
-export { defaultRoadmapSettings } from "./core/frontmatter.ts";
-export { documentLayoutOptions, layoutDefaults, layoutRoadmap } from "./layout.ts";
+export {
+	canvasScaleAxes,
+	documentLayoutOptions,
+	layoutDefaults,
+	layoutRoadmap,
+} from "./layout.ts";
 export {
 	createMarkdownOptions,
 	initializeRoadmapMarkdown,
