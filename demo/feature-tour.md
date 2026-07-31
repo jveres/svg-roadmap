@@ -2,7 +2,7 @@
 roadmap:
   theme:
     preset: sci-fi
-    gradients: true  # themes that define gradient capabilities paint them
+    gradients: true  # opt-in; only themes with gradient capabilities paint them (fun: rainbow spine + hulls, retro) — inert on the rest, sci-fi included
   noteMarkers: true  # folded corner on boxes that carry a detail note
   # legend: false  # uncomment to hide the tag legend
   # layout:
