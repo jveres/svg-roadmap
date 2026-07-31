@@ -78,7 +78,10 @@ interface RequiredLayoutOptions {
 	readonly showFootnotes: boolean;
 }
 
-const defaults: RequiredLayoutOptions = {
+/** The engine's layout defaults, EXPORTED for embedders (seam pins
+ * its knob ghosts against these — a drifting default would silently
+ * lie in another product's UI). */
+export const layoutDefaults: RequiredLayoutOptions = {
 	width: 1184,
 	minHeight: 240,
 	padding: 24,
@@ -144,7 +147,7 @@ export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapL
 	const factor = spacingFactors[settings.spacing ?? "cozy"];
 	if (factor !== 1) {
 		for (const gap of spacingScaledGaps) {
-			scaled[gap] = Math.round(defaults[gap] * factor);
+			scaled[gap] = Math.round(layoutDefaults[gap] * factor);
 		}
 	}
 	return {
@@ -156,7 +159,7 @@ export function documentLayoutOptions(settings: RoadmapLayoutSettings): RoadmapL
 }
 
 function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
-	const resolved: RequiredLayoutOptions = { ...defaults, ...options };
+	const resolved: RequiredLayoutOptions = { ...layoutDefaults, ...options };
 	if (options?.branchGap !== undefined) {
 		Object.assign(resolved, {
 			branchGapLeftOuter: options.branchGapLeftOuter ?? options.branchGap,
@@ -168,9 +171,9 @@ function layoutOptions(options?: RoadmapLayoutOptions): RequiredLayoutOptions {
 	// Non-finite numbers (NaN, Infinity) would hang placement and artifact
 	// loops; a broken knob falls back to its default instead of spinning.
 	const sanitized = resolved as Record<keyof RequiredLayoutOptions, number | boolean>;
-	for (const key of Object.keys(defaults) as (keyof RequiredLayoutOptions)[]) {
+	for (const key of Object.keys(layoutDefaults) as (keyof RequiredLayoutOptions)[]) {
 		const value = sanitized[key];
-		const fallback = defaults[key];
+		const fallback = layoutDefaults[key];
 		if (typeof fallback !== "number") continue;
 		if (typeof value !== "number" || !Number.isFinite(value)) sanitized[key] = fallback;
 	}
