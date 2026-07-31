@@ -1925,7 +1925,9 @@ export function layoutRoadmap(
 			theme.backgroundArtifacts?.generate({
 				width,
 				height,
-				settings: document.settings.background,
+				// API background options merge over the document's — a
+				// host can enable/tune artifacts without frontmatter.
+				settings: { ...document.settings.background, ...inputOptions?.background },
 				avoid: artifactAvoidance,
 			}) ?? [],
 		title,

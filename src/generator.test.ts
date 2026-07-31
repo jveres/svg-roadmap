@@ -57,6 +57,24 @@ describe("roadmap generation", () => {
 		expect(first).not.toContain("<script");
 	});
 
+	test("API layout.background enables artifacts without frontmatter", () => {
+		// The document's background defaults to disabled; a HOST (an
+		// embedder's knob) can enable the theme's artifacts through
+		// the layout options — merged over the document's settings.
+		const plain = generateRoadmapSvgSync(markdown);
+		expect(plain).not.toContain('class="roadmap__background-artifact"');
+		const enabled = generateRoadmapSvgSync(markdown, {
+			layout: { background: { enabled: true } },
+		});
+		expect(enabled).toContain('class="roadmap__background-artifact"');
+		// And the render option animates them, same as frontmatter.
+		const animated = generateRoadmapSvgSync(markdown, {
+			layout: { background: { enabled: true } },
+			render: { animatedBackground: true },
+		});
+		expect(animated).toContain('class="roadmap__background-artifact-motion"');
+	});
+
 	test("keeps Fun background artifacts seeded and stable", () => {
 		const source = (seed: string) => `---
 roadmap:

@@ -789,6 +789,13 @@ export interface RoadmapLayoutOptions {
 	readonly maxGridColumns?: number;
 	/** Topic columns inside tree clusters: 1 (default) or 2. */
 	readonly clusterColumns?: 1 | 2;
+	/**
+	 * Merged over the document's background settings, so a HOST can
+	 * enable or tune the theme's background artifacts without
+	 * frontmatter (the theme still decides whether it has the
+	 * capability at all).
+	 */
+	readonly background?: Partial<RoadmapBackgroundSettings>;
 	/** Final-canvas growth factor; the chart centers in the extra room. */
 	readonly canvasScale?: number;
 	readonly showLegend?: boolean;

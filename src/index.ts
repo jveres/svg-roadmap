@@ -22,6 +22,7 @@ export {
 	setMeasurementProvider,
 	type TextMeasurementStyle,
 } from "./core/inline.ts";
+export { defaultRoadmapSettings } from "./core/frontmatter.ts";
 export { documentLayoutOptions, layoutDefaults, layoutRoadmap } from "./layout.ts";
 export {
 	createMarkdownOptions,
