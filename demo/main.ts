@@ -13,6 +13,7 @@ import featureTour from "./feature-tour.md?raw";
 import linearFunctions from "./linear-functions.md?raw";
 // The Sweep sources here are workbench snapshots; the canonical copies live
 // in sweep.engineering/roadmaps and are edited there.
+import starter from "./starter.md?raw";
 import sweep10 from "./sweep-1.0.md?raw";
 import sweep from "./sweep-1.1.md?raw";
 import "./style.css";
@@ -24,6 +25,11 @@ interface WorkbenchSample {
 }
 
 const samples: Readonly<Record<string, WorkbenchSample>> = {
+	starter: {
+		label: "Starter",
+		source: starter,
+		preset: "fun",
+	},
 	"sweep-1.0": {
 		label: "Sweep 1.0",
 		source: sweep10,
@@ -51,7 +57,7 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 	},
 };
 
-const defaultSampleId = "sweep-1.0";
+const defaultSampleId = "starter";
 const fallbackPreset = "fun";
 
 const presetIds = Object.keys(builtInThemes);
