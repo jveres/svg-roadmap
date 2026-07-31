@@ -372,9 +372,10 @@ function rawBlockMarkdown(range: SourceRange | undefined, lines: readonly string
 		.trim();
 }
 
-function groupTopics(items: readonly XmlElementNode[], context: ParseContext): RoadmapTopicGroup[] {
-	const groups: RoadmapTopic[][] = [];
-	let current: RoadmapTopic[] = [];
+/** Splits sibling list items into batches at blank-line gaps. */
+function splitByBlankLines(items: readonly XmlElementNode[]): XmlElementNode[][] {
+	const batches: XmlElementNode[][] = [];
+	let current: XmlElementNode[] = [];
 	let previousRange: SourceRange | undefined;
 	for (const item of items) {
 		const range = nodeRange(item);
@@ -384,19 +385,56 @@ function groupTopics(items: readonly XmlElementNode[], context: ParseContext): R
 			range &&
 			range.start.line > previousRange.end.line + 1
 		) {
-			groups.push(current);
+			batches.push(current);
 			current = [];
 		}
-		current.push(topicFromItem(item, 1, context));
+		current.push(item);
 		previousRange = range;
 	}
-	if (current.length > 0) groups.push(current);
+	if (current.length > 0) batches.push(current);
+	return batches;
+}
 
-	return groups.map((topics, index) => ({
-		id: `group-${index + 1}-${topics[0]?.id ?? "empty"}`,
-		layout: topics[0]?.marker === "+" ? "grid" : "tree",
-		topics,
-	}));
+function groupTopics(items: readonly XmlElementNode[], context: ParseContext): RoadmapTopicGroup[] {
+	return splitByBlankLines(items).map((batch, index) => {
+		const topics = batch.map((item) => topicFromItem(item, 1, context));
+		return {
+			id: `group-${index + 1}-${topics[0]?.id ?? "empty"}`,
+			layout: topics[0]?.marker === "+" ? "grid" : "tree",
+			topics,
+		};
+	});
+}
+
+/**
+ * A top-level `+` list hoists the nested grid rule one level up: the list is
+ * a grid whose items are its columns, mounted on the spine as a headless
+ * step — no chapter pill; the spine threads the grid itself. Blank lines
+ * split the list into separate grid steps, exactly as they split nested
+ * groups. A document holding nothing but one such grid renders standalone.
+ */
+function gridChaptersFromItems(
+	items: readonly XmlElementNode[],
+	context: ParseContext,
+): RoadmapChapter[] {
+	return splitByBlankLines(items).map((batch) => {
+		const topics = batch.map((item) => topicFromItem(item, 1, context));
+		const firstRange = batch[0] ? nodeRange(batch[0]) : undefined;
+		const lastItem = batch[batch.length - 1];
+		const lastRange = lastItem ? nodeRange(lastItem) : undefined;
+		const id = context.nextId("chapter", topics[0]?.content ?? []);
+		return {
+			type: "chapter",
+			id,
+			content: [],
+			description: [],
+			tags: [],
+			groups: [{ id: `${id}-grid`, layout: "grid", topics }],
+			...(firstRange && lastRange
+				? { sourceRange: { start: firstRange.start, end: lastRange.end } }
+				: {}),
+		};
+	});
 }
 
 function chapterFromItem(item: XmlElementNode, context: ParseContext): RoadmapChapter {
@@ -577,9 +615,19 @@ function roadmapFromXml(root: XmlElementNode, prepared: PreparedSource): Roadmap
 			case "code_block":
 				steps.push(noteFromElement(child, context));
 				break;
-			case "list":
-				steps.push(...listItems(child).map((item) => chapterFromItem(item, context)));
+			case "list": {
+				const items = listItems(child);
+				const first = items[0];
+				// A `+` list at the top level is a grid, not a row of chapters
+				// (CommonMark starts a new list on marker change, so a list is
+				// all-`+` or has none).
+				if (first && itemMarker(first, context.lines) === "+") {
+					steps.push(...gridChaptersFromItems(items, context));
+				} else {
+					steps.push(...items.map((item) => chapterFromItem(item, context)));
+				}
 				break;
+			}
 			case "footnote_definition":
 				footnotes.push({
 					label: child.attributes.label ?? `footnote-${footnotes.length + 1}`,

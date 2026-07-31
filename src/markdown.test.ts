@@ -390,3 +390,35 @@ Start with [foundation], skip [unknown] and [foundation]s glued to a word.
 		});
 	});
 });
+
+describe("top-level grids", () => {
+	test("a top-level + list becomes a headless grid step", () => {
+		const document = parseRoadmapMarkdown("+ Alpha\n  * A one [x]\n  * A two\n+ Beta\n  * B one\n");
+		expect(document.steps).toHaveLength(1);
+		const step = document.steps[0];
+		if (step?.type !== "chapter") throw new Error("expected a chapter step");
+		expect(step.content).toEqual([]);
+		expect(step.groups).toHaveLength(1);
+		expect(step.groups[0]?.layout).toBe("grid");
+		expect(step.groups[0]?.topics.map((topic) => topic.marker)).toEqual(["+", "+"]);
+		expect(step.groups[0]?.topics[0]?.children).toHaveLength(2);
+	});
+
+	test("blank lines split a top-level + list into separate grid steps", () => {
+		const document = parseRoadmapMarkdown("+ Alpha\n  * A1\n\n+ Beta\n  * B1\n");
+		expect(document.stats.chapters).toBe(2);
+		for (const step of document.steps) {
+			if (step.type !== "chapter") throw new Error("expected chapter steps");
+			expect(step.content).toEqual([]);
+			expect(step.groups[0]?.layout).toBe("grid");
+		}
+	});
+
+	test("top-level * lists keep rendering as chapters", () => {
+		const document = parseRoadmapMarkdown("* Alpha\n  * A1\n* Beta\n  * B1\n");
+		expect(document.stats.chapters).toBe(2);
+		const first = document.steps[0];
+		if (first?.type !== "chapter") throw new Error("expected a chapter");
+		expect(first.content.length).toBeGreaterThan(0);
+	});
+});

@@ -364,6 +364,12 @@ SVG Roadmap maps familiar Markdown structure to visual structure.
   mirrors the lines and indent to the right.
 - A blank line between first-level topics starts another group. Tree groups
   alternate around the main spine.
+- The grid rule works at the top level too: a top-level `+` list renders as
+  a grid mounted directly on the spine — its items are the columns, with no
+  chapter pill — and blank lines split it into separate grid steps. A
+  document containing nothing but one such grid renders **standalone**: no
+  spine or title block, the chart is the grid, and the first column header
+  supplies the accessible name.
 - A `*[Term]: Definition` line adds an abbreviation tooltip without adding a
   chart node.
 - A `>` blockquote under a topic becomes its detail note: never drawn on

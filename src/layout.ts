@@ -1452,7 +1452,11 @@ export function layoutRoadmap(
 		width: 52 + options.spineClearance * 2,
 		height: Number.MAX_SAFE_INTEGER,
 	};
-	let y = options.padding + 36;
+	// A document that is nothing but one headless grid renders standalone:
+	// no spine, no title headroom — the chart is the grid.
+	const soleStep = document.steps.length === 1 ? document.steps[0] : undefined;
+	const standalone = soleStep?.type === "chapter" && soleStep.content.length === 0;
+	let y = options.padding + (standalone ? 0 : 36);
 	let chapterIndex = 0;
 
 	for (const [stepIndex, step] of document.steps.entries()) {
@@ -1569,30 +1573,38 @@ export function layoutRoadmap(
 
 		chapterIndex += 1;
 		const chapterSide: -1 | 1 = chapterIndex % 2 === 1 ? 1 : -1;
-		const centerX = baseCenter + (chapterSide > 0 ? 48 : -4);
-		const chapterNode = createCardNode(
-			"chapter",
-			"chapter",
-			"chapter",
-			step.id,
-			0,
-			step.content,
-			step.tags,
-			theme.chapter,
-			step.sourceRange,
-			theme.inline.abbreviationIndicatorSize,
-		);
-		chapterNode.x = centerX - chapterNode.width / 2;
-		chapterNode.y = y;
-		elements.push(chapterNode);
+		// A headless chapter (a top-level `+` grid) draws no pill: the grid is
+		// the step, threaded by the spine — or standing alone, centered.
+		const headless = step.content.length === 0;
+		const centerX = standalone ? baseCenter : baseCenter + (chapterSide > 0 ? 48 : -4);
+		let chapterNode: LayoutNode | undefined;
+		if (!headless) {
+			chapterNode = createCardNode(
+				"chapter",
+				"chapter",
+				"chapter",
+				step.id,
+				0,
+				step.content,
+				step.tags,
+				theme.chapter,
+				step.sourceRange,
+				theme.inline.abbreviationIndicatorSize,
+			);
+			chapterNode.x = centerX - chapterNode.width / 2;
+			chapterNode.y = y;
+			elements.push(chapterNode);
+		}
 		const chapterElementsStart = elements.length;
-		occupied.push(inflateRectangle(chapterNode, options.overlapPadding));
-		spineAnchors.push(rectCenter(chapterNode));
+		if (chapterNode) {
+			occupied.push(inflateRectangle(chapterNode, options.overlapPadding));
+			spineAnchors.push(rectCenter(chapterNode));
+		}
 
 		const gridGroups = step.groups.filter((group) => group.layout === "grid");
 		const treeGroups = step.groups.filter((group) => group.layout === "tree");
 		let descriptionNode: LayoutNode | undefined;
-		if (step.description.length > 0) {
+		if (chapterNode && step.description.length > 0) {
 			descriptionNode = createCardNode(
 				"note",
 				"chapter-description",
@@ -1630,31 +1642,35 @@ export function layoutRoadmap(
 			spineObstacle,
 		};
 		let bottom = Math.max(
-			rectBottom(chapterNode),
+			chapterNode ? rectBottom(chapterNode) : y,
 			descriptionNode ? rectBottom(paintedNodeFrameRectangle(descriptionNode)) : 0,
 		);
 		// Tree content starts below both the chapter and its side description,
 		// so a tall description can neither overlap the clusters nor leave the
 		// chapter connectors' horizontal runs crossing it.
-		let contentY =
-			treeGroups.length > 0
+		let contentY = headless
+			? y
+			: treeGroups.length > 0
 				? Math.max(
-						rectBottom(chapterNode),
+						chapterNode ? rectBottom(chapterNode) : y,
 						descriptionNode && descriptionNode.placement === "tree-description"
 							? rectBottom(paintedNodeFrameRectangle(descriptionNode))
 							: 0,
 					) + options.chapterContentGap
 				: (descriptionNode
 						? rectBottom(paintedNodeFrameRectangle(descriptionNode))
-						: rectBottom(chapterNode)) + options.commentGap;
+						: chapterNode
+							? rectBottom(chapterNode)
+							: y) + options.commentGap;
 
 		for (const group of gridGroups) {
 			const grid = layoutGridGroup(group, centerX, contentY, chapterContext);
 			bottom = Math.max(bottom, grid.bottom);
-			spineAnchors.push(...grid.anchors);
+			// A standalone grid has no spine to thread.
+			if (!standalone) spineAnchors.push(...grid.anchors);
 			contentY = grid.bottom + options.commentGap * 2;
 		}
-		if (treeGroups.length > 0) {
+		if (treeGroups.length > 0 && chapterNode) {
 			const descriptionObstacle =
 				descriptionNode && descriptionNode.placement === "tree-description"
 					? inflateRectangle(paintedNodeFrameRectangle(descriptionNode), options.overlapPadding)
@@ -1865,7 +1881,18 @@ export function layoutRoadmap(
 		height = grownHeight;
 	}
 	const titleStep = document.steps.find((step) => step.type === "heading" && step.level === 1);
-	const title = titleStep ? inlineToPlainText(titleStep.content) : "Roadmap";
+	// Without an H1 the first headless grid's first column header is the
+	// closest thing the document has to a title.
+	const headlessStep = document.steps.find(
+		(step) => step.type === "chapter" && step.content.length === 0,
+	);
+	const headlessTitle =
+		headlessStep?.type === "chapter" ? headlessStep.groups[0]?.topics[0]?.content : undefined;
+	const title = titleStep
+		? inlineToPlainText(titleStep.content)
+		: headlessTitle && headlessTitle.length > 0
+			? inlineToPlainText(headlessTitle)
+			: "Roadmap";
 	const artifactAvoidance = [
 		...elements.map((element) =>
 			inflateRectangle(element.kind === "note" ? paintedNodeFrameRectangle(element) : element, 36),

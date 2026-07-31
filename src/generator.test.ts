@@ -1052,3 +1052,24 @@ Standalone note.
 		expect(reserved.y + reserved.height).toBeGreaterThanOrEqual(note.y);
 	});
 });
+
+describe("standalone and spine-mounted grids", () => {
+	const grid = "+ Alpha\n  * A one\n+ Beta\n  * B one\n";
+
+	test("a grid-only document renders standalone: no spine, no pill", () => {
+		const generated = generateRoadmap(grid);
+		expect(generated.layout.connectors.filter((c) => c.kind === "spine")).toHaveLength(0);
+		expect(generated.layout.elements.filter((e) => e.kind === "chapter")).toHaveLength(0);
+		// The first column header names the chart.
+		expect(generated.layout.title).toBe("Alpha");
+		expect(generated.svg).toContain('aria-label="Alpha"');
+	});
+
+	test("with an H1 and other chapters the grid mounts on the spine", () => {
+		const generated = generateRoadmap(`# Title\n\n* Intro\n  * Topic\n\n${grid}`);
+		expect(generated.layout.connectors.filter((c) => c.kind === "spine").length).toBeGreaterThan(0);
+		// Only the headed chapter draws a pill; the grid step stays headless.
+		expect(generated.layout.elements.filter((e) => e.kind === "chapter")).toHaveLength(1);
+		expect(generated.layout.title).toBe("Title");
+	});
+});
