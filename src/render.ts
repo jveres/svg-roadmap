@@ -1141,11 +1141,11 @@ function renderNoteMarker(node: LayoutNode, theme: RoadmapTheme): string {
 /**
  * The footnotes board wears the legend's exact framing — same board theme,
  * same inset convention — so the two furniture blocks read as one family
- * and share a left rail when layout aligns their x. Its FILL stays the
- * plain board background, never the hatch pattern (review, Aug 1: the
- * hatched footnotes read as decoration over reference text — and the
- * pattern+filter combination rendered differently across engines; a flat
- * token paints identically everywhere).
+ * and share a left rail when layout aligns their x. Its hull is
+ * TRANSPARENT (review, Aug 1, twice: the hatch read as decoration over
+ * reference text, then the plain board background read as a white slab
+ * — footnotes sit directly on the canvas; only a theme-declared outline
+ * may draw the hull).
  */
 function footnotesBoard(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
 	const board = theme.boards.legend;
@@ -1157,7 +1157,7 @@ function footnotesBoard(node: LayoutNode, theme: RoadmapTheme, prefix: string): 
 	};
 	const path = boardPath(board, [inner], board.padding, board.padding);
 	const outline = boardOutline(board);
-	return `<path class="roadmap__footnotes-board" d="${path}" fill="${cssToken("legend-board-background")}" filter="url(#${prefix}-soft-shadow)"${outline}/>`;
+	return `<path class="roadmap__footnotes-board" d="${path}" fill="none"${outline}/>`;
 }
 
 function renderNode(

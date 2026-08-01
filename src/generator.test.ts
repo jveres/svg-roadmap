@@ -737,16 +737,15 @@ Standalone note.
 		expect(block).toBeDefined();
 		expect(generated.svg).toContain('data-roadmap-element="footnotes"');
 		expect(generated.svg).toContain("roadmap__footnotes-board");
-		// The board is QUIET: the plain background token, never the
-		// hatch pattern (review, Aug 1 — decoration over reference
-		// text, and pattern+filter diverged across engines).
+		// The hull is TRANSPARENT (review, Aug 1, twice: the hatch
+		// read as decoration, the board background as a white slab —
+		// footnotes sit directly on the canvas).
 		const boardTag = generated.svg.match(
 			/<path class="roadmap__footnotes-board"[^>]*>/,
 		)?.[0];
-		expect(boardTag).toContain(
-			'fill="var(--roadmap-legend-board-background)"',
-		);
+		expect(boardTag).toContain('fill="none"');
 		expect(boardTag).not.toContain("legend-hatch");
+		expect(boardTag).not.toContain("filter=");
 		expect(generated.svg).toContain("The named footnote, referenced first.");
 		expect(generated.svg).toContain("Inline text wins order two.");
 		// References paint bare ordinals, not machine labels.
