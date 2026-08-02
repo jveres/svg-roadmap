@@ -737,13 +737,14 @@ Standalone note.
 		expect(block).toBeDefined();
 		expect(generated.svg).toContain('data-roadmap-element="footnotes"');
 		expect(generated.svg).toContain("roadmap__footnotes-board");
-		// The hull is TRANSPARENT (review, Aug 1, twice: the hatch
-		// read as decoration, the board background as a white slab —
-		// footnotes sit directly on the canvas).
+		// The hull is GONE (review, Aug 2, third round: the theme
+		// outline framed the footnotes in pro/rose/sci-fi/ascii) —
+		// no fill, no outline, no shadow; text sits on the canvas.
 		const boardTag = generated.svg.match(
 			/<path class="roadmap__footnotes-board"[^>]*>/,
 		)?.[0];
 		expect(boardTag).toContain('fill="none"');
+		expect(boardTag).toContain('stroke="none"');
 		expect(boardTag).not.toContain("legend-hatch");
 		expect(boardTag).not.toContain("filter=");
 		expect(generated.svg).toContain("The named footnote, referenced first.");
