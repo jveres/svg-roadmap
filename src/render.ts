@@ -1516,29 +1516,42 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
 }
 
-function renderBoardPattern(id: string, token: string, board: BoardTheme): string {
+function renderBoardPattern(
+	id: string,
+	token: string,
+	board: BoardTheme,
+	hatchStrokeWidth: string,
+): string {
+	// WebKit #198257: CSS custom properties do NOT resolve inside
+	// <pattern> content — in Safari every var() here fell to black
+	// (seam, Aug 2: the ascii shadow checker rendered as a dense
+	// dark hatch). Pattern defs are per-instance, per-scheme
+	// documents, so literals lose nothing.
+	const bg = escapeXml(board.background);
+	const hatch = escapeXml(board.hatch);
+	const hatchOpacity = escapeXml(String(board.hatchOpacity));
 	if (board.pattern === "crosshatch") {
-		return `<pattern id="${id}" data-roadmap-pattern="crosshatch" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="${cssToken(`${token}-board-background`)}"/><path d="M 0 7.5 L 10 2.5 M 0 2.5 L 10 -2.5 M 0 12.5 L 10 7.5" fill="none" stroke="${cssToken(`${token}-board-hatch`)}" stroke-opacity="${cssToken(`${token}-board-hatch-opacity`)}" stroke-width="${cssToken("board-hatch-stroke-width")}" stroke-linecap="square"/><path d="M -2.5 0 L 2.5 10 M 2.5 0 L 7.5 10 M 7.5 0 L 12.5 10" fill="none" stroke="${cssToken(`${token}-board-hatch`)}" stroke-opacity="${cssToken(`${token}-board-hatch-opacity`)}" stroke-width="${cssToken("board-hatch-stroke-width")}" stroke-linecap="square"/></pattern>`;
+		return `<pattern id="${id}" data-roadmap-pattern="crosshatch" patternUnits="userSpaceOnUse" width="10" height="10"><rect width="10" height="10" fill="${bg}"/><path d="M 0 7.5 L 10 2.5 M 0 2.5 L 10 -2.5 M 0 12.5 L 10 7.5" fill="none" stroke="${hatch}" stroke-opacity="${hatchOpacity}" stroke-width="${escapeXml(hatchStrokeWidth)}" stroke-linecap="square"/><path d="M -2.5 0 L 2.5 10 M 2.5 0 L 7.5 10 M 7.5 0 L 12.5 10" fill="none" stroke="${hatch}" stroke-opacity="${hatchOpacity}" stroke-width="${escapeXml(hatchStrokeWidth)}" stroke-linecap="square"/></pattern>`;
 	}
-	const background = `<rect width="12" height="12" fill="${cssToken(`${token}-board-background`)}"/>`;
-	const paint = `stroke="${cssToken(`${token}-board-hatch`)}" stroke-opacity="${cssToken(`${token}-board-hatch-opacity`)}" stroke-width="${cssToken("board-hatch-stroke-width")}"`;
+	const background = `<rect width="12" height="12" fill="${bg}"/>`;
+	const paint = `stroke="${hatch}" stroke-opacity="${hatchOpacity}" stroke-width="${escapeXml(hatchStrokeWidth)}"`;
 	let decoration = "";
 	if (board.pattern === "grid") {
 		decoration = `<path d="M 0 0 H 12 M 0 0 V 12" fill="none" ${paint}/>`;
 	} else if (board.pattern === "dots") {
-		decoration = `<circle cx="6" cy="6" r="1.25" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
+		decoration = `<circle cx="6" cy="6" r="1.25" fill="${hatch}" fill-opacity="${hatchOpacity}"/>`;
 	} else if (board.pattern === "halftone") {
-		decoration = `<g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><circle cx="3" cy="3" r="1.7"/><circle cx="9" cy="9" r="1.7"/><circle cx="9" cy="3" r="0.9"/><circle cx="3" cy="9" r="0.9"/></g>`;
+		decoration = `<g fill="${hatch}" fill-opacity="${hatchOpacity}"><circle cx="3" cy="3" r="1.7"/><circle cx="9" cy="9" r="1.7"/><circle cx="9" cy="3" r="0.9"/><circle cx="3" cy="9" r="0.9"/></g>`;
 	} else if (board.pattern === "waves") {
 		decoration = `<path d="M 0 3.5 Q 3 0.5 6 3.5 T 12 3.5 M 0 9.5 Q 3 6.5 6 9.5 T 12 9.5" fill="none" ${paint} stroke-linecap="round"/>`;
 	} else if (board.pattern === "lace") {
-		decoration = `<path d="M -4 7 Q 0 1 4 7 T 12 7 T 20 7" fill="none" ${paint}/><circle cx="4" cy="7" r="1.15" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/>`;
+		decoration = `<path d="M -4 7 Q 0 1 4 7 T 12 7 T 20 7" fill="none" ${paint}/><circle cx="4" cy="7" r="1.15" fill="${hatch}" fill-opacity="${hatchOpacity}"/>`;
 	} else if (board.pattern === "floral-lace") {
-		return `<pattern id="${id}" data-roadmap-pattern="floral-lace" patternUnits="userSpaceOnUse" width="18" height="18"><rect width="18" height="18" fill="${cssToken(`${token}-board-background`)}"/><path d="M 9 0 L 18 9 L 9 18 L 0 9 Z" fill="none" ${paint}/><g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><ellipse cx="9" cy="6.4" rx="1.15" ry="2.1"/><ellipse cx="11.6" cy="9" rx="2.1" ry="1.15"/><ellipse cx="9" cy="11.6" rx="1.15" ry="2.1"/><ellipse cx="6.4" cy="9" rx="2.1" ry="1.15"/><circle cx="9" cy="9" r="1.05"/></g></pattern>`;
+		return `<pattern id="${id}" data-roadmap-pattern="floral-lace" patternUnits="userSpaceOnUse" width="18" height="18"><rect width="18" height="18" fill="${bg}"/><path d="M 9 0 L 18 9 L 9 18 L 0 9 Z" fill="none" ${paint}/><g fill="${hatch}" fill-opacity="${hatchOpacity}"><ellipse cx="9" cy="6.4" rx="1.15" ry="2.1"/><ellipse cx="11.6" cy="9" rx="2.1" ry="1.15"/><ellipse cx="9" cy="11.6" rx="1.15" ry="2.1"/><ellipse cx="6.4" cy="9" rx="2.1" ry="1.15"/><circle cx="9" cy="9" r="1.05"/></g></pattern>`;
 	} else if (board.pattern === "pearls") {
-		return `<pattern id="${id}" data-roadmap-pattern="pearls" patternUnits="userSpaceOnUse" width="16" height="16"><rect width="16" height="16" fill="${cssToken(`${token}-board-background`)}"/><path d="M -4 4 Q 0 11 4 4 T 12 4 T 20 4" fill="none" ${paint}/><g fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"><circle cx="0" cy="4" r="1.25"/><circle cx="4" cy="8" r="1.05"/><circle cx="8" cy="4" r="1.25"/><circle cx="12" cy="8" r="1.05"/><circle cx="16" cy="4" r="1.25"/></g></pattern>`;
+		return `<pattern id="${id}" data-roadmap-pattern="pearls" patternUnits="userSpaceOnUse" width="16" height="16"><rect width="16" height="16" fill="${bg}"/><path d="M -4 4 Q 0 11 4 4 T 12 4 T 20 4" fill="none" ${paint}/><g fill="${hatch}" fill-opacity="${hatchOpacity}"><circle cx="0" cy="4" r="1.25"/><circle cx="4" cy="8" r="1.05"/><circle cx="8" cy="4" r="1.25"/><circle cx="12" cy="8" r="1.05"/><circle cx="16" cy="4" r="1.25"/></g></pattern>`;
 	} else if (board.pattern === "bows") {
-		return `<pattern id="${id}" data-roadmap-pattern="bows" patternUnits="userSpaceOnUse" width="24" height="18"><rect width="24" height="18" fill="${cssToken(`${token}-board-background`)}"/><path d="M 12 8 C 7 3 3 5 5 9 C 7 12 10 10 12 8 C 14 10 17 12 19 9 C 21 5 17 3 12 8 Z M 11 9 L 8 15 L 12 12 L 16 15 L 13 9" fill="none" ${paint}/><circle cx="12" cy="8.5" r="1.35" fill="${cssToken(`${token}-board-hatch`)}" fill-opacity="${cssToken(`${token}-board-hatch-opacity`)}"/></pattern>`;
+		return `<pattern id="${id}" data-roadmap-pattern="bows" patternUnits="userSpaceOnUse" width="24" height="18"><rect width="24" height="18" fill="${bg}"/><path d="M 12 8 C 7 3 3 5 5 9 C 7 12 10 10 12 8 C 14 10 17 12 19 9 C 21 5 17 3 12 8 Z M 11 9 L 8 15 L 12 12 L 16 15 L 13 9" fill="none" ${paint}/><circle cx="12" cy="8.5" r="1.35" fill="${hatch}" fill-opacity="${hatchOpacity}"/></pattern>`;
 	}
 	return `<pattern id="${id}" data-roadmap-pattern="${board.pattern}" patternUnits="userSpaceOnUse" width="12" height="12">${background}${decoration}</pattern>`;
 }
@@ -1626,18 +1639,28 @@ function renderDefinitions(
 		<linearGradient id="${prefix}-topic-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cssToken("topic-header-gradient-start")}"/><stop offset="0.7" stop-color="${cssToken("topic-header-gradient-end")}"/><stop offset="1" stop-color="${cssToken("topic-header-gradient-end")}"/></linearGradient>
 		${
 			theme.shadow.pattern === "halftone"
-				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="2" height="2"><rect width="1" height="1" fill="${cssToken("shadow-color")}"/><rect x="1" y="1" width="1" height="1" fill="${cssToken("shadow-color")}"/></pattern>`
+				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="2" height="2"><rect width="1" height="1" fill="${escapeXml(theme.shadow.color)}"/><rect x="1" y="1" width="1" height="1" fill="${escapeXml(theme.shadow.color)}"/></pattern>`
 				: ""
 		}
-		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic)}
-		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested)}
-		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend)}
+		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
+		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
+		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
 		${patternedCards(theme)
 			.map(([token, card]) =>
-				renderBoardPattern(`${prefix}-${token}-hatch`, token, {
-					...theme.boards.topic,
-					pattern: card.pattern ?? "none",
-				}),
+				renderBoardPattern(
+					`${prefix}-${token}-hatch`,
+					token,
+					{
+						...theme.boards.topic,
+						pattern: card.pattern ?? "none",
+						// The card's OWN paints (WebKit #198257 bakes
+						// literals — the var table used these values).
+						background: card.fill,
+						hatch: card.hatch ?? card.fill,
+						hatchOpacity: card.hatchOpacity ?? 1,
+					},
+					String(theme.cssVariables["board-hatch-stroke-width"] ?? 2),
+				),
 			)
 			.join("\n\t\t")}
 		${gradientCards(theme)
