@@ -1244,7 +1244,14 @@ function renderGroup(
 		Math.max(8, board.padding),
 		members.length > 0 ? board.padding : 0,
 	);
-	const pattern = nested ? `${prefix}-nested-hatch` : `${prefix}-topic-hatch`;
+	// A pattern-less board fills FLAT — never through a one-color
+	// pattern (Safari's tiler leaves hairline seams between tiles
+	// under fractional transforms; the seam grid over the shadow
+	// read as a dense hatch — seam review, Aug 2).
+	const fill =
+		board.pattern === "none"
+			? escapeXml(board.background)
+			: `url(#${nested ? `${prefix}-nested-hatch` : `${prefix}-topic-hatch`})`;
 	const bottom = Math.max(...outlined.map(rectBottom));
 	const bottomMembers = outlined.filter((member) => bottom - rectBottom(member) < 1);
 	// `outlined` is never empty, so the member achieving `bottom` always
@@ -1287,7 +1294,7 @@ function renderGroup(
 			? ` stroke="url(#${prefix}-connector-${kebabToken(hullGradient.connector)}-gradient)" stroke-width="${escapeXml(String(hullGradient.width ?? 1.5))}" stroke-opacity="${escapeXml(String(hullGradient.opacity ?? 0.7))}"`
 			: undefined;
 	const outline = gradientOutline ?? boardOutline(board);
-	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="url(#${pattern})"${outline}/>`;
+	return `<path id="${prefix}-${safeId(group.id)}" class="roadmap__group roadmap__group--${role}" data-roadmap-element="${role}-group" data-roadmap-shape="${board.shape}" data-depth="${group.depth}" d="${path}"${transform} fill="${fill}"${outline}/>`;
 }
 
 export function orthogonalConnectorPath(connector: LayoutConnector, laneOffset = 0): string {
@@ -1513,7 +1520,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	const pathScaleX = 1.01;
 	const pathTranslateX = Math.round((legend.x + legend.width / 2) * (1 - pathScaleX) * 100) / 100;
 	const outline = boardOutline(board);
-	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="url(#${prefix}-legend-hatch)" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
+	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="${theme.boards.legend.pattern === "none" ? escapeXml(theme.boards.legend.background) : `url(#${prefix}-legend-hatch)`}" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
 }
 
 function renderBoardPattern(
