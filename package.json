@@ -83,13 +83,13 @@
 		"comrak-wasm": "link:../comrak-wasm"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.4",
-		"@types/node": "^26.1.1",
+		"@biomejs/biome": "^2.5.7",
+		"@types/node": "^26.1.2",
 		"@vitest/coverage-v8": "^4.1.10",
 		"fast-check": "^4.9.0",
 		"happy-dom": "^20.11.1",
 		"typescript": "^7.0.2",
-		"vite": "^8.1.5",
+		"vite": "^8.2.0",
 		"vitest": "^4.1.10"
 	}
 }

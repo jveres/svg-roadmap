@@ -740,9 +740,7 @@ Standalone note.
 		// The hull is GONE (review, Aug 2, third round: the theme
 		// outline framed the footnotes in pro/rose/sci-fi/ascii) —
 		// no fill, no outline, no shadow; text sits on the canvas.
-		const boardTag = generated.svg.match(
-			/<path class="roadmap__footnotes-board"[^>]*>/,
-		)?.[0];
+		const boardTag = generated.svg.match(/<path class="roadmap__footnotes-board"[^>]*>/)?.[0];
 		expect(boardTag).toContain('fill="none"');
 		expect(boardTag).toContain('stroke="none"');
 		expect(boardTag).not.toContain("legend-hatch");
