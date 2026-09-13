@@ -1,5 +1,6 @@
 import {
 	createSeededRandom,
+	createSpatialMotifPicker,
 	intersectsAny,
 	isInOuterVoid,
 } from "../../core/background-artifacts.ts";
@@ -158,6 +159,11 @@ export function generateAsciiBackgroundArtifacts({
 	const rows = Math.ceil(height / tileSize);
 	const artifacts: LayoutBackgroundArtifact[] = [];
 	const accepted: Rect[] = [];
+	const nextMotif = createSpatialMotifPicker(
+		`ascii:${settings.seed}`,
+		motifs.length,
+		tileSize * 2.5,
+	);
 
 	for (let row = 0; row < rows; row += 1) {
 		for (let column = 0; column < columns; column += 1) {
@@ -185,9 +191,10 @@ export function generateAsciiBackgroundArtifacts({
 			if (intersectsAny(bounds, avoid)) continue;
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
+			const motifIndex = nextMotif(bounds);
+			if (motifIndex === undefined) continue;
 			accepted.push(bounds);
-			const motif =
-				motifs[(Math.floor(random() * motifs.length) + column * 2 + row) % motifs.length];
+			const motif = motifs[motifIndex];
 			if (!motif) continue;
 			// Zine marginalia sit almost square with the page.
 			const tilt = roundCoordinate((random() - 0.5) * 10);

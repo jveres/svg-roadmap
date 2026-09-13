@@ -490,10 +490,26 @@ function createChartProgress(
 	groups: ReadonlyMap<string, SVGGElement>,
 	hostDocument: Document,
 ): ChartProgress | undefined {
+	// Snapshot geometry before injecting progress decorations. Chapter bands
+	// and stations reuse these boxes instead of repeatedly forcing layout.
+	const nodeElements = [...svg.querySelectorAll<SVGGElement>("g.roadmap__node")];
+	const boxes = new Map<SVGGraphicsElement, DOMRect>();
+	const bandCandidates = [
+		...svg.querySelectorAll<SVGGraphicsElement>(
+			"g.roadmap__node:not(.roadmap__node--heading), path.roadmap__group, path.roadmap__connector",
+		),
+	];
+	for (const element of new Set<SVGGraphicsElement>([...nodeElements, ...bandCandidates])) {
+		try {
+			boxes.set(element, element.getBBox());
+		} catch {
+			// Detached or non-measurable artwork does not participate in progress.
+		}
+	}
 	const chapters = [...svg.querySelectorAll<SVGGElement>('g[data-roadmap-element="chapter"]')]
-		.map((g) => {
-			const box = g.getBBox();
-			return { centerY: box.y + box.height / 2, topY: box.y, bottomY: box.y + box.height };
+		.flatMap((g) => {
+			const box = boxes.get(g);
+			return box ? [{ centerY: box.y + box.height / 2, topY: box.y }] : [];
 		})
 		.sort((a, b) => a.centerY - b.centerY);
 	if (chapters.length === 0) return undefined;
@@ -512,7 +528,8 @@ function createChartProgress(
 	const topicChapter = new Map<string, number>();
 	const totals = chapters.map(() => 0);
 	for (const [id, group] of groups) {
-		const box = group.getBBox();
+		const box = boxes.get(group);
+		if (!box) continue;
 		const band = bandOf(box.y + box.height / 2);
 		topicChapter.set(id, band);
 		totals[band] = (totals[band] ?? 0) + 1;
@@ -537,18 +554,12 @@ function createChartProgress(
 	cleanups.push(() => defs.remove());
 
 	const bandElements: SVGGraphicsElement[][] = chapters.map(() => []);
-	for (const element of svg.querySelectorAll<SVGGraphicsElement>(
-		"g.roadmap__node:not(.roadmap__node--heading), path.roadmap__group, path.roadmap__connector",
-	)) {
+	for (const element of bandCandidates) {
 		if (/roadmap__connector--spine|roadmap__progress/u.test(element.getAttribute("class") ?? "")) {
 			continue;
 		}
-		let box: DOMRect;
-		try {
-			box = element.getBBox();
-		} catch {
-			continue;
-		}
+		const box = boxes.get(element);
+		if (!box) continue;
 		bandElements[bandOf(box.y + box.height / 2)]?.push(element);
 	}
 	cleanups.push(() => {
@@ -578,7 +589,8 @@ function createChartProgress(
 			) || 4
 		: 4;
 	const inks: InkSegment[] = spinePaths.map((path) => {
-		const midpoint = path.getPointAtLength(path.getTotalLength() / 2);
+		const length = path.getTotalLength();
+		const midpoint = path.getPointAtLength(length / 2);
 		let gap = 0;
 		for (const [i, chapter] of chapters.entries()) {
 			if (chapter.centerY < midpoint.y) gap = i + 1;
@@ -606,7 +618,7 @@ function createChartProgress(
 			glow: clone("roadmap__progress-ink--glow", spineWidth + 5),
 			core: clone("roadmap__progress-ink--core", Math.max(2.4, spineWidth * 0.5)),
 			gap,
-			length: path.getTotalLength(),
+			length,
 		};
 	});
 	// Stations mark the line, so they live in the line's layer:
@@ -654,8 +666,9 @@ function createChartProgress(
 			// whatever sits above it on the line.
 			const endX = inbound.core.getPointAtLength(inbound.length).x;
 			let previousBottom = chapter.topY - 26;
-			for (const node of svg.querySelectorAll<SVGGElement>("g.roadmap__node")) {
-				const box = node.getBBox();
+			for (const node of nodeElements) {
+				const box = boxes.get(node);
+				if (!box) continue;
 				if (box.y + box.height > chapter.topY + 0.5) continue;
 				if (endX < box.x || endX > box.x + box.width) continue;
 				previousBottom = Math.max(previousBottom, box.y + box.height);
@@ -665,7 +678,8 @@ function createChartProgress(
 		const station = hostDocument.createElementNS(svgNamespace, "g") as SVGGElement;
 		station.setAttribute("class", "roadmap__progress-station");
 		station.setAttribute("aria-hidden", "true");
-		station.setAttribute("transform", `translate(${point.x} ${point.y})`);
+		const placeable = Number.isFinite(point.x) && Number.isFinite(point.y);
+		if (placeable) station.setAttribute("transform", `translate(${point.x} ${point.y})`);
 		station.style.display = "none";
 		const make = (name: string, attributes: Record<string, string>): SVGElement => {
 			const el = hostDocument.createElementNS(svgNamespace, name);
@@ -684,7 +698,7 @@ function createChartProgress(
 		const tick = make("path", { class: "station-tick", d: "M -3 0.2 L -0.8 2.4 L 3.2 -2.2" });
 		addLineOverlay(station);
 		cleanups.push(() => station.remove());
-		return { station, full, arc, tick, placeable: !Number.isNaN(point.x) };
+		return { station, full, arc, tick, placeable };
 	});
 
 	const repaint = (states: Readonly<Record<string, RoadmapProgressState>>): void => {
@@ -961,6 +975,10 @@ export function attachRoadmapInteractivity(
 ): RoadmapInteractivityHandle {
 	const hostDocument = svg.ownerDocument;
 	ensureStyles(svg);
+	// Static SVGs are images; interactive charts must expose their focusable
+	// topics to assistive technology instead of flattening them into one image.
+	const originalRole = svg.getAttribute("role");
+	svg.setAttribute("role", "group");
 
 	const prefix = svg.getAttribute("data-roadmap-instance") ?? "";
 	// The accessible name lives on aria-label (the root <title> element is
@@ -1463,6 +1481,7 @@ export function attachRoadmapInteractivity(
 		} else if (trackProgress) {
 			const select = hostDocument.createElement("select");
 			select.className = "roadmap-topic-detail__state";
+			select.name = "progress";
 			select.setAttribute("aria-label", `Progress for ${detail.title}`);
 			for (const [value, label] of [
 				["", "not started"],
@@ -1558,7 +1577,9 @@ export function attachRoadmapInteractivity(
 		updateSummary();
 		syncMilestones();
 		repaintChart?.(states);
-		if (selectedId && headerColumns.get(selectedId)?.includes(id)) renderDetail();
+		if (selectedId === id || (selectedId && headerColumns.get(selectedId)?.includes(id))) {
+			renderDetail();
+		}
 		const group = groups.get(id);
 		if (group) options.onChange?.(detailFor(id, group));
 	};
@@ -1749,6 +1770,8 @@ export function attachRoadmapInteractivity(
 			headerGroups.clear();
 			headerColumns.clear();
 			svg.classList.remove("roadmap--interactive");
+			if (originalRole === null) svg.removeAttribute("role");
+			else svg.setAttribute("role", originalRole);
 		},
 	};
 }

@@ -460,8 +460,8 @@ describe("SVG rendering boundaries", () => {
 		expect(svg).toContain("M256 512c141.4 0 256-114.6");
 		expect(svg).toContain('id="paint-details-icon-warning" viewBox="0 0 24 24"');
 		expect(svg).toContain("--roadmap-badge-warning-background:#ffd54f");
-		expect(svg).toContain('stdDeviation="var(--roadmap-soft-shadow-blur)"');
-		expect(svg).toContain('values="var(--roadmap-soft-shadow-saturation)"');
+		expect(svg).toContain(`stdDeviation="${lightTheme.shadow.softBlur}"`);
+		expect(svg).toContain(`values="${lightTheme.shadow.softSaturation}"`);
 		// Strokes scale with the chart; non-scaling-stroke would paint borders
 		// several times too thick on charts fitted to small screens.
 		expect(svg).not.toContain("non-scaling-stroke");
@@ -903,4 +903,21 @@ Start with [foundation] first.
 		expect(svg).toContain("\\26 ");
 		expect(svg.match(/\\3c \/style>/gu)).toHaveLength(2);
 	});
+});
+
+it("resolves numeric SVG filter parameters from theme overrides", () => {
+	const svg = generateRoadmapSvgSync("* Chapter [recommended]\n  * Topic", {
+		theme: {
+			cssVariables: {
+				"soft-shadow-blur": 4,
+				"soft-shadow-offset-x": -2,
+				"soft-shadow-offset-y": 3,
+				"soft-shadow-saturation": "0.5",
+			},
+		},
+	});
+	expect(svg).toContain('stdDeviation="4"');
+	expect(svg).toContain('dx="-2" dy="3"');
+	expect(svg).toContain('values="0.5"');
+	expect(svg).not.toMatch(/(?:stdDeviation|dx|dy|values)="var\(/u);
 });

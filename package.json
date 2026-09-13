@@ -21,7 +21,8 @@
 	},
 	"type": "module",
 	"sideEffects": [
-		"./dist/preview.js"
+		"./dist/preview.js",
+		"./src/preview.ts"
 	],
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
@@ -77,19 +78,19 @@
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc --noEmit",
-		"verify": "pnpm run check && pnpm run typecheck && pnpm test && pnpm run build && pnpm run build:demo"
+		"verify": "pnpm run check && pnpm run typecheck && pnpm run test:coverage && pnpm run build && pnpm run build:demo"
 	},
 	"dependencies": {
-		"comrak-wasm": "link:../comrak-wasm"
+		"comrak-wasm": "github:jveres/comrak-wasm#v0.2.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.10",
-		"@types/node": "^26.2.0",
-		"@vitest/coverage-v8": "^4.1.11",
-		"fast-check": "^4.9.0",
-		"happy-dom": "^20.11.6",
+		"@biomejs/biome": "^2.5.13",
+		"@types/node": "^26.5.1",
+		"@vitest/coverage-v8": "^5.0.0",
+		"fast-check": "^4.10.0",
+		"happy-dom": "^20.14.5",
 		"typescript": "^7.0.2",
-		"vite": "^8.2.2",
-		"vitest": "^4.1.11"
+		"vite": "^8.3.0",
+		"vitest": "^5.0.0"
 	}
 }

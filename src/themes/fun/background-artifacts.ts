@@ -1,5 +1,6 @@
 import {
 	createSeededRandom,
+	createSpatialMotifPicker,
 	intersectsAny,
 	isInOuterVoid,
 } from "../../core/background-artifacts.ts";
@@ -19,184 +20,144 @@ const accent = "var(--roadmap-background-artifact-accent)";
 const coral = "var(--roadmap-background-artifact-coral)";
 const strokeWidth = "var(--roadmap-background-artifact-stroke-width)";
 
+function outline(d: string, stroke = secondary): LayoutBackgroundArtifactShape {
+	return { kind: "path", d, fill: "none", stroke, strokeWidth };
+}
+
 function motifShapes(motif: number, variant: number): readonly LayoutBackgroundArtifactShape[] {
-	const common = { fill: "none", strokeWidth } as const;
 	if (motif === 0) {
-		const rise = 5 + variant;
+		// Paper plane: two wings and a folded centre, with a short flight trail.
 		return [
-			{
-				kind: "path",
-				d: `M -24 0 C -20 -${rise} -16 -${rise} -12 0 S -4 ${rise} 0 0 S 8 -${rise} 12 0 S 20 ${rise} 24 0`,
-				stroke: primary,
-				...common,
-			},
-			{ kind: "circle", cx: -24, cy: 0, radius: 2.8, fill: secondary },
-			{ kind: "circle", cx: 24, cy: 0, radius: 2.8, fill: coral },
+			outline("M -21 -5 L 23 -18 L 8 18 L 0 3 Z", secondary),
+			outline("M 0 3 L 23 -18 M 0 3 L -3 13 L 4 10", primary),
+			outline("M -22 11 Q -17 18 -10 17", coral),
 		];
 	}
 	if (motif === 1) {
+		// Shooting star: a closed five-point silhouette and two trailing arcs.
 		return [
-			{
-				kind: "path",
-				d: `M -23 9 Q -7 -${18 + variant} 22 -5`,
-				stroke: secondary,
-				strokeWidth: 1,
-				fill: "none",
-			},
-			{ kind: "circle", cx: -22, cy: 7, radius: 3.1, fill: accent },
-			{ kind: "circle", cx: -13, cy: -5, radius: 2.2, fill: coral },
-			{ kind: "circle", cx: -1, cy: -12 - variant, radius: 3.5, fill: primary },
-			{ kind: "circle", cx: 12, cy: -11, radius: 2.4, fill: secondary },
-			{ kind: "circle", cx: 22, cy: -5, radius: 2.8, fill: coral },
+			outline(
+				"M 11 -21 L 14 -14 L 22 -13 L 16 -8 L 18 0 L 11 -4 L 4 0 L 6 -8 L 0 -13 L 8 -14 Z",
+				accent,
+			),
+			outline("M 1 -6 Q -12 -2 -23 14", secondary),
+			outline("M 5 2 Q -9 7 -15 21", coral),
 		];
 	}
 	if (motif === 2) {
+		// Saturn: the rear half of the ring disappears behind the planet.
+		return [
+			outline("M -22 9 C -29 0 14 -18 23 -8", coral),
+			{
+				kind: "circle",
+				cx: 0,
+				cy: -2,
+				radius: 12,
+				fill: "var(--roadmap-canvas-background)",
+				stroke: secondary,
+				strokeWidth,
+			},
+			outline("M -22 9 C -12 18 30 -3 23 -8", coral),
+			outline(`M -5 -${8 + variant} Q 1 -${12 + variant} 6 -9`, primary),
+		];
+	}
+	if (motif === 3) {
+		// Wrapped sweet, with pinched wrappers and curved candy stripes.
+		return [
+			outline(
+				"M -12 -5 L -23 -11 L -21 0 L -23 11 L -12 5 M 12 -5 L 23 -11 L 21 0 L 23 11 L 12 5",
+				accent,
+			),
+			outline("M -12 0 C -12 -15 12 -15 12 0 C 12 15 -12 15 -12 0 Z", coral),
+			outline(`M -${5 + variant} -10 Q 1 -4 -2 10 M 3 -10 Q 9 -4 5 9`, secondary),
+		];
+	}
+	if (motif === 4) {
+		// A five-pip die keeps the old dot texture inside a recognizable frame.
+		return [
+			outline(
+				"M -12 -18 H 12 Q 18 -18 18 -12 V 12 Q 18 18 12 18 H -12 Q -18 18 -18 12 V -12 Q -18 -18 -12 -18 Z",
+				primary,
+			),
+			...[-9, 9].flatMap((cx) =>
+				[-9, 9].map(
+					(cy): LayoutBackgroundArtifactShape => ({
+						kind: "circle",
+						cx,
+						cy,
+						radius: 2.5,
+						fill: secondary,
+					}),
+				),
+			),
+			{ kind: "circle", cx: 0, cy: 0, radius: 2.5, fill: coral },
+		];
+	}
+	if (motif === 5) {
+		// Two balloons, with knots and curved strings instead of loose circles.
+		return [
+			outline("M -7 2 C -24 0 -22 -22 -9 -22 C 4 -22 8 -4 -7 2 Z M -7 2 L -10 5 L -5 5 Z", coral),
+			outline("M 11 4 C -1 0 1 -17 12 -17 C 25 -17 26 0 11 4 Z M 11 4 L 8 7 L 13 7 Z", secondary),
+			outline(`M -7 5 C -12 13 ${variant} 14 -5 23 M 11 7 C 5 14 15 17 9 24`, primary),
+		];
+	}
+	if (motif === 6) {
+		// Sun: a round centre and eight evenly spaced rays.
 		return [
 			{
 				kind: "circle",
 				cx: 0,
 				cy: 0,
-				radius: 9 + variant,
+				radius: 10 + variant * 0.4,
 				fill: "none",
-				stroke: primary,
+				stroke: accent,
 				strokeWidth,
 			},
-			{
-				kind: "path",
-				d: "M -23 4 C -12 -8 12 -10 23 -2 C 12 10 -12 12 -23 4 Z",
-				stroke: secondary,
-				strokeWidth: 1.5,
-				fill: "none",
-			},
-			{ kind: "circle", cx: -22, cy: 4, radius: 2.8, fill: accent },
-			{ kind: "circle", cx: 22, cy: -2, radius: 2.4, fill: coral },
-			{ kind: "circle", cx: 12, cy: 15, radius: 1.9, fill: secondary },
-		];
-	}
-	if (motif === 3) {
-		return [
-			{
-				kind: "path",
-				d: "M -21 -13 C -17 -19 -9 -17 -8 -11 C -10 -5 -18 -5 -21 -13 Z",
-				fill: coral,
-			},
-			{
-				kind: "path",
-				d: `M 1 -20 C ${7 + variant} -24 13 -17 10 -11 C 5 -8 -1 -13 1 -20 Z`,
-				fill: secondary,
-			},
-			{
-				kind: "path",
-				d: "M 12 2 C 20 -2 25 5 20 11 C 13 14 8 8 12 2 Z",
-				fill: accent,
-			},
-			{
-				kind: "path",
-				d: "M -15 8 C -8 5 -4 12 -8 18 C -15 20 -20 14 -15 8 Z",
-				fill: primary,
-			},
-			{ kind: "circle", cx: 3, cy: 7, radius: 2.1, fill: coral },
-			{ kind: "circle", cx: 18, cy: -15, radius: 1.8, fill: primary },
-		];
-	}
-	if (motif === 4) {
-		return Array.from({ length: 12 }, (_, index): LayoutBackgroundArtifactShape => {
-			const column = index % 4;
-			const row = Math.floor(index / 4);
-			const palette = [primary, secondary, coral, accent] as const;
-			return {
-				kind: "circle",
-				cx: -18 + column * 12 + (row % 2) * 4,
-				cy: -12 + row * 12,
-				radius: 1.7 + ((column + row + variant) % 3) * 0.8,
-				fill: palette[(column + row) % palette.length] ?? primary,
-			};
-		});
-	}
-	if (motif === 5) {
-		return [
-			{ kind: "circle", cx: -13, cy: 8, radius: 10, fill: "none", stroke: primary, strokeWidth },
-			{
-				kind: "circle",
-				cx: 5,
-				cy: -5,
-				radius: 7,
-				fill: "none",
-				stroke: secondary,
-				strokeWidth: 1.5,
-			},
-			{ kind: "circle", cx: 17, cy: -15, radius: 4, fill: "none", stroke: coral, strokeWidth: 1.5 },
-			{ kind: "circle", cx: 18, cy: 12, radius: 2.8, fill: accent },
-			{ kind: "circle", cx: -23, cy: -12, radius: 2.2, fill: coral },
-		];
-	}
-	if (motif === 6) {
-		return [
-			{ kind: "path", d: "M -21 -15 L -12 -7", stroke: coral, ...common },
-			{ kind: "path", d: "M 4 -21 L 2 -10", stroke: secondary, ...common },
-			{ kind: "path", d: "M 12 5 L 23 1", stroke: accent, ...common },
-			{ kind: "path", d: "M -17 15 L -7 12", stroke: primary, ...common },
-			{ kind: "circle", cx: -1, cy: 3, radius: 3.2, fill: coral },
-			{ kind: "circle", cx: 17, cy: 17, radius: 2.4, fill: secondary },
+			outline(
+				"M 0 -16 V -23 M 11 -11 L 16 -16 M 16 0 H 23 M 11 11 L 16 16 M 0 16 V 23 M -11 11 L -16 16 M -16 0 H -23 M -11 -11 L -16 -16",
+				coral,
+			),
 		];
 	}
 	if (motif === 7) {
-		const palette = [primary, coral, secondary, accent] as const;
-		return Array.from(
-			{ length: 8 },
-			(_, index): LayoutBackgroundArtifactShape => ({
-				kind: "circle",
-				cx: -24 + index * 7,
-				cy: Math.sin((index + variant) * 0.95) * 8,
-				radius: 1.8 + (index % 3) * 0.55,
-				fill: palette[index % palette.length] ?? primary,
-			}),
-		);
+		// Rainbow: concentric arches share a baseline and stay upright.
+		return [
+			outline("M -23 13 A 23 23 0 0 1 23 13", coral),
+			outline("M -17 13 A 17 17 0 0 1 17 13", accent),
+			outline("M -11 13 A 11 11 0 0 1 11 13", secondary),
+			outline("M -5 13 A 5 5 0 0 1 5 13", primary),
+		];
 	}
 	if (motif === 8) {
-		return [
-			{
-				kind: "path",
-				d: "M 0 -5 C -8 -18 -17 -13 -13 -4 C -10 1 -5 2 0 0 C 5 2 10 1 13 -4 C 17 -13 8 -18 0 -5 Z",
-				stroke: secondary,
-				strokeWidth: 1.5,
-				fill: "none",
-			},
-			{
-				kind: "path",
-				d: "M -4 1 C -18 4 -17 14 -7 15 C -1 15 2 10 0 5 C 2 10 7 15 13 12 C 22 7 16 -1 4 0 Z",
-				stroke: coral,
-				strokeWidth: 1.5,
-				fill: "none",
-			},
-			{ kind: "circle", cx: 0, cy: 1, radius: 3.2 + variant * 0.35, fill: accent },
-			{ kind: "circle", cx: -15, cy: -8, radius: 2, fill: primary },
-			{ kind: "circle", cx: 15, cy: 9, radius: 1.8, fill: secondary },
-		];
-	}
-	if (motif === 9) {
-		const orbit = Array.from({ length: 6 }, (_, index): LayoutBackgroundArtifactShape => {
-			const angle = (index * Math.PI) / 3 + variant * 0.12;
-			const palette = [primary, secondary, coral, accent] as const;
+		// Separate radial petals meet beneath the centre, with no crossing seams.
+		const petals = Array.from({ length: 5 }, (_, index): LayoutBackgroundArtifactShape => {
+			const angle = (index * Math.PI * 2) / 5 - Math.PI / 2;
+			const point = (radius: number, offset: number): string =>
+				`${roundCoordinate(Math.cos(angle + offset) * radius)} ${roundCoordinate(Math.sin(angle + offset) * radius)}`;
 			return {
-				kind: "circle",
-				cx: Math.cos(angle) * 18,
-				cy: Math.sin(angle) * 18,
-				radius: 2.2 + (index % 2) * 0.9,
-				fill: palette[index % palette.length] ?? primary,
+				kind: "path",
+				d: `M ${point(3, -0.55)} C ${point(19, -0.6)} ${point(25, -0.3)} ${point(23, 0)} C ${point(25, 0.3)} ${point(19, 0.6)} ${point(3, 0.55)} Z`,
+				stroke: index % 2 === 0 ? secondary : coral,
+				strokeWidth: 1.5,
+				fill: "none",
 			};
 		});
+		return [...petals, { kind: "circle", cx: 0, cy: 0, radius: 4.2 + variant * 0.2, fill: accent }];
+	}
+	if (motif === 9) {
+		// Kite: a diamond sail, cross spars, a ribbon tail and two little bows.
 		return [
-			{ kind: "circle", cx: 0, cy: 0, radius: 6, fill: "none", stroke: coral, strokeWidth },
-			...orbit,
+			outline("M 0 -23 L 16 -9 L 0 9 L -16 -9 Z", secondary),
+			outline("M 0 -23 V 9 M -16 -9 H 16", coral),
+			outline("M 0 9 C 12 12 -5 19 5 24", primary),
+			outline("M 5 12 L 10 9 L 10 15 Z M 2 18 L -3 15 L -3 21 Z", accent),
 		];
 	}
+	// Paired musical notes: a shared beam, two stems and oval note heads.
 	return [
-		{ kind: "path", d: "M -21 -7 L -15 -14 L -8 -8 L -14 -1 Z", fill: secondary },
-		{ kind: "path", d: "M 2 -17 L 8 -22 L 13 -15 L 6 -10 Z", fill: coral },
-		{ kind: "path", d: "M 11 4 L 20 0 L 23 8 L 15 13 Z", fill: accent },
-		{ kind: "path", d: "M -14 12 L -7 8 L -2 16 L -10 21 Z", fill: primary },
-		{ kind: "circle", cx: 2, cy: 3, radius: 2.2, fill: secondary },
+		outline("M -10 12 V -15 L 15 -21 V 6 M -10 -9 L 15 -15", primary),
+		{ kind: "path", d: "M -10 8 C -13 4 -24 8 -23 13 C -22 19 -10 16 -10 12 Z", fill: coral },
+		{ kind: "path", d: "M 15 2 C 12 -2 1 2 2 7 C 3 13 15 10 15 6 Z", fill: secondary },
 	];
 }
 
@@ -211,6 +172,7 @@ export function generateFunBackgroundArtifacts({
 	const rows = Math.ceil(height / tileSize);
 	const artifacts: LayoutBackgroundArtifact[] = [];
 	const accepted: Rect[] = [];
+	const nextMotif = createSpatialMotifPicker(`fun:${settings.seed}`, 11, tileSize * 2.5);
 	for (let row = 0; row < rows; row += 1) {
 		for (let column = 0; column < columns; column += 1) {
 			const random = createSeededRandom(`${settings.seed}:${column}:${row}`);
@@ -237,9 +199,14 @@ export function generateFunBackgroundArtifacts({
 			if (intersectsAny(bounds, avoid)) continue;
 			if (!isInOuterVoid(bounds, avoid, width, 0.28)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
+			const motifIndex = nextMotif(bounds);
+			if (motifIndex === undefined) continue;
 			accepted.push(bounds);
-			const motif = Math.floor(random() * 11);
-			const rotation = roundCoordinate(random() * 360);
+			const motif = motifIndex;
+			// Only rotationally symmetric motifs spin freely; objects keep their "up".
+			const rotation = roundCoordinate(
+				motif === 6 || motif === 8 ? random() * 360 : (random() - 0.5) * 28,
+			);
 			const variant = Math.floor(random() * 3);
 			artifacts.push({
 				id: `fun-background-${column}-${row}`,

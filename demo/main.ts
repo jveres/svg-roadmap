@@ -1,4 +1,6 @@
 import { mdToHtml } from "comrak-wasm";
+import { gemojiEmoji } from "../src/core/emoji/gemoji-data.ts";
+import { emojiArtwork } from "../src/core/emoji-artwork.ts";
 import {
 	builtInThemes,
 	initializeRoadmapMarkdown,
@@ -194,7 +196,17 @@ interface WorkbenchSettings {
 
 function loadStoredSettings(): WorkbenchSettings {
 	try {
-		return JSON.parse(localStorage.getItem(settingsStorageKey) ?? "{}") as WorkbenchSettings;
+		const value: unknown = JSON.parse(localStorage.getItem(settingsStorageKey) ?? "{}");
+		if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+		const stored = value as Record<string, unknown>;
+		return {
+			...(typeof stored.sample === "string" ? { sample: stored.sample } : {}),
+			...(typeof stored.theme === "string" ? { theme: stored.theme } : {}),
+			...(typeof stored.mode === "string" ? { mode: stored.mode } : {}),
+			...(typeof stored.editorHidden === "boolean" ? { editorHidden: stored.editorHidden } : {}),
+			...(typeof stored.interactive === "boolean" ? { interactive: stored.interactive } : {}),
+			...(typeof stored.spotlight === "boolean" ? { spotlight: stored.spotlight } : {}),
+		};
 	} catch {
 		return {};
 	}
@@ -323,9 +335,49 @@ function scheduleRender(): void {
 	renderTimer = window.setTimeout(render, 120);
 }
 
+let emojiPack: Promise<void> | undefined;
+
+/** Only fetch the full artwork pack when a rendered chart needs it. */
+function loadNeededEmoji(): void {
+	const generated = preview.generated;
+	if (emojiPack || !generated) return;
+	const missing = (shortcode: string): boolean =>
+		Object.hasOwn(gemojiEmoji, shortcode) && emojiArtwork(shortcode) === undefined;
+	const missingText = generated.layout.elements.some(
+		(element) =>
+			"text" in element &&
+			element.text.lines.some((line) =>
+				line.segments.some(
+					(segment) => segment.shortcode !== undefined && missing(segment.shortcode),
+				),
+			),
+	);
+	const missingBadge = Object.values(generated.document.settings.tags).some((tag) => {
+		const icons = typeof tag.icon === "string" ? [tag.icon] : (tag.icon ?? []);
+		return icons.some((icon) => icon.startsWith(":") && missing(icon.slice(1, -1)));
+	});
+	if (!missingText && !missingBadge) return;
+	emojiPack = import("../src/emoji-github.ts")
+		.then(({ githubEmojiArtwork }) => {
+			registerEmojiArtwork(githubEmojiArtwork);
+			preview.refresh();
+		})
+		.catch((error: unknown) => {
+			emojiPack = undefined;
+			console.warn("GitHub emoji pack failed to load", error);
+		});
+}
+
+preview.addEventListener("roadmap-error", (event) => {
+	const { error } = (event as CustomEvent<{ error: unknown }>).detail;
+	parseError.hidden = false;
+	parseError.textContent = error instanceof Error ? error.message : String(error);
+});
+
 preview.addEventListener("roadmap-render", (event) => {
 	const detail = (event as CustomEvent<{ mode: string }>).detail;
 	document.documentElement.dataset.workbenchTheme = detail.mode;
+	loadNeededEmoji();
 });
 // A selected topic also reveals its authored source in the editor.
 preview.addEventListener("roadmap-select", (event) => {
@@ -364,16 +416,6 @@ try {
 	await initializeRoadmapMarkdown();
 	parser = new RoadmapParser();
 	render();
-	// The full GitHub emoji tier loads lazily so first paint stays light;
-	// shortcodes beyond the core pack upgrade on the next render.
-	import("../src/emoji-github.ts")
-		.then(({ githubEmojiArtwork }) => {
-			registerEmojiArtwork(githubEmojiArtwork);
-			preview.refresh();
-		})
-		.catch((error: unknown) => {
-			console.warn("GitHub emoji pack failed to load", error);
-		});
 } catch (error) {
 	const message = error instanceof Error ? error.message : String(error);
 	parseError.hidden = false;
@@ -381,4 +423,7 @@ try {
 	stats.textContent = "Initialization failed";
 }
 
-window.addEventListener("pagehide", () => parser?.dispose(), { once: true });
+window.addEventListener("pagehide", (event) => {
+	// A bfcache entry resumes with the same parser when the user returns.
+	if (!event.persisted) parser?.dispose();
+});

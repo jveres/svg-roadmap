@@ -120,6 +120,10 @@ export class RoadmapDocumentError extends Error {
 	}
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Validates and unwraps a document envelope produced by
  * {@link packRoadmapDocument} — typically after `JSON.parse` on the viewer
@@ -127,10 +131,10 @@ export class RoadmapDocumentError extends Error {
  * error for wrong or incompatible artifacts, not schema validation.
  */
 export function openRoadmapDocument(envelope: unknown): RoadmapDocument {
-	if (typeof envelope !== "object" || envelope === null) {
+	if (!isRecord(envelope)) {
 		throw new RoadmapDocumentError("The roadmap artifact must be an object.");
 	}
-	const candidate = envelope as Partial<RoadmapDocumentEnvelope>;
+	const candidate = envelope;
 	if (candidate.svgRoadmap !== roadmapDocumentFormat) {
 		throw new RoadmapDocumentError(
 			`Unsupported roadmap artifact format ${String(candidate.svgRoadmap)}; this viewer reads format ${roadmapDocumentFormat}.`,
@@ -138,13 +142,21 @@ export function openRoadmapDocument(envelope: unknown): RoadmapDocument {
 	}
 	const document = candidate.document;
 	if (
-		typeof document !== "object" ||
-		document === null ||
+		!isRecord(document) ||
 		document.type !== "roadmap" ||
+		typeof document.source !== "string" ||
 		!Array.isArray(document.steps) ||
-		typeof document.settings !== "object"
+		!Array.isArray(document.footnotes) ||
+		!isRecord(document.abbreviations) ||
+		!isRecord(document.stats) ||
+		!isRecord(document.settings) ||
+		!isRecord(document.settings.theme) ||
+		typeof document.settings.theme.preset !== "string" ||
+		!isRecord(document.settings.background) ||
+		!isRecord(document.settings.layout) ||
+		!isRecord(document.settings.tags)
 	) {
 		throw new RoadmapDocumentError("The roadmap artifact does not carry a parsed document.");
 	}
-	return document;
+	return document as unknown as RoadmapDocument;
 }

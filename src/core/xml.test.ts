@@ -20,3 +20,43 @@ describe("XML decoder", () => {
 		expect(() => decodeXml("<document><text>broken</document>")).toThrow(XmlDecodeError);
 	});
 });
+
+test.each([
+	['<?xml version="1.0"', "Unterminated XML declaration"],
+	['<!DOCTYPE document [<!ENTITY example "value">', "Unterminated doctype"],
+	["<document><!-- missing", "Unterminated XML comment"],
+	["<document><![CDATA[missing", "Unterminated CDATA section"],
+	["<![CDATA[outside]]><document/>", "CDATA outside the root"],
+	["<document></document", "Unterminated closing tag"],
+	["<document><></document>", "Element name is missing"],
+	['<document @="invalid"/>', "Invalid attribute name"],
+	["<document key/>", "has no value"],
+	["<document key=unquoted/>", "is not quoted"],
+	['<document key="unfinished/>', "Unterminated attribute"],
+	["<document>text", "Unclosed element"],
+	["<document/><document/>", "Expected one"],
+	["<other/>", "Expected one"],
+	["", "Expected one"],
+])("rejects malformed XML %j", (source, message) => {
+	expect(() => decodeXml(source)).toThrow(message);
+});
+
+test("handles comments, internal declarations, CDATA, and nested text", () => {
+	const parsed = decodeXml(
+		`<!DOCTYPE document [<!ENTITY note "a > b"><!ENTITY other 'x'>]><!-- comment --><document><paragraph><![CDATA[<literal>&raw;]]><strong><text>deep</text></strong><text> </text><code> </code></paragraph></document>`,
+	);
+	expect(xmlText(parsed)).toBe("<literal>&raw;deep  ");
+});
+
+test("preserves unknown and out-of-range entities and decodes valid numeric entities", () => {
+	const parsed = decodeXml(
+		"<document><text>&#65; &#x1F680; &unknown; &#1114112; &#x110000; &apos;&quot;&lt;&gt;</text></document>",
+	);
+	expect(xmlText(parsed)).toBe("A 🚀 &unknown; &#1114112; &#x110000; '\"<>");
+});
+
+test("does not treat inherited object names as XML entities or lose attribute names", () => {
+	const parsed = decodeXml('<document __proto__="literal"><text>&constructor;</text></document>');
+	expect(xmlText(parsed)).toBe("&constructor;");
+	expect(Object.getOwnPropertyDescriptor(parsed.attributes, "__proto__")?.value).toBe("literal");
+});

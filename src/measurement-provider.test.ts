@@ -215,3 +215,39 @@ describe("hidden-DOM oracle", () => {
 		expect(measureText("abcd", 16)).toBe(999);
 	});
 });
+
+test("text presentation symbols reach the font provider, while explicit emoji stay fixed", () => {
+	const provider = vi.fn(() => 9);
+	setMeasurementProvider(provider);
+	expect(measureText("©", 16, ["emphasis"])).toBe(9);
+	expect(provider).toHaveBeenCalledWith("©", expect.objectContaining({ fontStyle: "italic" }));
+	expect(measureText("©\ufe0f", 16)).toBe(16.8);
+	expect(provider).toHaveBeenCalledOnce();
+});
+
+test("DOM measurement explains missing browser documents", async () => {
+	expect(() => createDomMeasurementProvider()).toThrow("document with a body");
+	await expect(installDomMeasurement()).rejects.toThrow("needs a document");
+});
+
+test("font load failures and late loads do not overwrite a newer provider", async () => {
+	const { document, fonts, body } = createStubDocument();
+	fonts.load.mockRejectedValue(new Error("font unavailable"));
+	const uninstall = await installDomMeasurement({ document, fonts: ["12px Missing"] });
+	expect(measureText("repeat", 12)).toBe(42);
+	expect(measureText("another", 12)).toBe(49);
+	setMeasurementProvider(() => 123);
+	fonts.emitLoadingDone();
+	expect(measureText("repeat", 12)).toBe(123);
+	uninstall();
+	expect(body.children).toEqual([]);
+});
+
+test("DOM measurement works without the Font Loading API", async () => {
+	const { document, body } = createStubDocument();
+	Reflect.deleteProperty(document, "fonts");
+	const uninstall = await installDomMeasurement({ document });
+	expect(measureText("text", 12)).toBe(28);
+	uninstall();
+	expect(body.children).toEqual([]);
+});

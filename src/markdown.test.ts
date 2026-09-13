@@ -422,3 +422,56 @@ describe("top-level grids", () => {
 		expect(first.content.length).toBeGreaterThan(0);
 	});
 });
+
+test("empty list items, empty image labels and nested quotes retain meaningful fallback content", () => {
+	const document = parseRoadmapMarkdown(
+		'*\n\n![ ](https://example.com "Picture")\n\n![](https://example.com)\n\n> Outer\n>\n> > Inner\n',
+	);
+	expect(document.steps[0]).toMatchObject({ type: "chapter", content: [], groups: [] });
+	expect(document.steps[0]?.id).toMatch(/untitled$/u);
+	const notes = document.steps
+		.filter((step) => step.type === "note")
+		.map((step) => inlineToPlainText(step.content));
+	expect(notes).toContain("image");
+	expect(notes.at(-1)).toBe("Outer Inner");
+});
+
+test("extended inline syntax and image title fallbacks survive parsing", () => {
+	const document = parseRoadmapMarkdown(
+		'# ~~old~~ ++new++ ==bright== H~2~O x^2^\n\n![](https://example.com "Picture")\n\n[Link](https://example.com "Tooltip")  \nnext\n',
+		{ markdown: { extension: { wikilinksTitleAfterPipe: true } } },
+	);
+	expect(document.steps[0]?.content.map((node) => node.type)).toEqual([
+		"strikethrough",
+		"text",
+		"insert",
+		"text",
+		"highlight",
+		"text",
+		"subscript",
+		"text",
+		"superscript",
+	]);
+	expect(document.steps[1]?.content).toEqual([{ type: "text", value: "Picture" }]);
+	expect(document.steps[2]?.content).toContainEqual({ type: "lineBreak" });
+	expect(document.steps[2]?.content[0]).toMatchObject({ type: "link", title: "Tooltip" });
+});
+
+test("CRLF fences and invalid backtick info preserve literal abbreviation-looking lines", () => {
+	const document = parseRoadmapMarkdown("~~~text\r\n*[API]: Literal\r\n~~~\r\n\r\nAPI\r\n");
+	expect(document.abbreviations).toEqual({});
+	expect(inlineToPlainText(document.steps[0]?.content ?? [])).toContain("*[API]: Literal");
+	const inline = parseRoadmapMarkdown("```bad`info\n*[API]: Definition\n");
+	expect(inline.abbreviations).toEqual({ API: "Definition" });
+});
+
+test("prepared parser reports frontmatter errors, remains usable, and disposes idempotently", () => {
+	const parser = new RoadmapParser();
+	expect(() => parser.parse("---\nroadmap:\n  surprise: true\n---\n")).toThrow(
+		"Invalid roadmap front matter",
+	);
+	expect(parser.parse("# Still working").steps).toHaveLength(1);
+	parser[Symbol.dispose]();
+	parser.dispose();
+	expect(() => parser.parse("# Closed")).toThrow("disposed");
+});

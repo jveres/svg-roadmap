@@ -5,6 +5,7 @@ import {
 	flattenInline,
 	inlineToPlainText,
 	measureText,
+	shortcodeToEmoji,
 	wrapInline,
 } from "./inline.ts";
 
@@ -126,4 +127,156 @@ describe("inline wrapping", () => {
 		]);
 		expect(lines[1]?.segments[0]?.destination).toBe("https://12factor.net/");
 	});
+});
+
+test.each(["a", "e\u0301", "👩🏽‍💻"])(
+	"wraps long tokens without dropping or splitting graphemes: %s",
+	(grapheme) => {
+		const value = grapheme.repeat(512);
+		const lines = wrapInline([{ type: "code", value }], 180, typography);
+		const segments = lines.flatMap((line) => line.segments);
+
+		expect(segments.map((segment) => segment.text).join("")).toBe(value);
+		for (const line of lines) {
+			expect(line.width).toBeLessThanOrEqual(180);
+			for (const segment of line.segments) {
+				expect(segment.text.length % grapheme.length).toBe(0);
+				expect(segment.marks).toEqual(["code"]);
+			}
+		}
+	},
+);
+
+test("wraps long linked tokens against each shaped line budget", () => {
+	const value = "abcdefghij".repeat(30);
+	const widths = [25, 60, 100];
+	const lines = wrapInline(
+		[{ type: "link", destination: "https://example.com", children: [{ type: "text", value }] }],
+		180,
+		typography,
+		undefined,
+		widths,
+	);
+
+	expect(
+		lines
+			.flatMap((line) => line.segments)
+			.map((segment) => segment.text)
+			.join(""),
+	).toBe(value);
+	for (const [index, line] of lines.entries()) {
+		expect(line.width).toBeLessThanOrEqual(widths[index] ?? 180);
+		for (const segment of line.segments) expect(segment.destination).toBe("https://example.com");
+	}
+});
+
+test.each(["©", "®", "™", "♥", "☀", "©\ufe0e", "🚀\ufe0e"])(
+	"text presentation %s stays in the text font",
+	(text) => {
+		expect(
+			flattenInline([{ type: "emphasis", children: [{ type: "text", value: text }] }]),
+		).toEqual([{ text, marks: ["emphasis"] }]);
+		expect(measureText(text, 16)).not.toBe(16 * 1.05);
+	},
+);
+
+test.each([
+	["©\ufe0f", "copyright"],
+	["®\ufe0f", "registered"],
+	["™\ufe0f", "tm"],
+	["♥\ufe0f", "hearts"],
+])("explicit emoji presentation %s retains artwork", (text, shortcode) => {
+	if (!text) throw new Error("Missing fixture");
+	expect(flattenInline([{ type: "text", value: text }])).toEqual([{ text, marks: [], shortcode }]);
+	expect(measureText(text, 16)).toBe(16.8);
+});
+
+test("long linked abbreviations retain tooltips, destinations and indicators across wraps", () => {
+	const nodes: InlineNode[] = [
+		{
+			type: "link",
+			destination: "https://example.com",
+			title: "Resource",
+			children: [
+				{
+					type: "abbreviation",
+					title: "Definition",
+					children: [{ type: "text", value: "LongToken" }],
+				},
+			],
+		},
+	];
+	const lines = wrapInline(nodes, 10, typography, 30);
+	expect(lines.length).toBeGreaterThan(1);
+	const segments = lines.flatMap((line) => line.segments);
+	expect(segments.map((segment) => segment.text).join("")).toBe("LongToken?");
+	for (const segment of segments)
+		expect(segment).toMatchObject({
+			destination: "https://example.com",
+			linkTitle: "Resource",
+			abbreviation: "Definition",
+		});
+	expect(segments.at(-1)?.abbreviationIndicator).toBe(true);
+});
+
+test("atomic tag chips wrap as a whole even when wider than the available line", () => {
+	const tag: InlineNode = {
+		type: "tagChip",
+		tag: "recommended",
+		children: [{ type: "text", value: "recommended" }],
+	};
+	const lines = wrapInline([{ type: "text", value: "Hello " }, tag], 30, typography);
+	expect(lines).toHaveLength(3);
+	expect(lines.at(-1)?.segments).toHaveLength(1);
+	expect(lines.at(-1)?.segments[0]).toMatchObject({ tag: "recommended", text: "recommended" });
+	expect(wrapInline([tag], 0, typography)).toHaveLength(1);
+});
+
+test("breaks, script marks and uppercase preserve content at zero width", () => {
+	const nodes: InlineNode[] = [
+		{ type: "lineBreak" },
+		{ type: "text", value: "a" },
+		{ type: "lineBreak" },
+		{ type: "lineBreak" },
+		{ type: "subscript", children: [{ type: "text", value: "b" }] },
+	];
+	const lines = wrapInline(nodes, 0, { ...typography, textTransform: "uppercase" });
+	expect(lines.map((line) => line.segments.map((segment) => segment.text).join(""))).toEqual([
+		"A",
+		"B",
+	]);
+	expect(lines[1]?.segments[0]?.marks).toEqual(["subscript"]);
+	expect(
+		inlineToPlainText([
+			{ type: "softBreak" },
+			{ type: "lineBreak" },
+			{ type: "footnoteReference", label: "note" },
+		]),
+	).toContain("note");
+	expect(
+		flattenInline([
+			{ type: "footnoteReference", label: "__inline_7" },
+			{ type: "footnoteReference", label: "custom" },
+		]).map((run) => run.text),
+	).toEqual(["7", "[custom]"]);
+});
+
+test("unknown shortcodes and empty abbreviation definitions preserve authored text", () => {
+	expect(shortcodeToEmoji("unknown-shortcode")).toBe(":unknown-shortcode:");
+	expect(applyAbbreviations([{ type: "text", value: "API" }], { API: "" })).toEqual([
+		{ type: "text", value: "API" },
+	]);
+	expect(applyAbbreviations([{ type: "text", value: "" }], { API: "definition" })).toEqual([
+		{ type: "text", value: "" },
+	]);
+	expect(measureText("\u2003", 10)).toBe(2.78);
+});
+
+test("flag emoji and adjacent text-presentation symbols retain separate rendering modes", () => {
+	const runs = flattenInline([{ type: "text", value: "🇺🇸 ©\ufe0e 🚀" }]);
+	expect(runs).toEqual([
+		{ text: "🇺🇸", marks: [], shortcode: "us" },
+		{ text: " ©\ufe0e ", marks: [] },
+		{ text: "🚀", marks: [], shortcode: "rocket" },
+	]);
 });

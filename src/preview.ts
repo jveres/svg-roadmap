@@ -31,6 +31,7 @@ import {
 	type RoadmapColorMode,
 	type RoadmapDocument,
 	renderRoadmapDocument,
+	roadmapDocumentFormat,
 } from "./viewer.ts";
 
 const zoomLevels = { min: 0.25, max: 4, step: 1.25 };
@@ -259,7 +260,7 @@ export class RoadmapPreviewElement extends HTMLElement {
 	#zoom = 1;
 	#systemMode: MediaQueryList | undefined;
 	#renderQueued = false;
-	#loadToken = 0;
+	#loadController: AbortController | undefined;
 	#renderNote: ((markdown: string) => Node | string) | undefined;
 	#generated: GeneratedRoadmap | undefined;
 	readonly #root: ShadowRoot;
@@ -298,6 +299,7 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#controls.className = "controls";
 		this.#controls.setAttribute("part", "controls");
 		this.#themeSelect = document.createElement("select");
+		this.#themeSelect.name = "theme";
 		this.#themeSelect.setAttribute("part", "theme-select");
 		this.#themeSelect.setAttribute("aria-label", "Theme");
 		for (const name of Object.keys(builtInThemes)) {
@@ -422,10 +424,16 @@ export class RoadmapPreviewElement extends HTMLElement {
 	}
 
 	set artifact(value: unknown) {
-		this.#artifact =
-			value !== null && typeof value === "object" && "svgRoadmap" in (value as object)
-				? openRoadmapDocument(value)
-				: (value as RoadmapDocument | undefined);
+		const artifact =
+			value == null
+				? undefined
+				: openRoadmapDocument(
+						typeof value === "object" && "svgRoadmap" in value
+							? value
+							: { svgRoadmap: roadmapDocumentFormat, document: value },
+					);
+		this.#cancelLoad();
+		this.#artifact = artifact;
 		this.#queueRender();
 	}
 
@@ -475,7 +483,11 @@ export class RoadmapPreviewElement extends HTMLElement {
 		}
 		const inline = this.querySelector('script[type="application/roadmap+json"]');
 		if (inline?.textContent && this.#artifact === undefined) {
-			this.artifact = JSON.parse(inline.textContent);
+			try {
+				this.artifact = JSON.parse(inline.textContent);
+			} catch (error) {
+				this.dispatchEvent(new CustomEvent("roadmap-error", { detail: { error } }));
+			}
 		}
 		if (this.hasAttribute("src")) void this.#load(this.getAttribute("src") ?? "");
 		this.#zoom = this.#storedZoom() ?? 1;
@@ -487,10 +499,12 @@ export class RoadmapPreviewElement extends HTMLElement {
 			this.#sleepObserver.observe(this);
 		}
 		this.ownerDocument.addEventListener("visibilitychange", this.#syncSleep);
+		this.#syncSleep();
 		this.#queueRender();
 	}
 
 	disconnectedCallback(): void {
+		this.#cancelLoad();
 		this.#closeMenu();
 		this.#sleepObserver?.disconnect();
 		this.#sleepObserver = undefined;
@@ -502,10 +516,12 @@ export class RoadmapPreviewElement extends HTMLElement {
 
 	attributeChangedCallback(name: string, previous: string | null, next: string | null): void {
 		if (previous === next) return;
-		if (name === "src" && next !== null && this.isConnected) {
-			void this.#load(next);
+		if (name === "src") {
+			this.#cancelLoad();
+			if (next !== null && this.isConnected) void this.#load(next);
 			return;
 		}
+		if (name === "storage-key") this.#zoom = this.#storedZoom() ?? 1;
 		this.#queueRender();
 	}
 
@@ -513,17 +529,26 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#queueRender();
 	};
 
+	#cancelLoad(): void {
+		this.#loadController?.abort();
+		this.#loadController = undefined;
+	}
+
 	async #load(src: string): Promise<void> {
-		const token = ++this.#loadToken;
+		this.#cancelLoad();
+		const controller = new AbortController();
+		this.#loadController = controller;
 		try {
-			const response = await fetch(src);
+			const response = await fetch(src, { signal: controller.signal });
 			if (!response.ok) throw new Error(`Fetching the roadmap artifact failed: ${response.status}`);
 			const envelope: unknown = await response.json();
-			if (token !== this.#loadToken) return;
+			if (controller.signal.aborted) return;
 			this.artifact = openRoadmapDocument(envelope);
 		} catch (error) {
-			if (token !== this.#loadToken) return;
+			if (controller.signal.aborted) return;
 			this.dispatchEvent(new CustomEvent("roadmap-error", { detail: { error } }));
+		} finally {
+			if (this.#loadController === controller) this.#loadController = undefined;
 		}
 	}
 
@@ -780,7 +805,12 @@ export class RoadmapPreviewElement extends HTMLElement {
 		this.#renderQueued = true;
 		queueMicrotask(() => {
 			this.#renderQueued = false;
-			this.#render();
+			if (!this.isConnected) return;
+			try {
+				this.#render();
+			} catch (error) {
+				this.dispatchEvent(new CustomEvent("roadmap-error", { detail: { error } }));
+			}
 		});
 	}
 
@@ -813,12 +843,17 @@ export class RoadmapPreviewElement extends HTMLElement {
 		);
 		this.#syncModeIcon();
 		this.#header.hidden = this.hasAttribute("chromeless");
-		if (!this.#artifact) return;
+		if (!this.#artifact) {
+			this.#teardown();
+			this.#generated = undefined;
+			this.#canvas.replaceChildren();
+			this.#title.textContent = "";
+			return;
+		}
 
 		const preset = this.getAttribute("theme") ?? this.#artifact.settings.theme.preset;
 		const mode = this.#mode();
 		this.#themeSelect.value = preset;
-		this.#teardown();
 		const idPrefix = (this.getAttribute("storage-key") ?? "roadmap-preview").replaceAll(
 			/[^A-Za-z0-9_-]+/gu,
 			"-",
@@ -827,6 +862,7 @@ export class RoadmapPreviewElement extends HTMLElement {
 			theme: { preset, mode },
 			render: { idPrefix },
 		});
+		this.#teardown();
 		this.#generated = generated;
 		// Mount through the XML parser: it is strict about the SVG namespace
 		// and immune to HTML-parser quirks (happy-dom drops SVG children on

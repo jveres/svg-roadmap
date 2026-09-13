@@ -44,7 +44,7 @@ function decodeEntities(value: string): string {
 				? String.fromCodePoint(codePoint)
 				: match;
 		}
-		return namedEntities[entity] ?? match;
+		return Object.hasOwn(namedEntities, entity) ? (namedEntities[entity] ?? match) : match;
 	});
 }
 
@@ -171,7 +171,7 @@ export function decodeXml(source: string): XmlElementNode {
 		const name = source.slice(open + 1, nameEnd);
 		if (!name) throw new XmlDecodeError("Element name is missing", open);
 
-		const attributes: Record<string, string> = {};
+		const attributes: Record<string, string> = Object.create(null);
 		let tagCursor = nameEnd;
 		let selfClosing = false;
 		while (tagCursor < source.length) {

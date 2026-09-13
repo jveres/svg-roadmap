@@ -132,11 +132,6 @@ textarea {
 	row-gap: 8px;
 }
 
-.toolbar select {
-	max-width: 100%;
-	min-width: 0;
-}
-
 .theme-picker {
 	font-size: 13px;
 }
@@ -153,6 +148,11 @@ select {
 
 select {
 	padding: 0 26px 0 9px;
+}
+
+.toolbar select {
+	max-width: 100%;
+	min-width: 0;
 }
 
 button {
@@ -381,10 +381,6 @@ body {
 	grid-template-rows: 1fr;
 }
 
-.workbench--preview-only .editor-panel textarea {
-	display: none;
-}
-
 /*
  * Desktop collapse: the preview takes the remaining width and the editor
  * keeps a narrow vertical rail, so the chevron that collapsed it stays in
@@ -432,6 +428,10 @@ textarea {
 	font-size: 13px;
 	line-height: 1.55;
 	tab-size: 2;
+}
+
+.workbench--preview-only .editor-panel textarea {
+	display: none;
 }
 
 .preview-panel {

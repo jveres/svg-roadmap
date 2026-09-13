@@ -28,6 +28,9 @@ export function createSeededRandom(seed: string): () => number {
  * determinism.
  */
 export function createMotifCycler(seed: string, motifCount: number): () => number {
+	if (!Number.isSafeInteger(motifCount) || motifCount < 1) {
+		throw new RangeError("motifCount must be a positive integer");
+	}
 	const random = createSeededRandom(`motif-cycle:${seed}`);
 	let deck: number[] = [];
 	return () => {
@@ -41,6 +44,43 @@ export function createMotifCycler(seed: string, motifCount: number): () => numbe
 			}
 		}
 		return deck.pop() ?? 0;
+	};
+}
+
+/** Prefer the least recently used motif that is absent from the surrounding area. */
+export function createSpatialMotifPicker(
+	seed: string,
+	motifCount: number,
+	spacing: number,
+): (bounds: Rect) => number | undefined {
+	if (!Number.isFinite(spacing) || spacing <= 0) {
+		throw new RangeError("spacing must be a positive finite number");
+	}
+	const next = createMotifCycler(seed, motifCount);
+	const available = Array.from({ length: motifCount }, () => next());
+	const cells = new Map<string, { x: number; y: number; motif: number }[]>();
+	return (bounds) => {
+		const x = bounds.x + bounds.width / 2;
+		const y = bounds.y + bounds.height / 2;
+		const column = Math.floor(x / spacing);
+		const row = Math.floor(y / spacing);
+		const nearby = new Set<number>();
+		for (let dx = -1; dx <= 1; dx += 1) {
+			for (let dy = -1; dy <= 1; dy += 1) {
+				for (const item of cells.get(`${column + dx}:${row + dy}`) ?? []) {
+					if (Math.hypot(item.x - x, item.y - y) < spacing) nearby.add(item.motif);
+				}
+			}
+		}
+		const index = available.findIndex((motif) => !nearby.has(motif));
+		if (index < 0) return undefined;
+		const motif = available.splice(index, 1)[0] as number;
+		available.push(motif);
+		const key = `${column}:${row}`;
+		const cell = cells.get(key) ?? [];
+		cell.push({ x, y, motif });
+		cells.set(key, cell);
+		return motif;
 	};
 }
 

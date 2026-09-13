@@ -84,3 +84,16 @@ Start with [core] ideas.^[A footnote.]
 		).toThrow(/does not carry a parsed document/u);
 	});
 });
+
+test.each([null, [], {}, { theme: null }, { theme: { preset: "fun" }, background: null }])(
+	"rejects malformed artifact settings: %j",
+	(settings) => {
+		const document = generateRoadmap("* Chapter\n  * Topic").document;
+		expect(() =>
+			openRoadmapDocument({
+				svgRoadmap: roadmapDocumentFormat,
+				document: { ...document, settings },
+			}),
+		).toThrow(RoadmapDocumentError);
+	},
+);

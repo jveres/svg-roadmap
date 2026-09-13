@@ -1,5 +1,6 @@
 import {
 	createSeededRandom,
+	createSpatialMotifPicker,
 	intersectsAny,
 	isInOuterVoid,
 } from "../../core/background-artifacts.ts";
@@ -272,6 +273,11 @@ export function generateRoseBackgroundArtifacts({
 	const rows = Math.ceil(height / tileSize);
 	const artifacts: LayoutBackgroundArtifact[] = [];
 	const accepted: Rect[] = [];
+	const nextMotif = createSpatialMotifPicker(
+		`rose:${settings.seed}`,
+		motifs.length,
+		tileSize * 2.5,
+	);
 
 	for (let row = 0; row < rows; row += 1) {
 		for (let column = 0; column < columns; column += 1) {
@@ -299,9 +305,10 @@ export function generateRoseBackgroundArtifacts({
 			if (intersectsAny(bounds, avoid)) continue;
 			if (!isInOuterVoid(bounds, avoid, width, 0.29)) continue;
 			if (intersectsAny(bounds, accepted)) continue;
+			const motifIndex = nextMotif(bounds);
+			if (motifIndex === undefined) continue;
 			accepted.push(bounds);
-			const motif =
-				motifs[(Math.floor(random() * motifs.length) + column + row * 3) % motifs.length];
+			const motif = motifs[motifIndex];
 			if (!motif) continue;
 			// Botanical cuttings lie loosely on the page but keep their "up":
 			// a gentle tilt, never a full spin.

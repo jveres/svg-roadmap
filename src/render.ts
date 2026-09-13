@@ -297,18 +297,18 @@ function defaultIdPrefix(
 	// box are enough to separate two roadmaps sharing a page. The theme is
 	// small and fixed-size, so it still goes through JSON.
 	let digest = hashNumber(
-		`${title} ${description} ${layout.width} ${layout.height} ${layout.maxDepth}`,
+		`${title}\u0000${description}\u0000${layout.width}\u0000${layout.height}\u0000${layout.maxDepth}`,
 	);
 	digest = hashNumber(JSON.stringify(theme), digest);
 	for (const element of layout.elements) {
 		digest = hashNumber(
-			`${element.kind} ${element.id} ${element.x} ${element.y} ${element.width} ${element.height}`,
+			`${element.kind}\u0000${element.id}\u0000${element.x}\u0000${element.y}\u0000${element.width}\u0000${element.height}`,
 			digest,
 		);
 	}
 	for (const connector of layout.connectors) {
 		digest = hashNumber(
-			`${connector.id} ${connector.from.x} ${connector.from.y} ${connector.to.x} ${connector.to.y}`,
+			`${connector.id}\u0000${connector.from.x}\u0000${connector.from.y}\u0000${connector.to.x}\u0000${connector.to.y}`,
 			digest,
 		);
 	}
@@ -1147,7 +1147,7 @@ function renderNoteMarker(node: LayoutNode, theme: RoadmapTheme): string {
  * no shadow; footnote text sits directly on the canvas). The element
  * stays for anchoring/tests, painted with nothing.
  */
-function footnotesBoard(node: LayoutNode, theme: RoadmapTheme, prefix: string): string {
+function footnotesBoard(node: LayoutNode, theme: RoadmapTheme): string {
 	const board = theme.boards.legend;
 	const inner = {
 		x: node.x + board.padding + 7,
@@ -1180,7 +1180,7 @@ function renderNode(
 		node.placement === "milestone-label"
 			? `<rect class="roadmap__milestone-label" x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${roundCoordinate(node.height / 2)}" fill="${cssToken("connector-spine-color")}" fill-opacity="0.16"/>`
 			: node.placement === "footnotes"
-				? footnotesBoard(node, theme, prefix)
+				? footnotesBoard(node, theme)
 				: card
 					? renderCardFrame(node, card, prefix, theme.shadow.pattern ?? "solid")
 					: "";
@@ -1523,12 +1523,7 @@ function renderLegend(legend: LayoutLegend, theme: RoadmapTheme, prefix: string)
 	return `<g id="${prefix}-legend" class="roadmap__legend" data-roadmap-element="legend"><path d="${path}" transform="matrix(${pathScaleX} 0 0 1 ${pathTranslateX} 1.5)" fill="${theme.boards.legend.pattern === "none" ? escapeXml(theme.boards.legend.background) : `url(#${prefix}-legend-hatch)`}" filter="url(#${prefix}-soft-shadow)"${outline}/>${rows}</g>`;
 }
 
-function renderBoardPattern(
-	id: string,
-	token: string,
-	board: BoardTheme,
-	hatchStrokeWidth: string,
-): string {
+function renderBoardPattern(id: string, board: BoardTheme, hatchStrokeWidth: string): string {
 	// WebKit #198257: CSS custom properties do NOT resolve inside
 	// <pattern> content — in Safari every var() here fell to black
 	// (seam, Aug 2: the ascii shadow checker rendered as a dense
@@ -1636,6 +1631,12 @@ function renderDefinitions(
 	usedEmoji: ReadonlySet<string>,
 	connectors: readonly LayoutConnector[] = [],
 ): string {
+	// These filter attributes are SVG numbers, not CSS presentation
+	// properties: browsers reject var() here. Resolve theme overrides now.
+	const filterNumber = (name: string, fallback: number): number => {
+		const value = Number(theme.cssVariables[name] ?? fallback);
+		return Number.isFinite(value) ? value : fallback;
+	};
 	const symbol = (id: string, viewBox: string, content: string): string =>
 		`<symbol id="${prefix}-icon-${id}" viewBox="${viewBox}">${content}</symbol>`;
 	const emojiSymbol = (id: string, viewBox: string, content: string): string =>
@@ -1649,14 +1650,13 @@ function renderDefinitions(
 				? `<pattern id="${prefix}-shadow-halftone" patternUnits="userSpaceOnUse" width="2" height="2"><rect width="1" height="1" fill="${escapeXml(theme.shadow.color)}"/><rect x="1" y="1" width="1" height="1" fill="${escapeXml(theme.shadow.color)}"/></pattern>`
 				: ""
 		}
-		${renderBoardPattern(`${prefix}-topic-hatch`, "topic", theme.boards.topic, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
-		${renderBoardPattern(`${prefix}-nested-hatch`, "nested-topic", theme.boards.nested, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
-		${renderBoardPattern(`${prefix}-legend-hatch`, "legend", theme.boards.legend, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
+		${renderBoardPattern(`${prefix}-topic-hatch`, theme.boards.topic, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
+		${renderBoardPattern(`${prefix}-nested-hatch`, theme.boards.nested, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
+		${renderBoardPattern(`${prefix}-legend-hatch`, theme.boards.legend, String(theme.cssVariables["board-hatch-stroke-width"] ?? 2))}
 		${patternedCards(theme)
 			.map(([token, card]) =>
 				renderBoardPattern(
 					`${prefix}-${token}-hatch`,
-					token,
 					{
 						...theme.boards.topic,
 						pattern: card.pattern ?? "none",
@@ -1707,7 +1707,7 @@ function renderDefinitions(
 			})
 			.filter(Boolean)
 			.join("\n\t\t")}
-		<filter id="${prefix}-soft-shadow" x="-30%" y="-30%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="${cssToken("soft-shadow-blur")}" result="soft-offset"/><feOffset in="soft-offset" dx="${cssToken("soft-shadow-offset-x")}" dy="${cssToken("soft-shadow-offset-y")}" result="soft-offset"/><feColorMatrix type="saturate" in="soft-offset" values="${cssToken("soft-shadow-saturation")}"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+		<filter id="${prefix}-soft-shadow" x="-30%" y="-30%" width="180%" height="180%"><feGaussianBlur in="SourceGraphic" stdDeviation="${Math.max(0, filterNumber("soft-shadow-blur", theme.shadow.softBlur))}" result="soft-offset"/><feOffset in="soft-offset" dx="${filterNumber("soft-shadow-offset-x", theme.shadow.softOffsetX)}" dy="${filterNumber("soft-shadow-offset-y", theme.shadow.softOffsetY)}" result="soft-offset"/><feColorMatrix type="saturate" in="soft-offset" values="${filterNumber("soft-shadow-saturation", theme.shadow.softSaturation)}"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 		${symbol("check", "0 0 512 512", '<circle cx="50%" cy="50%" r="40%" fill="currentColor"/><path d="M256 512c141.4 0 256-114.6 256-256S397.4 0 256 0S0 114.6 0 256S114.6 512 256 512zM369 209 241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>')}
 		${symbol("heart", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M50 31c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 45.7 50 31.6V31z" opacity=".2"/><path fill="currentColor" d="M50 29c-.1-5.5-4.6-10.4-10.1-10.4-3.2 0-6 1.7-7.9 4.1-1.9-2.5-4.7-4.1-7.9-4.1-5.5 0-10 4.9-10.1 10.4v.6c.5 14.1 17.8 19.8 17.8 19.8S49.4 43.7 50 29.6V29z"/>')}
 		${symbol("star", "0 0 64 64", '<circle cx="32" cy="32" r="32"/><path fill="#231f20" d="M52.9 28.1c-.3-1-1.1-1.6-2.1-1.8l-11.3-1.6-5.1-10.3c-.4-.9-1.4-1.5-2.4-1.5s-1.9.6-2.4 1.5l-5.1 10.3-11.3 1.6c-1 .1-1.8.8-2.1 1.8s-.1 2 .7 2.7l8.2 8L18.1 50c-.2 1 .2 2 1 2.6.5.3 1 .5 1.5.5.4 0 .8-.1 1.2-.3L32 47.5l10.1 5.3c.4.2.8.3 1.2.3.5 0 1.1-.2 1.5-.5.8-.6 1.2-1.6 1-2.6L44 38.7l8.2-8c.7-.6 1-1.7.7-2.6z" opacity=".2"/><path fill="currentColor" d="M52.9 26.1c-.3-1-1.1-1.6-2.1-1.8l-11.3-1.6-5.1-10.3c-.4-.9-1.4-1.5-2.4-1.5s-1.9.6-2.4 1.5l-5.1 10.3-11.3 1.6c-1 .1-1.8.8-2.1 1.8s-.1 2 .7 2.7l8.2 8L18.1 48c-.2 1 .2 2 1 2.6.5.3 1 .5 1.5.5.4 0 .8-.1 1.2-.3L32 45.5l10.1 5.3c.4.2.8.3 1.2.3.5 0 1.1-.2 1.5-.5.8-.6 1.2-1.6 1-2.6L44 36.7l8.2-8c.7-.6 1-1.7.7-2.6z"/>')}

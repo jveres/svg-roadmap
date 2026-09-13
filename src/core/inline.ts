@@ -272,7 +272,7 @@ function tagRawEmoji(runs: readonly InlineRun[]): InlineRun[] {
 			}
 		};
 		for (const grapheme of textGraphemes(run.text)) {
-			const shortcode = pictographPattern.test(grapheme) ? emojiShortcodeFor(grapheme) : undefined;
+			const shortcode = isEmojiGrapheme(grapheme) ? emojiShortcodeFor(grapheme) : undefined;
 			if (shortcode) {
 				flush();
 				result.push({ ...run, text: grapheme, shortcode });
@@ -329,7 +329,11 @@ type FontCategory = "monospace" | "serif" | "sans";
 
 const monospaceFontPattern = /\b(?:monospace|courier|consolas|menlo|monaco)\b/iu;
 const serifFontPattern = /\b(?:serif|times|georgia|cambria)\b/iu;
-const pictographPattern = /\p{Extended_Pictographic}|\u20e3/u;
+const pictographPattern = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u20e3/u;
+
+function isEmojiGrapheme(value: string): boolean {
+	return !value.includes("\ufe0e") && /\p{Emoji_Presentation}|\ufe0f|\u20e3/u.test(value);
+}
 const cjkPattern = /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}/u;
 const whitespacePattern = /\s/u;
 const graphemeSegmenter =
@@ -355,9 +359,9 @@ function characterWidth(
 ): number {
 	// Emoji keep their pictographic advance even in monospace text: emoji
 	// glyphs and the SVG symbols drawn in their place are ~1em wide, not 1ch.
-	if (pictographPattern.test(character)) return fontSize * 1.05;
+	if (isEmojiGrapheme(character)) return fontSize * 1.05;
 	if (category === "monospace") return fontSize * 0.6;
-	const units = (bold ? arialBold : arialRegular).get(character);
+	const units = (bold ? arialBold : arialRegular).get(character.replaceAll(/[\ufe0e\ufe0f]/gu, ""));
 	if (units !== undefined) {
 		const familyScale = category === "serif" ? 1.04 : 1;
 		return (units / 1000) * fontSize * familyScale;
@@ -424,7 +428,7 @@ function providerWidth(
 		}
 	};
 	for (const grapheme of textGraphemes(text)) {
-		if (pictographPattern.test(grapheme)) {
+		if (isEmojiGrapheme(grapheme)) {
 			flush();
 			width += style.fontSize * 1.05;
 		} else {
@@ -604,7 +608,7 @@ export function wrapInline(
 				pushLine();
 				continue;
 			}
-			let value = token;
+			const value = token;
 			// Super/subscript paints at 0.75em (see markAttributes); measuring
 			// at full size would make textLength stretch the small glyphs back
 			// to full-size advances.
@@ -613,7 +617,7 @@ export function wrapInline(
 				: run.marks.includes("superscript") || run.marks.includes("subscript")
 					? typography.fontSize * 0.75
 					: typography.fontSize;
-			let tokenWidth = measureRun(value, runFontSize, run.marks);
+			const tokenWidth = measureRun(value, runFontSize, run.marks);
 			let line = lines.at(-1);
 			if (!line) continue;
 			if (/^\s+$/u.test(value) && line.segments.length === 0) continue;
@@ -639,35 +643,42 @@ export function wrapInline(
 				if (!line) continue;
 			}
 
-			while (tokenWidth > widthFor(lines.length - 1) && textGraphemes(value).length > 1) {
-				const characters = [...textGraphemes(value)];
-				let split = 1;
-				while (
-					split < characters.length &&
-					measureRun(characters.slice(0, split + 1).join(""), runFontSize, run.marks) <=
-						widthFor(lines.length - 1)
-				) {
-					split += 1;
+			if (tokenWidth > widthFor(lines.length - 1)) {
+				// Segment once and advance through the token. Re-measuring and
+				// segmenting the entire remaining suffix makes long URLs quadratic.
+				const characters = textGraphemes(value);
+				let offset = 0;
+				while (offset < characters.length) {
+					let head = characters[offset] ?? "";
+					let headWidth = measureRun(head, runFontSize, run.marks);
+					let end = offset + 1;
+					while (end < characters.length) {
+						const candidate = head + characters[end];
+						const width = measureRun(candidate, runFontSize, run.marks);
+						if (width > widthFor(lines.length - 1)) break;
+						head = candidate;
+						headWidth = width;
+						end += 1;
+					}
+					line.segments.push({
+						text: head,
+						width: headWidth,
+						marks: run.marks,
+						...(run.destination ? { destination: run.destination } : {}),
+						...(run.linkTitle ? { linkTitle: run.linkTitle } : {}),
+						...(run.abbreviation ? { abbreviation: run.abbreviation } : {}),
+						...(run.abbreviationIndicator ? { abbreviationIndicator: true } : {}),
+						...(run.shortcode ? { shortcode: run.shortcode } : {}),
+					});
+					line.width += headWidth;
+					offset = end;
+					if (offset < characters.length) {
+						pushLine();
+						line = lines.at(-1);
+						if (!line) break;
+					}
 				}
-				const head = characters.slice(0, split).join("");
-				const headWidth = measureRun(head, runFontSize, run.marks);
-				const segment: TextLineSegment = {
-					text: head,
-					width: headWidth,
-					marks: run.marks,
-					...(run.destination ? { destination: run.destination } : {}),
-					...(run.linkTitle ? { linkTitle: run.linkTitle } : {}),
-					...(run.abbreviation ? { abbreviation: run.abbreviation } : {}),
-					...(run.abbreviationIndicator ? { abbreviationIndicator: true } : {}),
-					...(run.shortcode ? { shortcode: run.shortcode } : {}),
-				};
-				line.segments.push(segment);
-				line.width += headWidth;
-				value = characters.slice(split).join("");
-				tokenWidth = measureRun(value, runFontSize, run.marks);
-				pushLine();
-				line = lines.at(-1);
-				if (!line) break;
+				continue;
 			}
 			if (!value || !line) continue;
 
