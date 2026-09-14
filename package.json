@@ -1,6 +1,6 @@
 {
 	"name": "svg-roadmap",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Dependency-light Markdown to SVG roadmap generator",
 	"license": "MIT",
 	"author": "János Veres",
