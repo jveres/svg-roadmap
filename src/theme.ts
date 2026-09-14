@@ -338,7 +338,6 @@ export const lightTheme: RoadmapTheme = {
 		insertUnderline: "#ffdf4c",
 		codeBackground: "#f1f2f6",
 		abbreviation: "#44454d",
-		abbreviationIndicatorSize: 7.5,
 	},
 	shadow: {
 		color: "#000000",
@@ -470,7 +469,6 @@ export const darkTheme: RoadmapTheme = {
 		insertUnderline: "#e0b62b",
 		codeBackground: "#343641",
 		abbreviation: "#c8c6d2",
-		abbreviationIndicatorSize: 7.5,
 	},
 	shadow: { ...lightTheme.shadow, color: "#000000", opacity: 0.55 },
 	backgroundArtifacts: {
@@ -681,6 +679,8 @@ export function createTheme(
 			}
 		: baseArtifacts;
 	const shadowPattern = override.shadow?.pattern ?? base.shadow.pattern;
+	const abbreviationIndicatorSize =
+		override.inline?.abbreviationIndicatorSize ?? base.inline.abbreviationIndicatorSize;
 	const textPainting = override.textPainting ?? base.textPainting;
 	const unknown = mergeTag(base.badges.unknown, override.badges?.unknown);
 	const mergedAccents = mergeAccents(base.badges.accents, override.badges?.accents);
@@ -736,8 +736,7 @@ export function createTheme(
 			insertUnderline: override.inline?.insertUnderline ?? base.inline.insertUnderline,
 			codeBackground: override.inline?.codeBackground ?? base.inline.codeBackground,
 			abbreviation: override.inline?.abbreviation ?? base.inline.abbreviation,
-			abbreviationIndicatorSize:
-				override.inline?.abbreviationIndicatorSize ?? base.inline.abbreviationIndicatorSize,
+			...(abbreviationIndicatorSize !== undefined ? { abbreviationIndicatorSize } : {}),
 		},
 		shadow: {
 			color: override.shadow?.color ?? base.shadow.color,

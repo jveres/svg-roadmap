@@ -10,6 +10,7 @@ import {
 } from "../src/index.ts";
 import "../src/preview.ts";
 import type { RoadmapPreviewElement } from "../src/preview.ts";
+import aad from "./aad.md?raw";
 import aiArchitect from "./ai-architect.md?raw";
 import featureTour from "./feature-tour.md?raw";
 import linearFunctions from "./linear-functions.md?raw";
@@ -45,6 +46,11 @@ const samples: Readonly<Record<string, WorkbenchSample>> = {
 	"ai-architect": {
 		label: "AI Architect",
 		source: aiArchitect,
+		preset: "pro",
+	},
+	aad: {
+		label: "AAD — Agent-Assisted Development",
+		source: aad,
 		preset: "pro",
 	},
 	"linear-functions": {

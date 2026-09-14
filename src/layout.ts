@@ -221,7 +221,7 @@ function oppositeSide(side: -1 | 1): -1 | 1 {
 function layoutText(
 	lines: readonly TextLine[],
 	typography: TypographyTheme,
-	abbreviationIndicatorSize: number,
+	abbreviationIndicatorSize = typography.fontSize * 0.75,
 ): LayoutText {
 	// An inline tag chip's pill hugs the text band (1.12em, rising 0.8em
 	// above the baseline), so ordinary leading clears it untouched; only a

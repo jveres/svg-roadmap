@@ -715,7 +715,8 @@ export interface RoadmapTheme {
 		readonly insertUnderline: string;
 		readonly codeBackground: string;
 		readonly abbreviation: string;
-		readonly abbreviationIndicatorSize: number;
+		/** Fixed marker size in SVG units. Omit to scale with the text at 0.75em. */
+		readonly abbreviationIndicatorSize?: number;
 	};
 	readonly shadow: {
 		readonly color: string;
